@@ -1,0 +1,50 @@
+{
+    "sin_types": ["pride", "envy", "wrath", "sloth", "greed", "gluttony", "lust"],
+
+    "sin_names_ko": {
+        "pride": "교만",
+        "envy": "시기",
+        "wrath": "분노",
+        "sloth": "나태",
+        "greed": "탐욕",
+        "gluttony": "폭식",
+        "lust": "색욕"
+    },
+
+    "relations": {
+        "pride":    { "envy": "create",  "wrath": "amplify", "sloth": "oppose", "greed": "amplify", "gluttony": "neutral", "lust": "amplify" },
+        "envy":     { "pride": "require", "wrath": "create",  "sloth": "neutral", "greed": "amplify", "gluttony": "neutral", "lust": "neutral" },
+        "wrath":    { "pride": "amplify", "envy": "amplify",  "sloth": "oppose", "greed": "amplify", "gluttony": "neutral", "lust": "neutral" },
+        "sloth":    { "pride": "oppose",  "envy": "neutral",  "wrath": "oppose", "greed": "oppose",  "gluttony": "amplify", "lust": "oppose" },
+        "greed":    { "pride": "amplify", "envy": "amplify",  "wrath": "amplify", "sloth": "oppose", "gluttony": "oppose",  "lust": "amplify" },
+        "gluttony": { "pride": "neutral", "envy": "neutral",  "wrath": "neutral", "sloth": "amplify", "greed": "oppose",    "lust": "create" },
+        "lust":     { "pride": "amplify", "envy": "neutral",  "wrath": "neutral", "sloth": "oppose", "greed": "amplify",    "gluttony": "create" }
+    },
+
+    "relation_effects": {
+        "create":  { "morale_delta": 5,  "description": "강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음" },
+        "amplify": { "morale_delta": 3,  "description": "시너지 — 합치면 더 위험" },
+        "oppose":  { "morale_delta": -5, "description": "갈등 — 표면적 모순, 극복 시 강한 보너스" },
+        "neutral": { "morale_delta": 0,  "description": "직접적 관계 없음" }
+    },
+
+    "satisfaction": {
+        "pride":    { "satisfy": "boss_expedition_success", "frustrate": "expedition_fail_streak_3", "satisfy_delta": 15, "frustrate_delta": -15 },
+        "greed":    { "satisfy": "resource_invested",       "frustrate": "resource_denied",          "satisfy_delta": 10, "frustrate_delta": -10 },
+        "wrath":    { "satisfy": "expedition_dispatched",   "frustrate": "idle_3_days",              "satisfy_delta": 10, "frustrate_delta": -15 },
+        "envy":     { "satisfy": "self_level_up",           "frustrate": "other_grew_more",          "satisfy_delta": 10, "frustrate_delta": -10 },
+        "lust":     { "satisfy": "with_preferred_ally",     "frustrate": "separated_from_ally",      "satisfy_delta": 10, "frustrate_delta": -10 },
+        "sloth":    { "satisfy": "resting",                 "frustrate": "consecutive_assignment",   "satisfy_delta": 10, "frustrate_delta": -10 },
+        "gluttony": { "satisfy": "fully_equipped",          "frustrate": "empty_slot",               "satisfy_delta": 10, "frustrate_delta": -10 }
+    },
+
+    "rampage_chain": {
+        "wrath":    { "target": "all",              "morale_delta": -10, "description": "건물 파괴 → 전체 사기 하락" },
+        "greed":    { "target": "gluttony",          "morale_delta": -20, "description": "자원 도난 → 폭식 사기 급락" },
+        "pride":    { "target": "wrath",             "morale_delta": 15,  "description": "명령 거부 → 분노 사기 급상승(폭주 방향)" },
+        "envy":     { "target": "greed",             "morale_delta": -15, "description": "장비 파괴 → 탐욕 사기 하락" },
+        "gluttony": { "target": "all",              "morale_delta": -10, "description": "식량 소진 → 전체 사기 하락" },
+        "sloth":    { "target": "all",              "morale_delta": -10, "description": "행동 거부 전염 → 전체 사기 하락" },
+        "lust":     { "target": "random_2",          "morale_delta": 20,  "description": "분쟁 유발 → 관련 2명 사기 급상승(폭주 방향)" }
+    }
+}

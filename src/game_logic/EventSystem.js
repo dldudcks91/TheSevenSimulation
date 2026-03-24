@@ -1,0 +1,234 @@
+/**
+ * 이벤트/선택지 시스템
+ * 매 턴(아침) 이벤트 발생 → 플레이어 판결 → 사기 변동
+ */
+
+class EventSystem {
+    constructor(store, eventsData) {
+        this.store = store;
+        this.allEvents = eventsData.events;
+        this._usedRecently = new Set(); // 최근 발생한 이벤트 (중복 방지)
+    }
+
+    /** 아침 페이즈에 이벤트 1~2개 선택 */
+    generateEvents() {
+        const heroes = this.store.getState('heroes') || [];
+        const turn = this.store.getState('turn');
+        if (heroes.length === 0) return [];
+
+        const candidates = this._filterCandidates(heroes, turn);
+        const selected = [];
+
+        // 1개 확정, 30% 확률로 2개
+        if (candidates.length > 0) {
+            const evt = this._pickRandom(candidates);
+            const resolved = this._resolveEvent(evt, heroes);
+            if (resolved) {
+                selected.push(resolved);
+                this._usedRecently.add(evt.id);
+            }
+        }
+
+        if (candidates.length > 1 && Math.random() < 0.3) {
+            const remaining = candidates.filter(e => !this._usedRecently.has(e.id));
+            if (remaining.length > 0) {
+                const evt2 = this._pickRandom(remaining);
+                const resolved2 = this._resolveEvent(evt2, heroes);
+                if (resolved2) {
+                    selected.push(resolved2);
+                    this._usedRecently.add(evt2.id);
+                }
+            }
+        }
+
+        // 5턴마다 recently 초기화
+        if (turn && turn.day % 5 === 0) {
+            this._usedRecently.clear();
+        }
+
+        this.store.setState('currentEvents', selected);
+        return selected;
+    }
+
+    /** 트리거 조건에 맞는 이벤트 필터링 */
+    _filterCandidates(heroes, turn) {
+        const day = turn ? turn.day : 1;
+
+        return this.allEvents.filter(evt => {
+            if (this._usedRecently.has(evt.id)) return false;
+
+            const t = evt.trigger;
+
+            switch (t.type) {
+                case 'sin_elevated': {
+                    const hero = heroes.find(h => h.sinType === t.sin && h.morale >= (t.min_morale || 71));
+                    if (!hero) return false;
+                    if (t.oppose_sin) {
+                        const oppose = heroes.find(h => h.sinType === t.oppose_sin);
+                        if (!oppose) return false;
+                    }
+                    return true;
+                }
+                case 'sin_frustrated': {
+                    const hero = heroes.find(h => h.sinType === t.sin && h.morale <= 30);
+                    return !!hero;
+                }
+                case 'rampage': {
+                    const hero = heroes.find(h => h.sinType === t.sin && h.morale >= 100);
+                    return !!hero;
+                }
+                case 'periodic':
+                    return day % (t.interval || 4) === 0;
+                case 'random':
+                    return day >= (t.min_day || 1) && Math.random() < (t.chance || 0.3);
+                case 'roster_available':
+                    return heroes.length < 7;
+                case 'chapter_progress':
+                    return day >= (t.min_day || 10);
+                case 'after_defense_victory':
+                case 'after_defense_defeat':
+                case 'after_defense_injury':
+                case 'after_defense_defeat_with_expedition':
+                    // 밤 습격 후유증 — 밤 페이즈 결과에 따라 외부에서 트리거
+                    return false; // 자동 생성 X, 외부 호출
+                default:
+                    return false;
+            }
+        });
+    }
+
+    /** 이벤트 텍스트의 {placeholder}를 실제 영웅 이름으로 치환 */
+    _resolveEvent(evt, heroes) {
+        const sinHeroes = {};
+        for (const h of heroes) {
+            sinHeroes[h.sinType] = h;
+        }
+
+        // 이벤트에 관련된 주요 영웅 결정
+        const triggerSin = evt.trigger.sin;
+        const mainHero = sinHeroes[triggerSin];
+        const otherHeroes = heroes.filter(h => h.sinType !== triggerSin);
+        const otherHero = otherHeroes.length > 0 ? otherHeroes[Math.floor(Math.random() * otherHeroes.length)] : null;
+        const strongest = heroes.reduce((a, b) => {
+            const aSum = Object.values(a.stats).reduce((s, v) => s + v, 0);
+            const bSum = Object.values(b.stats).reduce((s, v) => s + v, 0);
+            return aSum >= bSum ? a : b;
+        });
+
+        // heroA, heroB (색욕 폭주용)
+        const nonMainHeroes = heroes.filter(h => h.id !== (mainHero ? mainHero.id : -1));
+        const heroA = nonMainHeroes[0] || null;
+        const heroB = nonMainHeroes[1] || null;
+
+        const replacements = {
+            '{wrath}': sinHeroes.wrath ? sinHeroes.wrath.name : '???',
+            '{envy}': sinHeroes.envy ? sinHeroes.envy.name : '???',
+            '{greed}': sinHeroes.greed ? sinHeroes.greed.name : '???',
+            '{sloth}': sinHeroes.sloth ? sinHeroes.sloth.name : '???',
+            '{gluttony}': sinHeroes.gluttony ? sinHeroes.gluttony.name : '???',
+            '{lust}': sinHeroes.lust ? sinHeroes.lust.name : '???',
+            '{pride}': sinHeroes.pride ? sinHeroes.pride.name : '???',
+            '{other}': otherHero ? otherHero.name : '동료',
+            '{strongest}': strongest ? strongest.name : '???',
+            '{injured}': otherHero ? otherHero.name : '동료',
+            '{heroA}': heroA ? heroA.name : '영웅A',
+            '{heroB}': heroB ? heroB.name : '영웅B'
+        };
+
+        const replaceAll = (str) => {
+            let result = str;
+            for (const [key, val] of Object.entries(replacements)) {
+                result = result.split(key).join(val);
+            }
+            return result;
+        };
+
+        // 타겟 → 실제 heroId 매핑
+        const targetMap = {
+            'wrath': sinHeroes.wrath ? sinHeroes.wrath.id : null,
+            'envy': sinHeroes.envy ? sinHeroes.envy.id : null,
+            'greed': sinHeroes.greed ? sinHeroes.greed.id : null,
+            'sloth': sinHeroes.sloth ? sinHeroes.sloth.id : null,
+            'gluttony': sinHeroes.gluttony ? sinHeroes.gluttony.id : null,
+            'lust': sinHeroes.lust ? sinHeroes.lust.id : null,
+            'pride': sinHeroes.pride ? sinHeroes.pride.id : null,
+            'other': otherHero ? otherHero.id : null,
+            'strongest': strongest ? strongest.id : null,
+            'injured': otherHero ? otherHero.id : null,
+            'heroA': heroA ? heroA.id : null,
+            'heroB': heroB ? heroB.id : null
+        };
+
+        return {
+            id: evt.id,
+            category: evt.category,
+            title: replaceAll(evt.title),
+            scene: replaceAll(evt.scene),
+            choices: evt.choices.map(c => ({
+                text: replaceAll(c.text),
+                effects: c.effects,
+                log: replaceAll(c.log),
+                targetMap
+            }))
+        };
+    }
+
+    /** 선택지 실행 → 사기 변동 적용 */
+    applyChoice(event, choiceIndex) {
+        const choice = event.choices[choiceIndex];
+        if (!choice) return [];
+
+        const heroes = this.store.getState('heroes') || [];
+        const results = [];
+        const targetMap = choice.targetMap || {};
+
+        for (const effect of choice.effects) {
+            if (effect.target === 'all') {
+                for (const hero of heroes) {
+                    hero.morale = Math.max(0, Math.min(100, hero.morale + (effect.morale || 0)));
+                    results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
+                }
+            } else if (effect.target === 'others') {
+                const mainSin = event.id.startsWith('A4') ? 'pride' : null;
+                for (const hero of heroes) {
+                    if (mainSin && hero.sinType === mainSin) continue;
+                    hero.morale = Math.max(0, Math.min(100, hero.morale + (effect.morale || 0)));
+                    results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
+                }
+            } else if (effect.target === 'gold') {
+                const gold = this.store.getState('gold') || 500;
+                this.store.setState('gold', Math.max(0, gold + (effect.amount || 0)));
+                results.push({ type: 'gold', delta: effect.amount || 0 });
+            } else if (effect.target === 'recruit') {
+                results.push({ type: 'recruit', action: effect.action });
+            } else {
+                // 특정 영웅 타겟
+                const heroId = targetMap[effect.target];
+                if (heroId) {
+                    const hero = heroes.find(h => h.id === heroId);
+                    if (hero) {
+                        const delta = effect.morale || 0;
+                        if (delta <= -999) {
+                            // 영구 제거
+                            const idx = heroes.indexOf(hero);
+                            if (idx !== -1) heroes.splice(idx, 1);
+                            results.push({ heroId: hero.id, name: hero.name, type: 'dismissed' });
+                        } else {
+                            hero.morale = Math.max(0, Math.min(100, hero.morale + delta));
+                            results.push({ heroId: hero.id, name: hero.name, delta });
+                        }
+                    }
+                }
+            }
+        }
+
+        this.store.setState('heroes', [...heroes]);
+        return { log: choice.log, results };
+    }
+
+    _pickRandom(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+}
+
+export default EventSystem;

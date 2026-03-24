@@ -1,0 +1,74 @@
+{
+    "chapters": [
+        {
+            "id": 1, "sin": "wrath", "name_ko": "분노", "region": "불타는 전장",
+            "boss": "사탄",
+            "environment": {
+                "morale_modifier": { "wrath": 3, "sloth": -3 },
+                "description": "분노가 뒤덮은 전장. 분노 영웅은 고양되고, 나태 영웅은 위축된다."
+            },
+            "boss_briefing": "사탄 — 분노의 화신. 모든 것을 불태우는 자. 그의 분노 앞에서 살아남을 수 있겠는가?",
+            "boss_dying_words": "\"분노란... 결국 무력함의 다른 이름이었다.\""
+        },
+        {
+            "id": 2, "sin": "envy", "name_ko": "시기", "region": "뒤틀린 숲",
+            "boss": "레비아탄",
+            "environment": {
+                "morale_modifier": { "envy": 3, "pride": -3 },
+                "description": "시기가 스며든 숲. 모든 것이 비교된다."
+            },
+            "boss_briefing": "레비아탄 — 시기의 화신. 가지지 못한 것을 갈망하고, 가진 자를 파괴하는 자.",
+            "boss_dying_words": "\"결국... 네가 가진 것이 부러웠을 뿐이다.\""
+        },
+        {
+            "id": 3, "sin": "greed", "name_ko": "탐욕", "region": "황금의 사막",
+            "boss": "맘몬",
+            "environment": {
+                "morale_modifier": { "greed": 3, "gluttony": -3 },
+                "description": "탐욕이 지배하는 사막. 모든 것에 값이 매겨진다."
+            },
+            "boss_briefing": "맘몬 — 탐욕의 화신. 세상의 모든 것을 소유하려는 자.",
+            "boss_dying_words": "\"더... 더 많이... 아직 부족해...\""
+        },
+        {
+            "id": 4, "sin": "sloth", "name_ko": "나태", "region": "망각의 동토",
+            "boss": "벨페고르",
+            "environment": {
+                "morale_modifier": { "sloth": 3, "wrath": -3 },
+                "description": "나태가 뒤덮은 동토. 모든 것이 느려진다."
+            },
+            "boss_briefing": "벨페고르 — 나태의 화신. 아무것도 하지 않는 것이 그의 힘이다.",
+            "boss_dying_words": "\"움직이는 건... 피곤한 일이었다.\""
+        },
+        {
+            "id": 5, "sin": "gluttony", "name_ko": "폭식", "region": "심연의 동굴",
+            "boss": "바알제붑",
+            "environment": {
+                "morale_modifier": { "gluttony": 3, "greed": -3 },
+                "description": "폭식이 지배하는 동굴. 끝없는 허기가 퍼진다."
+            },
+            "boss_briefing": "바알제붑 — 폭식의 화신. 삼키고, 삼키고, 또 삼키는 자.",
+            "boss_dying_words": "\"배가... 아직도 고프다...\""
+        },
+        {
+            "id": 6, "sin": "lust", "name_ko": "색욕", "region": "타락한 궁전",
+            "boss": "아스모데우스",
+            "environment": {
+                "morale_modifier": { "lust": 3, "envy": -3 },
+                "description": "색욕이 스며든 궁전. 집착과 욕망이 교차한다."
+            },
+            "boss_briefing": "아스모데우스 — 색욕의 화신. 모든 것을 유혹하고, 소유하려는 자.",
+            "boss_dying_words": "\"사랑한다고... 말해줘...\""
+        },
+        {
+            "id": 7, "sin": "pride", "name_ko": "교만", "region": "신의 폐허",
+            "boss": "루시퍼",
+            "environment": {
+                "morale_modifier": { "pride": 3, "sloth": -3 },
+                "description": "교만이 지배하는 폐허. 신조차 무릎 꿇은 곳."
+            },
+            "boss_briefing": "루시퍼 — 교만의 화신. 신에게 반역한 최초의 천사. 가장 강한 자.",
+            "boss_dying_words": "\"나는... 틀리지 않았다.\""
+        }
+    ]
+}

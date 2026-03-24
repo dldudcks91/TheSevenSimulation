@@ -1,0 +1,67 @@
+{
+    "facilities": [
+        {
+            "id": "tavern", "name_ko": "주점", "tier": 1, "requires": [],
+            "cost": 100, "build_turns": 1,
+            "description": "영웅 고용 + 사기 상승 + 연회 개최",
+            "effects": { "recruit_slots": 3, "feast_available": true }
+        },
+        {
+            "id": "smithy", "name_ko": "대장간", "tier": 1, "requires": [],
+            "cost": 150, "build_turns": 1,
+            "description": "장비 제작/수리",
+            "effects": { "craft_weapon": true, "repair": true }
+        },
+        {
+            "id": "watchtower", "name_ko": "감시탑", "tier": 1, "requires": [],
+            "cost": 100, "build_turns": 1,
+            "description": "습격 유무 알림",
+            "effects": { "raid_info_level": 1 }
+        },
+        {
+            "id": "hospital", "name_ko": "병원", "tier": 2, "requires": ["tavern"],
+            "cost": 200, "build_turns": 2,
+            "description": "부상 영웅 치료 (회복 턴 절반) + 사기 안정화",
+            "effects": { "heal_speed": 2, "morale_stabilize": true }
+        },
+        {
+            "id": "stagecoach", "name_ko": "역마차", "tier": 2, "requires": ["tavern"],
+            "cost": 150, "build_turns": 1,
+            "description": "교역 상인 도착, 외부 정보",
+            "effects": { "trade_available": true }
+        },
+        {
+            "id": "watchtower_2", "name_ko": "감시탑 Lv.2", "tier": 2, "requires": ["watchtower"],
+            "cost": 200, "build_turns": 1,
+            "description": "습격 규모 알림",
+            "effects": { "raid_info_level": 2 }
+        },
+        {
+            "id": "alchemy_lab", "name_ko": "연금술소", "tier": 3, "requires": ["smithy", "hospital"],
+            "cost": 300, "build_turns": 2,
+            "description": "소모품 제작 (치료약, 사기 물약 등)",
+            "effects": { "alchemy_available": true }
+        },
+        {
+            "id": "market", "name_ko": "시장", "tier": 3, "requires": ["stagecoach"],
+            "cost": 200, "build_turns": 2,
+            "description": "턴당 골드 수입",
+            "effects": { "gold_per_turn": 20 }
+        },
+        {
+            "id": "watchtower_3", "name_ko": "감시탑 Lv.3", "tier": 3, "requires": ["watchtower_2"],
+            "cost": 350, "build_turns": 2,
+            "description": "적 구성 상세 공개",
+            "effects": { "raid_info_level": 3 }
+        }
+    ],
+
+    "research": [
+        { "id": "trade_route", "name_ko": "교역로 개척", "category": "economy", "requires_facility": "market", "cost": 200, "turns": 2, "effect": { "type": "income_bonus", "value": 0.5 }, "description": "시장 수입 +50%" },
+        { "id": "loot_appraise", "name_ko": "전리품 감정", "category": "economy", "requires_facility": "market", "cost": 250, "turns": 3, "effect": { "type": "loot_bonus", "value": 0.3 }, "description": "원정 골드 보상 +30%" },
+        { "id": "efficient_build", "name_ko": "효율적 건설", "category": "economy", "requires_facility": "market", "cost": 300, "turns": 3, "effect": { "type": "build_discount", "value": 0.2 }, "description": "건설 비용 -20%" },
+        { "id": "morale_mgmt", "name_ko": "사기 관리", "category": "hero", "requires_facility": "hospital", "cost": 250, "turns": 3, "effect": { "type": "morale_dampen", "value": 0.3 }, "description": "사기 변동폭 -30%" },
+        { "id": "sin_study", "name_ko": "죄종 이해", "category": "hero", "requires_facility": "hospital", "cost": 400, "turns": 4, "effect": { "type": "rampage_threshold", "value": 105 }, "description": "폭주 임계 105로 상향" },
+        { "id": "bonding", "name_ko": "결속 의식", "category": "hero", "requires_facility": "hospital", "cost": 300, "turns": 3, "effect": { "type": "satisfaction_bonus", "value": 0.5 }, "description": "죄종 만족 시 사기 상승량 +50%" }
+    ]
+}
