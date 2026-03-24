@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>RimWorld 심층 분석 — TheSevenSimulation 적용 관점</title>
+<style>
+  @page {
+    size: A4;
+    margin: 2cm 1.8cm;
+    @top-center { content: "RimWorld 심층 분석 — TheSevenSimulation 적용 관점"; font-size: 8pt; color: #888; }
+    @bottom-center { content: "— " counter(page) " / " counter(pages) " —"; font-size: 8pt; color: #888; }
+  }
+  body { font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; font-size: 10pt; line-height: 1.65; color: #222; max-width: 100%; }
+  h1 { font-size: 22pt; text-align: center; border-bottom: 3px solid #333; padding-bottom: 12px; margin-top: 0; page-break-before: avoid; }
+  h2 { font-size: 16pt; color: #1a1a6e; border-bottom: 2px solid #1a1a6e; padding-bottom: 6px; margin-top: 28px; page-break-before: always; }
+  h2:first-of-type { page-break-before: avoid; }
+  h3 { font-size: 13pt; color: #333; margin-top: 20px; border-left: 4px solid #1a1a6e; padding-left: 8px; }
+  h4 { font-size: 11pt; color: #555; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9pt; }
+  th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
+  th { background: #1a1a6e; color: white; font-weight: bold; }
+  tr:nth-child(even) { background: #f5f5ff; }
+  code, pre { font-family: 'Consolas', 'D2Coding', monospace; font-size: 9pt; }
+  pre { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; page-break-inside: avoid; }
+  .highlight { background: #fff3cd; padding: 8px 12px; border-left: 4px solid #ffc107; margin: 12px 0; font-size: 9.5pt; }
+  .apply-box { background: #e8f5e9; padding: 10px 14px; border-left: 4px solid #4caf50; margin: 14px 0; page-break-inside: avoid; }
+  .apply-box strong { color: #2e7d32; }
+  .toc { background: #fafafa; padding: 16px 24px; border: 1px solid #ddd; margin: 20px 0; }
+  .toc a { text-decoration: none; color: #1a1a6e; }
+  .toc ul { list-style: none; padding-left: 0; }
+  .toc li { margin: 4px 0; }
+  .toc li li { margin-left: 20px; }
+  .cover { text-align: center; padding: 120px 0 60px 0; }
+  .cover h1 { font-size: 28pt; border: none; }
+  .cover .subtitle { font-size: 14pt; color: #555; margin-top: 12px; }
+  .cover .meta { font-size: 10pt; color: #888; margin-top: 40px; }
+  .chain-example { background: #fff8e1; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<!-- 표지 -->
+<div class="cover">
+  <h1>RimWorld 심층 분석</h1>
+  <div class="subtitle">TheSevenSimulation 적용 관점의 시스템 해부</div>
+  <div class="meta">
+    작성일: 2026-03-24<br>
+    프로젝트: TheSevenSimulation (7대 죄악 거점 경영 시뮬레이션)<br>
+    목적: RimWorld의 핵심 설계 원리를 추출하여 우리 게임에 적용 가능한 인사이트 도출
+  </div>
+</div>
+
+<!-- 목차 -->
+<h2 style="page-break-before: always;">목차</h2>
+<div class="toc">
+<ul>
+  <li><strong>Phase 1: 핵심 시스템 분석</strong>
+    <ul>
+      <li><a href="#ch1">1. 스토리텔러(Storyteller) 시스템</a></li>
+      <li><a href="#ch2">2. Mood &amp; Mental Break 시스템</a></li>
+      <li><a href="#ch3">3. Needs(욕구) 시스템</a></li>
+      <li><a href="#ch4">4. Social &amp; 관계 시스템</a></li>
+    </ul>
+  </li>
+  <li><strong>Phase 2: 경영 시스템 분석</strong>
+    <ul>
+      <li><a href="#ch5">5. 특성(Trait) 시스템</a></li>
+      <li><a href="#ch6">6. 작업 우선순위 &amp; 정책 시스템</a></li>
+      <li><a href="#ch7">7. 레이드(Raid) &amp; 전투 시스템</a></li>
+    </ul>
+  </li>
+  <li><strong>Phase 3: 창발적 드라마 생성 원리</strong>
+    <ul>
+      <li><a href="#ch8">8. 연쇄 반응(Chain Reaction) 메커니즘</a></li>
+    </ul>
+  </li>
+  <li><strong>Phase 4: UI/UX &amp; 리플레이</strong>
+    <ul>
+      <li><a href="#ch9">9. UI/UX &amp; 정보 전달</a></li>
+      <li><a href="#ch10">10. 난이도 &amp; 리플레이</a></li>
+    </ul>
+  </li>
+  <li><strong>종합</strong>
+    <ul>
+      <li><a href="#ch11">11. TheSevenSimulation 적용 종합 제안</a></li>
+    </ul>
+  </li>
+</ul>
+</div>
+
+<!-- ==================== Phase 1 ==================== -->
+
+<h2 id="ch1">1. 스토리텔러(Storyteller) 시스템</h2>
+
+<h3>1.1 설계 철학</h3>
+<p>RimWorld의 스토리텔러는 게임의 "감독(Director)" 역할을 하는 AI다. 개발자 Tynan Sylvester는 이를 <strong>"AI Storyteller"</strong>라 명명했으며, 핵심 원칙은 다음과 같다:</p>
+<ul>
+  <li>게임은 "이기는 것"이 아니라 <strong>"이야기를 만드는 것"</strong>이 목적</li>
+  <li>플레이어가 너무 안정되면 위기를 주고, 너무 힘들면 숨을 돌릴 틈을 준다</li>
+  <li>완전한 랜덤이 아니라 <strong>구조화된 드라마 곡선</strong>을 만든다</li>
+</ul>
+
+<h3>1.2 세 스토리텔러의 비교</h3>
+<table>
+  <tr><th>스토리텔러</th><th>철학</th><th>이벤트 간격</th><th>위협 스케일링</th><th>특징</th></tr>
+  <tr><td><strong>Cassandra Classic</strong></td><td>클래식 드라마 곡선</td><td>예측 가능한 리듬 (4~8일)</td><td>선형 상승 → 후반 급상승</td><td>긴장→이완 교차, 대형 위협 후 강제 쿨다운</td></tr>
+  <tr><td><strong>Phoebe Chillax</strong></td><td>느긋한 샌드박스</td><td>Cassandra의 약 2배</td><td>동일 난이도에서 포인트 낮음</td><td>긍정 이벤트 비율 높음, 빌더형 플레이어용</td></tr>
+  <tr><td><strong>Randy Random</strong></td><td>순수한 카오스</td><td>매우 불규칙 (0.5~15일+)</td><td>분산(variance) 극대화</td><td>카테고리 제약 약함, 연속 재앙/행운 가능</td></tr>
+</table>
+
+<h3>1.3 이벤트 선택 알고리즘</h3>
+<p>이벤트 선택은 다층 구조로 이루어진다:</p>
+<pre>
+Step 1: 틱(Tick) 기반 체크 — 매일 단위로 스토리텔러 호출
+Step 2: MTB(Mean Time Between) 확률 계산
+        P = 1 - e^(-checkInterval / mtbDays)
+        예: mtbDays=10, 1일 체크 → 매일 약 9.5% 발생 확률
+Step 3: 이벤트 풀 필터링
+        전체 이벤트 → precondition 체크 → 쿨다운 필터 → 가중치 계산
+Step 4: 가중치 기반 선택 (Weighted Random Selection)
+        최종 가중치 = baseWeight × 상황별 수정자
+Step 5: 스토리텔러별 조정
+        Cassandra: 긴장 포인트 추적으로 균형 유지
+        Randy: 카테고리 제약 완화
+</pre>
+
+<h4>가중치 수정 요인</h4>
+<table>
+  <tr><th>요인</th><th>효과</th></tr>
+  <tr><td>Colony Wealth 높음</td><td>위협 이벤트 가중치 ×1.5</td></tr>
+  <tr><td>최근 같은 이벤트 발생</td><td>해당 이벤트 가중치 ×0.2</td></tr>
+  <tr><td>식민지 기분 낮음</td><td>긍정 이벤트 가중치 ×1.3</td></tr>
+  <tr><td>의료 약품 부족</td><td>질병 이벤트 가중치 약간 감소 (자비 장치)</td></tr>
+</table>
+
+<h3>1.4 적응형 난이도: Threat Points</h3>
+<pre>
+Threat Points = f(Colony Wealth, Colonist Count, Days Passed) × difficultyMultiplier × storytellerMultiplier
+
+Colony Wealth = 건물 가치 + 아이템 가치 + 식민자 가치(기본 1,800 + 장비 + 스킬)
+</pre>
+<table>
+  <tr><th>난이도</th><th>위협 배수</th></tr>
+  <tr><td>Peaceful</td><td>0</td></tr>
+  <tr><td>Community Builder</td><td>0.5×</td></tr>
+  <tr><td>Adventure Story</td><td>0.8×</td></tr>
+  <tr><td>Strive to Survive</td><td>1.0× (기준)</td></tr>
+  <tr><td>Blood and Dust</td><td>1.35×</td></tr>
+  <tr><td>Losing is Fun</td><td>1.8×+</td></tr>
+</table>
+
+<h3>1.5 이벤트 카테고리</h3>
+<table>
+  <tr><th>카테고리</th><th>예시</th><th>특징</th></tr>
+  <tr><td><strong>Big Threat</strong></td><td>레이드, 인페스테이션, 독성 낙진, 화산 겨울</td><td>식민지 존폐 영향</td></tr>
+  <tr><td><strong>Small Threat</strong></td><td>미친 동물, 정전, 식중독</td><td>자원/시간 소모</td></tr>
+  <tr><td><strong>Positive</strong></td><td>방랑자 합류, 화물 포드, 상단 방문</td><td>자원/인구 증가</td></tr>
+  <tr><td><strong>Neutral</strong></td><td>여행자 통과, 날씨 변화</td><td>간접적 기회</td></tr>
+  <tr><td><strong>Disease</strong></td><td>역병, 말라리아, 감기</td><td>의료 부담</td></tr>
+  <tr><td><strong>Quest</strong></td><td>동맹 지원, 유물 회수</td><td>선택적 참여, 보상+위험</td></tr>
+</table>
+
+<h3>1.6 드라마 곡선 생성 메커니즘</h3>
+<table>
+  <tr><th>메커니즘</th><th>동작</th></tr>
+  <tr><td><strong>ThreatCycle</strong></td><td>대형 위협 후 4~8일 강제 휴식기 (긍정/중립 이벤트만)</td></tr>
+  <tr><td><strong>Adaptation Factor</strong></td><td>최근 피해 시 4~6일간 위협 포인트 50~70%로 감소</td></tr>
+  <tr><td><strong>Tension Accumulator</strong></td><td>평화 8~12일 지속 시 위협 확률 급증</td></tr>
+  <tr><td><strong>Event Queue</strong></td><td>동시 과다 이벤트 방지용 큐 시스템</td></tr>
+</table>
+
+<div class="highlight">
+  <strong>긍정/부정 이벤트 비율:</strong> Cassandra 약 35:65 / Phoebe 약 45:55 / Randy 약 40:60 (평균, 동적 조정됨)
+</div>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>이벤트 타이밍:</strong> 현재 "매 턴 1~2개 이벤트"에서, <em>긴장 누적기</em> 방식을 도입. 연속 평화일에는 강제로 갈등/위기 이벤트 발생 확률 상승.</li>
+    <li><strong>거점 규모 스케일링:</strong> 거점 시설 수/영웅 수에 비례하여 밤 습격 규모 상승 → "성장이 곧 위험"의 긴장감.</li>
+    <li><strong>챕터별 스토리텔러:</strong> 챕터 1(분노)은 카산드라식 예측 가능한 곡선, 후반 챕터는 랜디식 불규칙으로 변환하면 난이도 체감 변화를 줄 수 있다.</li>
+    <li><strong>이벤트 가중치:</strong> 죄종 관계에 따른 가중치 — 분노 영웅 사기가 높으면 분노 관련 이벤트 가중치 상승.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 2 ==================== -->
+
+<h2 id="ch2">2. Mood &amp; Mental Break 시스템</h2>
+
+<h3>2.1 Mood 계산 구조</h3>
+<p>RimWorld의 Mood는 <strong>기본값(50%) + 모든 활성 Thought의 Offset 합산</strong>으로 계산된다.</p>
+<ul>
+  <li>Mood 범위: 0% ~ 100%</li>
+  <li>각 Thought는 완전히 <strong>독립적</strong> — 서로 상호작용 없이 단순 합산</li>
+  <li>현재 Mood는 목표 Mood를 향해 서서히 이동 (급격한 변동 방지)</li>
+</ul>
+
+<h4>Thought의 두 종류</h4>
+<table>
+  <tr><th>종류</th><th>설명</th><th>예시</th></tr>
+  <tr><td><strong>Memory</strong></td><td>사건 발생 시 생성, 시간이 지나면 소멸</td><td>"동료가 죽었다" (-25, 20일)</td></tr>
+  <tr><td><strong>Situational</strong></td><td>현재 조건 충족 동안 지속</td><td>"아름다운 환경" (+5)</td></tr>
+</table>
+
+<h3>2.2 대표적 Thought 예시</h3>
+
+<h4>긍정적 Thought</h4>
+<table>
+  <tr><th>Thought</th><th>Mood Offset</th><th>지속</th><th>비고</th></tr>
+  <tr><td>Got married (결혼)</td><td>+40</td><td>5일</td><td>가장 강력한 긍정</td></tr>
+  <tr><td>Catharsis (카타르시스)</td><td>+40</td><td>1일</td><td>Mental Break 직후 부여</td></tr>
+  <tr><td>Ate lavish meal</td><td>+12</td><td>1일</td><td>호화 요리</td></tr>
+  <tr><td>Extremely impressive bedroom</td><td>+10</td><td>상황적</td><td>최고급 방</td></tr>
+  <tr><td>High recreation</td><td>+10</td><td>상황적</td><td>Joy 충분</td></tr>
+  <tr><td>Party (파티)</td><td>+8</td><td>1일</td><td>파티 참석</td></tr>
+  <tr><td>Got some lovin'</td><td>+8</td><td>1일</td><td>파트너와 동침</td></tr>
+  <tr><td>New colony hope</td><td>+8</td><td>5일</td><td>게임 시작 직후</td></tr>
+  <tr><td>Ate fine meal</td><td>+5</td><td>1일</td><td>일반 요리</td></tr>
+  <tr><td>Comfortable</td><td>+5</td><td>상황적</td><td>Comfort 높음</td></tr>
+</table>
+
+<h4>부정적 Thought</h4>
+<table>
+  <tr><th>Thought</th><th>Mood Offset</th><th>지속</th><th>비고</th></tr>
+  <tr><td>My organ harvested</td><td>-30</td><td>30일</td><td>본인 장기 적출</td></tr>
+  <tr><td>Spouse died</td><td>-30</td><td>30일</td><td>배우자 사망</td></tr>
+  <tr><td><strong>Ate without table</strong></td><td><strong>-25</strong></td><td>1일</td><td>RimWorld의 상징적 Thought</td></tr>
+  <tr><td>Colonist died</td><td>-25</td><td>20일</td><td>동료 사망 (2단계 감쇠)</td></tr>
+  <tr><td>Ate human meat</td><td>-20</td><td>15일</td><td>Cannibal은 +20</td></tr>
+  <tr><td>Divorce</td><td>-20</td><td>30일</td><td>이혼</td></tr>
+  <tr><td>Pain (extreme)</td><td>-30</td><td>상황적</td><td>극심한 고통</td></tr>
+  <tr><td>Ugly environment</td><td>-5 ~ -10</td><td>상황적</td><td>환경 미관</td></tr>
+  <tr><td>Insulted</td><td>-5</td><td>5일</td><td>모욕당함</td></tr>
+  <tr><td>Rebuffed</td><td>-5</td><td>12일</td><td>구애 거절</td></tr>
+</table>
+
+<h3>2.3 Mental Break 3단계</h3>
+<table>
+  <tr><th>단계</th><th>Mood 임계값</th><th>Break 종류</th></tr>
+  <tr><td><strong>Minor</strong></td><td>≤ 35%</td><td>Sad Wander, Food Binge, Hide in Room, Insulting Spree</td></tr>
+  <tr><td><strong>Major</strong></td><td>≤ 25%</td><td>Tantrum(가구 파괴), Fire Starting, Corpse Obsession, Wandering</td></tr>
+  <tr><td><strong>Extreme</strong></td><td>≤ 15%</td><td>Berserk(아군 공격), Catatonic(무반응 1~7일), Murderous Rage</td></tr>
+</table>
+
+<h4>Break 발생 확률 곡선</h4>
+<pre>
+Mood 35% (Minor 임계점): MTB ≈ 5~7일 (드물게)
+Mood 30%:                MTB ≈ 2~3일
+Mood 25% (Major 임계점): MTB ≈ 1~2일
+Mood 20%:                MTB ≈ 0.5~1일
+Mood 15% (Extreme):      MTB ≈ 0.3~0.5일
+Mood 5%:                 MTB ≈ 1시간 이내 (거의 즉시)
+</pre>
+<p>핵심: 선형이 아니라 <strong>곡선</strong> — 낮을수록 급격히 확률 상승</p>
+
+<h3>2.4 Inspiration (영감) — 긍정적 폭발</h3>
+<p>Mental Break의 정반대. Mood가 50% 이상일 때 확률적 발동 (MTB ≈ 7일).</p>
+<table>
+  <tr><th>Inspiration</th><th>효과</th><th>지속</th></tr>
+  <tr><td>Inspired Creativity</td><td>예술/공예 품질 2단계 상승</td><td>8일</td></tr>
+  <tr><td>Inspired Surgery</td><td>수술 성공률 대폭 상승</td><td>8일</td></tr>
+  <tr><td>Inspired Recruitment</td><td>포로 회유 즉시 성공</td><td>8일</td></tr>
+  <tr><td>Frenzy</td><td>작업/전투 속도 대폭 증가</td><td>8일</td></tr>
+  <tr><td>Shoot Frenzy</td><td>사격 명중률 대폭 상승</td><td>8일</td></tr>
+</table>
+
+<h3>2.5 Thought 스택 &amp; 감쇠 규칙</h3>
+<ul>
+  <li><strong>stackLimit</strong>: 같은 Thought 최대 중첩 수. 기본 1 (새 발생 시 타이머 리셋)</li>
+  <li><strong>stackedEffectMultiplier</strong>: 중첩 시 효과 감소 (보통 0.5~0.75). "무감각해지는" 효과</li>
+  <li><strong>다단계 감쇠</strong>: "동료 사망" → 0~10일: -25 → 10~20일: -15 → 소멸</li>
+  <li><strong>상반된 Thought 공존</strong>: "결혼"(+40) + "동료 사망"(-25) = 합산 +15</li>
+</ul>
+
+<div class="highlight">
+  <strong>핵심 안전장치 — Catharsis:</strong> Mental Break 종료 후 <strong>Catharsis (+40 Mood, 1일)</strong>가 부여되어 Break 연쇄를 방지한다.
+</div>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>사기 Modifier 시스템:</strong> 현재 사기(0~100)가 단일 수치인데, RimWorld처럼 <em>복수의 독립 modifier 합산</em> 방식을 도입하면 "왜 이 영웅의 사기가 낮은지" 플레이어가 파악 가능.
+      <pre>사기 = 기본값(50) + 갈망modifier + 판결modifier + 전투modifier + 관계modifier + ...</pre>
+    </li>
+    <li><strong>확률 기반 폭주:</strong> 현재 사기 100=확정 폭주인데, <em>80 이상부터 확률적으로</em> 폭주 체크하면 더 긴장감 있는 관리가 된다.</li>
+    <li><strong>카타르시스:</strong> 폭주 후 사기를 크게 내려서 바로 다시 폭주하는 무한 루프 방지.</li>
+    <li><strong>기억 시스템 (미설계 영역):</strong> "3일 전 처벌당한 기억"(-10, 5일 지속) 같은 Memory Thought를 도입하면 선택의 결과가 즉각+장기 효과를 모두 가짐.</li>
+    <li><strong>Inspiration ↔ 구원:</strong> 현재 구원(30%) 시스템을 Inspiration처럼 <em>고양 상태(71~99)에서 확률적으로 발동</em>하도록 바꾸면 "폭주 전에 구원받는" 드라마가 가능.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 3 ==================== -->
+
+<h2 id="ch3">3. Needs(욕구) 시스템</h2>
+
+<h3>3.1 Need 종류 총정리</h3>
+<table>
+  <tr><th>Need</th><th>범위</th><th>감쇠 방식</th><th>충족 방법</th></tr>
+  <tr><td><strong>Food</strong></td><td>0~1</td><td>시간 경과 지속 감소</td><td>음식 섭취</td></tr>
+  <tr><td><strong>Rest</strong></td><td>0~1</td><td>깨어있으면 감소</td><td>수면</td></tr>
+  <tr><td><strong>Joy</strong></td><td>0~1</td><td>시간 경과 감소</td><td>오락 활동</td></tr>
+  <tr><td><strong>Comfort</strong></td><td>0~1</td><td>현재 가구에 따라 즉시 변동</td><td>품질 좋은 가구</td></tr>
+  <tr><td><strong>Beauty</strong></td><td>0~1</td><td>현재 위치에 따라 즉시 변동</td><td>환경 미화</td></tr>
+  <tr><td><strong>Outdoors</strong></td><td>0~1</td><td>실내 체류 시 감소</td><td>외출</td></tr>
+  <tr><td><strong>Social</strong></td><td>0~1</td><td>시간 경과 감소</td><td>대화, 파티</td></tr>
+</table>
+
+<h3>3.2 Joy 종류(Joy Kind) 시스템 — 핵심 설계</h3>
+<table>
+  <tr><th>Joy Kind</th><th>설명</th><th>활동 예시</th></tr>
+  <tr><td><strong>Solitary (고독)</strong></td><td>혼자 하는 활동</td><td>명상, 독서, 산책</td></tr>
+  <tr><td><strong>Social (사교)</strong></td><td>다른 사람과 함께</td><td>대화, 파티, 체스</td></tr>
+  <tr><td><strong>Dazzled (현혹)</strong></td><td>감각적 자극</td><td>TV, 예술품 감상</td></tr>
+  <tr><td><strong>Gluttonous (탐식)</strong></td><td>물질적 쾌락</td><td>고급 음식, 음주</td></tr>
+</table>
+
+<div class="highlight">
+  <strong>"같은 Joy만 반복하면 효과 감소" 설계:</strong>
+  <ul>
+    <li>Joy Kind별로 <strong>내성(Tolerance)</strong> 게이지를 따로 추적</li>
+    <li>같은 종류 반복 → 내성 상승 → 효과 감소 (내성은 약 0.5/일 자연 감쇠)</li>
+    <li>"게임장 하나만 지으면 끝"을 방지 → 다양한 시설 건설 강제</li>
+  </ul>
+</div>
+
+<h3>3.3 Need → Mood 연결 구조</h3>
+<pre>
+Need 수준        → 생성되는 Thought        → Mood 영향
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+매우 높음        → "[Need] satisfied"      → +5 ~ +10
+보통            → (없음)                  → 0
+낮음            → "[Need] unfulfilled"    → -3 ~ -8
+매우 낮음       → "[Need] critical"       → -10 ~ -15
+</pre>
+<p><strong>핵심:</strong> Need가 Mood를 직접 변경하는 것이 아니라, Need 수준에 따라 <em>Thought가 생성</em>되고, 그 Thought가 Mood에 영향. 간접적이지만 일관된 설계.</p>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>갈망의 연속 게이지화:</strong> 현재 갈망이 "만족/보통/불만" 3단계인데, RimWorld Need처럼 0~100 연속 게이지로 바꾸면 더 세밀한 관리가 가능.</li>
+    <li><strong>Joy Kind → 갈망 충족 다양성:</strong> "같은 방법으로만 사기를 올리면 효과 감소" 시스템 도입 가능.
+      <pre>분노 영웅에게 원정만 반복 파견 → 원정 만족도 내성 상승 → 사기 상승 효과 감소
+→ 다른 방식(연회, 승리 보상 등)으로 충족해야 함</pre>
+    </li>
+    <li><strong>시설 = 갈망 충족 수단:</strong> 주점은 Social Joy, 성당은 Solitary Joy, 훈련소는 분노 갈망 충족 등 시설-갈망 매핑.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 4 ==================== -->
+
+<h2 id="ch4">4. Social &amp; 관계 시스템</h2>
+
+<h3>4.1 Opinion(호감도) 계산</h3>
+<p>호감도는 <strong>-100 ~ +100</strong> 범위의 수치로, <strong>비대칭</strong>(A→B ≠ B→A)이다.</p>
+<pre>호감도 = 기본값(0) + 특성 보너스 + 대화 기억 + 사건 기억 + 외모 보정 + 관계 보정</pre>
+
+<table>
+  <tr><th>카테고리</th><th>요인</th><th>수치 예시</th></tr>
+  <tr><td>특성 호불호</td><td>Kind(친절) → 모든 타인에게</td><td>+15</td></tr>
+  <tr><td></td><td>Abrasive(거칠음) → 모든 타인으로부터</td><td>-25</td></tr>
+  <tr><td>대화</td><td>즐거운 대화(Chat) 성공</td><td>+5~+10</td></tr>
+  <tr><td></td><td>모욕(Insult)</td><td>-15~-20</td></tr>
+  <tr><td>사건 기억</td><td>"내 목숨을 구해줌"</td><td>+15~+25</td></tr>
+  <tr><td></td><td>"내 연인을 죽임"</td><td>-60~-80</td></tr>
+  <tr><td>외모</td><td>Beautiful 특성</td><td>+20~+40</td></tr>
+  <tr><td></td><td>Ugly 특성</td><td>-15~-20</td></tr>
+  <tr><td>관계</td><td>배우자(Spouse)</td><td>+30 기본</td></tr>
+  <tr><td></td><td>라이벌(Rival)</td><td>-25</td></tr>
+</table>
+
+<h3>4.2 관계 단계</h3>
+<pre>
+[없음] → 지인 → 친구(opinion +40↑) → 라이벌(opinion -20↓) / 적(-60↓)
+                    ↓
+              연인 → 약혼 → 배우자
+</pre>
+
+<h3>4.3 Social Fight (사회적 싸움)</h3>
+<ul>
+  <li><strong>발생 조건:</strong> 상호 opinion -80 이하, 모욕 후 일정 확률</li>
+  <li><strong>결과:</strong> 주먹 싸움 → 부상 → opinion 추가 하락 → 라이벌/적 관계 촉진</li>
+  <li>드물게 사망 가능 (약한 폰이나 기존 부상 시)</li>
+</ul>
+
+<h3>4.4 Social Interaction 종류</h3>
+<table>
+  <tr><th>종류</th><th>효과</th><th>발생 조건</th></tr>
+  <tr><td>Chat (대화)</td><td>opinion +4~+10</td><td>가장 흔함, Social 스킬 높으면 성공률 증가</td></tr>
+  <tr><td>Deep Talk</td><td>opinion +10~+20</td><td>친밀도 높을 때</td></tr>
+  <tr><td>Kind Words</td><td>opinion +10, 상대 mood +5</td><td>Kind 특성</td></tr>
+  <tr><td>Insult</td><td>opinion -15~-20, mood -5</td><td>Abrasive 특성 시 빈도 급증</td></tr>
+  <tr><td>Romance Attempt</td><td>성공 시 연인 형성</td><td>Social 스킬, 외모, opinion</td></tr>
+</table>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>동적 관계 축적:</strong> 현재 죄종 매트릭스가 정적(생성/강화/대립)인데, 영웅 간 <em>동적 호감도</em>를 추가하면 같은 죄종 관계라도 개인 경험에 따라 다른 반응이 나온다.
+      <pre>분노 A ↔ 나태 B: 기본 "대립"이지만
+함께 원정 성공 3회 → 호감도 +30 → 대립 이벤트 확률 감소
+반대로 갈등 반복 → 호감도 -50 → 대립 이벤트 격화</pre>
+    </li>
+    <li><strong>"같은 시설 배치" 상호작용:</strong> 같은 시설에 배치된 영웅 간 자동 상호작용 발생 (호감도 변동). 죄종 관계가 "대립"이면 갈등 이벤트, "생성/강화"면 친밀 이벤트.</li>
+    <li><strong>Bond 시스템:</strong> 특정 조건(함께 보스 격파, 위기 구출 등) 시 영웅 간 "유대" 형성 → 한 쪽 이탈/사망 시 다른 쪽에 큰 사기 변동.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 5 ==================== -->
+
+<h2 id="ch5">5. 특성(Trait) 시스템</h2>
+
+<h3>5.1 기본 구조</h3>
+<ul>
+  <li>각 폰은 <strong>1~3개 특성</strong> 보유 (생성 시 결정, 변경 불가)</li>
+  <li>특성은 mood, 작업 능력, Social, Mental Break 등 <strong>광범위하게 영향</strong></li>
+  <li>일부 특성은 스펙트럼(예: Industrious ↔ Lazy)으로 상호 배타</li>
+</ul>
+
+<h3>5.2 주요 특성과 효과</h3>
+
+<h4>성격 특성</h4>
+<table>
+  <tr><th>특성</th><th>효과</th></tr>
+  <tr><td>Kind (친절)</td><td>타인 opinion +15, 모욕 확률 감소, Warden 보너스</td></tr>
+  <tr><td>Abrasive (거칠음)</td><td>타인 opinion -25, Social Fight 확률 증가</td></tr>
+  <tr><td>Iron-Willed (강철 의지)</td><td>Mental Break 임계치 감소, 지속시간 -50%</td></tr>
+  <tr><td>Sanguine (낙천적)</td><td>영구 mood +12</td></tr>
+  <tr><td>Depressive (우울증)</td><td>영구 mood -12</td></tr>
+  <tr><td>Jealous (질투심)</td><td>최고 방이 아니면 mood 페널티</td></tr>
+  <tr><td>Greedy (탐욕적)</td><td>좋은 방에 큰 보너스, 나쁜 방에 큰 페널티</td></tr>
+</table>
+
+<h4>전투/폭력 특성</h4>
+<table>
+  <tr><th>특성</th><th>효과</th></tr>
+  <tr><td>Bloodlust</td><td>킬 시 mood +8, 인간 도살/시체 목격 페널티 없음</td></tr>
+  <tr><td>Psychopath</td><td>동료 사망 무감각, 장기 적출 페널티 없음, 친구/연인 불가</td></tr>
+  <tr><td>Tough (강인함)</td><td>받는 피해 -50%</td></tr>
+  <tr><td>Wimp (겁쟁이)</td><td>고통 임계치 ×0.2 (조금만 다쳐도 쓰러짐)</td></tr>
+  <tr><td>Pyromaniac (방화광)</td><td>Mental Break 시 방화 실행</td></tr>
+</table>
+
+<h4>작업/생활 특성</h4>
+<table>
+  <tr><th>특성</th><th>효과</th></tr>
+  <tr><td>Industrious (근면)</td><td>전체 작업 속도 +35%</td></tr>
+  <tr><td>Lazy (게으름)</td><td>전체 작업 속도 -20%</td></tr>
+  <tr><td>Night Owl (올빼미)</td><td>밤 활동 mood +16, 낮 활동 mood -10</td></tr>
+  <tr><td>Cannibal (식인)</td><td>인육 식사 mood +20 (일반인은 -20)</td></tr>
+  <tr><td>Nudist (나체주의)</td><td>옷 안 입으면 mood +20</td></tr>
+  <tr><td>Gourmand (미식가)</td><td>폭식 Mental Break 빈도 증가</td></tr>
+</table>
+
+<h3>5.3 극단적 특성의 드라마 기여</h3>
+<div class="chain-example">
+  <strong>Pyromaniac + Industrious + Kind:</strong> 평소에는 최고의 일꾼이자 모든 이에게 친절. 하지만 mood 하락 시 방화 → 본인이 만든 시설 전소 → 전체 mood 붕괴 → 연쇄 Mental Break
+</div>
+<div class="chain-example">
+  <strong>Chemical Fascination + Depressive:</strong> 우울 → 약물 의존 → 중독 → 금단증상 mood 하락 → 더 많은 약물 → 악순환
+</div>
+<div class="chain-example">
+  <strong>Tough + Brawler + Bloodlust:</strong> 근접 전투 무적, 킬마다 기분 상승. 하지만 평시에 Social Fight를 자주 일으켜 내부 분열
+</div>
+
+<h3>5.4 특성이 Mental Break 종류에 미치는 영향</h3>
+<table>
+  <tr><th>Mental Break</th><th>관련 특성</th></tr>
+  <tr><td>Fire Starting Spree</td><td>Pyromaniac 전용 (다른 Break 대신 방화)</td></tr>
+  <tr><td>Food Binge</td><td>Gourmand 빈도 증가</td></tr>
+  <tr><td>Berserk</td><td>Bloodlust 빈도 증가</td></tr>
+  <tr><td>Tantrum</td><td>Volatile 빈도 증가</td></tr>
+</table>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>죄종 접사 = RimWorld 특성:</strong> 현재 "고유 1 + 죄종 접사 2" 구조에서, 죄종 접사가 <em>RimWorld 특성처럼 mood/작업/관계/폭주 유형에 다층적으로 영향</em>을 주면 조합 다양성이 폭발적으로 증가.</li>
+    <li><strong>폭주 유형 차별화:</strong> 현재 죄종별 폭주가 1종류인데, 특성 조합에 따라 <em>같은 분노 영웅이라도 다른 폭주 양상</em>을 보이면 더 풍부.</li>
+    <li><strong>"Incapable of" 차용:</strong> 죄종에 의한 작업 불가/비효율 설계. 나태 영웅은 건설 불가, 교만 영웅은 단순 노동 거부 등.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 6 ==================== -->
+
+<h2 id="ch6">6. 작업 우선순위 &amp; 정책 시스템</h2>
+
+<h3>6.1 작업 우선순위 시스템</h3>
+
+<h4>12종 작업 카테고리 (기본 순서)</h4>
+<table>
+  <tr><th>#</th><th>작업</th><th>관련 스킬</th><th>설명</th></tr>
+  <tr><td>1</td><td>Firefight</td><td>없음</td><td>화재 진압</td></tr>
+  <tr><td>2</td><td>Patient</td><td>없음</td><td>자기 자신 침대 휴식</td></tr>
+  <tr><td>3</td><td>Doctor</td><td>Medicine</td><td>부상자 치료/수술</td></tr>
+  <tr><td>4</td><td>Warden</td><td>Social</td><td>포로 관리/재교육</td></tr>
+  <tr><td>5</td><td>Cook</td><td>Cooking</td><td>음식 조리</td></tr>
+  <tr><td>6</td><td>Hunt</td><td>Shooting</td><td>야생동물 사냥</td></tr>
+  <tr><td>7</td><td>Construct</td><td>Construction</td><td>건물/가구 건축</td></tr>
+  <tr><td>8</td><td>Grow</td><td>Plants</td><td>농작물 파종/수확</td></tr>
+  <tr><td>9</td><td>Mine</td><td>Mining</td><td>광물 채굴</td></tr>
+  <tr><td>10</td><td>Art</td><td>Artistic</td><td>조각/예술품 제작</td></tr>
+  <tr><td>11</td><td>Haul</td><td>없음</td><td>아이템 운반</td></tr>
+  <tr><td>12</td><td>Research</td><td>Intellectual</td><td>기술 연구</td></tr>
+</table>
+
+<h4>우선순위 4단계</h4>
+<table>
+  <tr><th>우선순위</th><th>의미</th></tr>
+  <tr><td><strong>1</strong></td><td>최우선 — 다른 모든 작업보다 먼저</td></tr>
+  <tr><td><strong>2</strong></td><td>높음</td></tr>
+  <tr><td><strong>3</strong></td><td>보통 (기본값)</td></tr>
+  <tr><td><strong>4</strong></td><td>낮음 — 다른 작업이 없을 때만</td></tr>
+  <tr><td>공란</td><td>수행 안 함</td></tr>
+</table>
+
+<h3>6.2 Passion(열정) 시스템</h3>
+<table>
+  <tr><th>열정</th><th>경험치 배율</th><th>작업 시 mood</th></tr>
+  <tr><td>무관심</td><td>×1.0</td><td>없음</td></tr>
+  <tr><td>소열정 (불꽃 1개)</td><td>×1.5</td><td>없음</td></tr>
+  <tr><td>대열정 (불꽃 2개)</td><td>×2.0</td><td>+8~+14</td></tr>
+</table>
+<p><strong>핵심:</strong> 좋아하는 일을 하면 기분이 좋아진다 — 직관적이면서 전략적 의미가 큰 설계.</p>
+
+<h3>6.3 "Incapable of" — 특성에 의한 작업 제한</h3>
+<table>
+  <tr><th>제한</th><th>불가 작업</th><th>흔한 배경</th></tr>
+  <tr><td>Incapable of Violence</td><td>사냥, 전투</td><td>평화주의</td></tr>
+  <tr><td>Incapable of Dumb Labor</td><td>운반, 청소</td><td>귀족/학자</td></tr>
+  <tr><td>Incapable of Skilled Labor</td><td>건설, 제작</td><td>학술 전문</td></tr>
+  <tr><td>Incapable of Cooking</td><td>요리</td><td>특정 배경</td></tr>
+</table>
+<div class="highlight"><strong>핵심:</strong> 완벽한 폰은 존재하지 않으며, 부족한 능력을 다른 폰으로 보완해야 한다 → 로스터 관리의 깊이.</div>
+
+<h3>6.4 정책(Policy) 시스템</h3>
+<table>
+  <tr><th>정책</th><th>설정 항목</th><th>전략적 의미</th></tr>
+  <tr><td><strong>의복 정책</strong></td><td>허용 의류/재료/품질/온도</td><td>전투원/노동자 분리</td></tr>
+  <tr><td><strong>약물 정책</strong></td><td>약물별 허용/빈도/조건</td><td>"mood 25% 이하일 때만 맥주" 등</td></tr>
+  <tr><td><strong>음식 정책</strong></td><td>허용 음식/재료/우선순위</td><td>Cannibal에게만 인육 허용</td></tr>
+  <tr><td><strong>구역 제한</strong></td><td>이동 가능 영역 지정</td><td>약물 중독자를 창고에서 격리</td></tr>
+  <tr><td><strong>일정(Schedule)</strong></td><td>24시간 수면/작업/여가 배분</td><td>2교대제, Night Owl 최적화</td></tr>
+</table>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>죄종-작업 적성:</strong> 영웅 죄종에 따른 작업 효율 차이.
+      <table>
+        <tr><th>죄종</th><th>적성 작업 (효율 +)</th><th>부적성 작업 (효율 - 또는 거부)</th></tr>
+        <tr><td>분노</td><td>건설, 전투</td><td>연구 (참을성 부족)</td></tr>
+        <tr><td>나태</td><td>연구 (앉아서 가능)</td><td>건설 (거부 확률)</td></tr>
+        <tr><td>탐욕</td><td>생산, 교역</td><td>기부/자선 이벤트</td></tr>
+        <tr><td>교만</td><td>연구, 지휘</td><td>단순 노동 (거부)</td></tr>
+      </table>
+    </li>
+    <li><strong>포고령 확장:</strong> 현재 포고령(배급/훈련/경계)을 RimWorld 정책처럼 세분화.
+      <ul>
+        <li>배급 정책: 절약/보통/풍족 → 사기 영향</li>
+        <li>훈련 강도: 강화/보통/휴식 → 전투력 vs 사기</li>
+        <li>야간 경계: 전원/교대/최소 → 방어력 vs 피로</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 7 ==================== -->
+
+<h2 id="ch7">7. 레이드(Raid) &amp; 전투 시스템</h2>
+
+<h3>7.1 레이드 종류</h3>
+<table>
+  <tr><th>유형</th><th>AI 행동</th><th>특징</th></tr>
+  <tr><td><strong>정면 공격</strong></td><td>가장 가까운 문/벽 향해 돌진</td><td>킬존 유도 가능, 50% 손실 시 퇴각</td></tr>
+  <tr><td><strong>포위 (Siege)</strong></td><td>원거리 진영 → 박격포 포격 → 돌격 전환</td><td>모르타르 역포격 or 출격으로 대응</td></tr>
+  <tr><td><strong>사퍼 (Sapper)</strong></td><td>방어 약점 분석 → 벽 채굴 돌파</td><td>킬존 우회, 이중벽/내부 방어 필요</td></tr>
+  <tr><td><strong>드롭포드</strong></td><td>콜로니 내부 직접 착륙</td><td>외부 방어 무시, 내부 터렛 필요</td></tr>
+  <tr><td><strong>돌파 (Breach)</strong></td><td>폭약/도끼로 벽 무력 파괴</td><td>사퍼보다 빠른 돌파</td></tr>
+</table>
+
+<h4>특수 위협</h4>
+<table>
+  <tr><th>유형</th><th>설명</th></tr>
+  <tr><td>인페스테이션</td><td>산 내부에서 벌레 스폰, 둥지 파괴 시 증식 멈춤, 화공 효과적</td></tr>
+  <tr><td>메카노이드 클러스터</td><td>기계 구조물 묶음 착륙, 조건부 활성화</td></tr>
+  <tr><td>독성 낙진</td><td>야외 활동 제한, 장기 지속</td></tr>
+  <tr><td>태양 플레어</td><td>전자기기 비활성화 + 이 타이밍에 레이드 시 치명적</td></tr>
+</table>
+
+<h3>7.2 레이드 규모 스케일링</h3>
+<pre>
+Threat Points ≈ f(Colony Wealth, Population, Days) × difficulty × storyteller
+
+적 구성: 총 포인트 내에서 유닛 "구매"
+  - 부족민 (맨몸): 35pt / 부족민 (활): 55pt
+  - 해적 (권총): 75pt / 해적 (라이플): 120pt
+  - 기계체 랜서: 220pt / 기계체 센티피드: 400pt
+
+성장 곡선:
+  Day 1~15:   200~500pt   (1~3명)
+  Day 15~60:  500~1,500pt (3~8명)
+  Day 60~120: 1,500~4,000pt (8~20명)
+  Day 120+:   4,000~15,000+pt (대규모)
+</pre>
+
+<div class="highlight">
+  <strong>Wealth Cap 전략:</strong> 숙련자는 불필요한 자산을 최소화하여 레이드 규모를 억제한다. "자산 관리"가 사실상 방어 전략의 일부.
+</div>
+
+<h3>7.3 전투 메커니즘</h3>
+<pre>
+명중률 = 무기 정확도 × 사격 스킬 보정 × 거리 보정 × 조명 보정 - 커버 효과
+
+커버 효율:
+  벽/바위: 75% / 샌드백: 55~65% / 나무: 25% / 없음: 0%
+
+갑옷 방어:
+  실제 피해 = 원래 피해 × (1 - 방어도 × 랜덤(0.5~1.0))
+</pre>
+
+<h3>7.4 부상/사망 시스템</h3>
+<table>
+  <tr><th>상태</th><th>조건</th><th>결과</th></tr>
+  <tr><td>부상</td><td>부위별 HP 감소</td><td>출혈, 기능 저하, 감염 위험</td></tr>
+  <tr><td>다운 (Downed)</td><td>전체 체력 임계 이하</td><td>행동 불가, 구출 필요</td></tr>
+  <tr><td>즉사</td><td>뇌/심장/목 파괴</td><td>영구 사망</td></tr>
+  <tr><td>출혈사</td><td>출혈 누적 치사량</td><td>시간 내 치료 필요</td></tr>
+  <tr><td>후유증 (Scar)</td><td>치료 후 확률</td><td>영구적 효율 감소</td></tr>
+</table>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>습격 유형 다양화:</strong> 현재 "매일 밤 습격"이 단조로울 수 있으므로 RimWorld 레이드 유형을 차용:
+      <table>
+        <tr><th>습격 유형</th><th>TheSevenSimulation 변환</th></tr>
+        <tr><td>정면 공격</td><td>일반 습격 (성벽 방어)</td></tr>
+        <tr><td>포위</td><td>원거리 포격 습격 (투석기/마법)</td></tr>
+        <tr><td>사퍼</td><td>지하 침투 (성벽 무시, 함정 효과적)</td></tr>
+        <tr><td>드롭포드</td><td>공중 침투 (비행 마물, 내부 방어 필요)</td></tr>
+        <tr><td>내통자</td><td>영웅 반란 (사기 0 영웅이 문을 열어줌)</td></tr>
+      </table>
+    </li>
+    <li><strong>Wealth 스케일링:</strong> 거점 시설 수 + 자원 비축량에 비례하여 습격 규모 상승. "성장 = 위험" 구조.</li>
+    <li><strong>부상 후유증:</strong> 원정/방어 전투에서 부상 → 수 턴 출전 불가 + 영구 흉터(스탯 감소) 확률 → 영웅 관리의 깊이 추가.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 8 ==================== -->
+
+<h2 id="ch8">8. 연쇄 반응(Chain Reaction) 메커니즘</h2>
+
+<h3>8.1 시스템 간 연결 구조</h3>
+<pre>
+[기분 시스템] ←→ [멘탈 브레이크] ←→ [사회 관계]
+     ↑                ↓                    ↓
+[건강/부상] ←→ [작업 시스템] ←→ [자원 생산]
+     ↑                ↓                    ↓
+[전투 시스템] ←→ [방어 시스템] ←→ [시설/건물]
+     ↑                                     ↓
+[이벤트/레이드]  ←→  [환경 시스템]  ←→  [온도/전력]
+</pre>
+<p>핵심: 독립적 시스템들이 <strong>공유 상태(shared state)</strong>를 통해 연결. 각 시스템은 단순하지만 연결이 복잡한 결과를 만든다.</p>
+
+<h3>8.2 대표적 연쇄 반응 사례</h3>
+
+<div class="chain-example">
+<strong>사례 1: 감정 폭발 도미노</strong><br>
+레이드에서 식민자 A 사망 → A의 연인 B mood 급락(-30) → B Mental Break(방화) → 식량 저장소 소실 → 전체 식량 부족(-10) → C도 Break(폭주) → C가 D 공격 → D 부상 → 의료 자원 소모 → 추가 압박
+</div>
+
+<div class="chain-example">
+<strong>사례 2: 전력 붕괴 연쇄</strong><br>
+태양 플레어 → 전기 장치 정지 → 냉동고 정지 → 식량 부패 → 자동 포탑 비활성화 → 이 타이밍에 레이드 → 방어 실패 → 사망 스파이럴
+</div>
+
+<div class="chain-example">
+<strong>사례 3: 전염병 + 레이드 콤보</strong><br>
+역병 발생 → 3명 감염 → 의사가 치료에 전념(작업 감소) → 감염자 이동 불가 → 레이드 발생 → 건강한 인원만 방어 → 인력 부족 → 의사 부상 → 치료 중단 → 환자 사망 → mood 폭락 → 추가 Break
+</div>
+
+<div class="chain-example">
+<strong>사례 4: 사회적 연쇄 붕괴</strong><br>
+A-B 관계 악화 → Social Fight → B 부상 → A의 작업(요리) 중단 → 음식 품질 하락 → 전체 mood 하락 → C Break(은둔) → 생산성 급락 → 방어 공사 미완성 → 레이드 취약
+</div>
+
+<div class="chain-example">
+<strong>사례 5: 겨울 기근 스파이럴</strong><br>
+화산 겨울 → 작물 감소 → 비축 소모 → 사냥 시도(야생 동물도 감소) → 가축 도축(Bond 동물 -8) → mood 폭락 → Break → 악순환 → 인육 섭취(-20, Cannibal은 +20)
+</div>
+
+<h3>8.3 브레이크 포인트 (무한 루프 방지)</h3>
+
+<h4>명시적 안전장치</h4>
+<table>
+  <tr><th>장치</th><th>효과</th></tr>
+  <tr><td>Mental Break 쿨다운</td><td>Break 종료 후 1~2일 재발 방지</td></tr>
+  <tr><td>Catharsis</td><td>Break 후 +40 Mood, 1일 → 연쇄 Break 방지</td></tr>
+  <tr><td>Mood 바닥 (0%)</td><td>더 이상 하락하지 않음</td></tr>
+  <tr><td>이벤트 최소 간격</td><td>대형 위협 사이 강제 간격</td></tr>
+  <tr><td>Adaptation</td><td>큰 피해 후 위협 포인트 일시 감소</td></tr>
+  <tr><td>구조 이벤트</td><td>극한 상황에서 긍정 이벤트 확률 상승</td></tr>
+</table>
+
+<h4>암묵적 안전장치</h4>
+<ul>
+  <li>유한한 가연물 → 화재 자연 소멸</li>
+  <li>Break 지속시간 제한 (수 시간~1일)</li>
+  <li>인구 감소 → 관리 부담 감소 (역설적 안정화)</li>
+  <li>질병 회복 가능, 계절 순환</li>
+</ul>
+
+<h3>8.4 긍정적 연쇄 반응</h3>
+<pre>
+레이드 방어 성공 → 포로 획득 → 모집(인구 증가) → 전리품(자원 증가)
+  → "적 격퇴" mood 보너스 → Inspiration 확률 상승
+    → 고품질 아이템 제작 → 추가 mood 보너스
+      → 안정적 식민지 → 더 강한 방어
+</pre>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>연쇄 반응 확장:</strong> 현재 7개 규칙을 아래와 같이 확장:
+      <pre>
+현재: 폭주 결과 → 다른 영웅 사기 변동 (7개)
+확장: 폭주 결과 → 자원/시설 피해 → Need 변동 → 다른 영웅 사기 변동
+                                                → 방어력 약화 → 습격 피해 증가
+                                                → 갈망 변동 → 추가 이벤트</pre>
+    </li>
+    <li><strong>연쇄 횟수 제한:</strong> 1턴 내 연쇄 반응은 최대 3회로 제한 (무한 루프 방지).</li>
+    <li><strong>카타르시스 도입:</strong> 폭주 후 사기를 50으로 리셋 + 2턴간 "정화" 상태(폭주 면역).</li>
+    <li><strong>긍정적 연쇄 설계:</strong> 현재 부정적 연쇄만 있음. 다음과 같은 긍정 연쇄 추가:
+      <pre>
+원정 대승 → 전체 사기 +10 → 고양 상태 영웅의 구원 확률 상승
+  → 구원 발생 → 전체 사기 추가 상승 → 시설 효율 보너스</pre>
+    </li>
+    <li><strong>"공유 허브" 설계:</strong> RimWorld에서 Mood가 모든 시스템의 허브인 것처럼, <em>사기(Morale)를 모든 시스템의 중심 연결 고리</em>로 명확히 설계.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 9 ==================== -->
+
+<h2 id="ch9">9. UI/UX &amp; 정보 전달</h2>
+
+<h3>9.1 정보 탭 구조</h3>
+<table>
+  <tr><th>탭</th><th>내용</th></tr>
+  <tr><td><strong>Bio</strong></td><td>이름, 나이, 배경 스토리, 특성 (성격/능력 결정)</td></tr>
+  <tr><td><strong>Needs</strong></td><td>Mood(핵심), Food, Rest, Joy, Comfort, Beauty, Outdoors, Social</td></tr>
+  <tr><td><strong>Health</strong></td><td>부위별 상태, 부상, 질병, 보철, 용량(Capacity) 수치</td></tr>
+  <tr><td><strong>Social</strong></td><td>타 주민과의 관계도(-100~+100), 상호작용 로그</td></tr>
+  <tr><td><strong>Gear</strong></td><td>착용 의복/갑옷/무기, 품질/내구도</td></tr>
+  <tr><td><strong>Schedule</strong></td><td>24시간 시간표 (수면/작업/여가)</td></tr>
+</table>
+
+<h3>9.2 알림(Alert) 시스템</h3>
+<table>
+  <tr><th>긴급도</th><th>색상</th><th>예시</th></tr>
+  <tr><td>Critical</td><td style="color:red;font-weight:bold;">빨강</td><td>레이드!, 화재!, 식민자 구출 필요!</td></tr>
+  <tr><td>Major</td><td style="color:orange;font-weight:bold;">주황</td><td>의약품 부족, 헐은 의복</td></tr>
+  <tr><td>Minor</td><td style="color:#888;">회색</td><td>캐러밴 도착, 연구 완료</td></tr>
+</table>
+
+<h4>Letter 시스템 (이벤트 알림)</h4>
+<table>
+  <tr><th>색상</th><th>의미</th></tr>
+  <tr><td style="color:red;">빨강</td><td>심각한 위협</td></tr>
+  <tr><td style="color:orange;">주황</td><td>부정적 이벤트</td></tr>
+  <tr><td style="color:#cc0;">노랑</td><td>중립적 이벤트</td></tr>
+  <tr><td style="color:blue;">파랑</td><td>긍정적 이벤트</td></tr>
+  <tr><td style="color:purple;">보라</td><td>퀘스트</td></tr>
+</table>
+
+<h3>9.3 정보의 3단계 계층</h3>
+<table>
+  <tr><th>레벨</th><th>설명</th><th>예시</th></tr>
+  <tr><td><strong>Level 1: 즉시 인지</strong></td><td>화면에 직접 보이는 정보</td><td>주민 위치, 불, 적, 상단 바 핵심 수치, 빨간 알림</td></tr>
+  <tr><td><strong>Level 2: 한 클릭</strong></td><td>클릭 시 요약 패널</td><td>주민 정보, 알림 상세, 작업/일정 탭</td></tr>
+  <tr><td><strong>Level 3: 심층</strong></td><td>세부 탭 내부</td><td>Health 부위별 상세, Social 로그, History 그래프</td></tr>
+</table>
+
+<div class="highlight">
+  <strong>설계 철학:</strong> "필요한 정보를 필요한 때에, 필요한 깊이로." 색상 코딩 일관성(빨강=위험, 녹색=안전) + 공간적/텍스트 정보 분리 + 적극적인 툴팁 활용.
+</div>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>영웅 상태 한눈에:</strong>
+      <pre>
+[영웅 카드]
+┌─────────────────────────┐
+│ 아론 [분노] ⚔ 전사       │
+│ 사기: ████████░░ 78/100  │
+│ 갈망: 원정 (만족 ✓)       │
+│ 상태: 고양 | 위치: 훈련소  │
+│ ⚠ 폭주 위험 (82↑이면 체크)│
+└─────────────────────────┘</pre>
+    </li>
+    <li><strong>이벤트 로그:</strong> "사기 변동 이유"를 RimWorld Thought처럼 누적 표시.
+      <pre>
+아론의 사기 modifier:
+  갈망 충족 (원정 파견)     +10  [2턴 전]
+  유리한 판결              +8   [1턴 전]
+  동료 부상 목격           -5   [이번 턴]
+  ──────────────────────
+  현재 합계: +13 → 사기 78</pre>
+    </li>
+    <li><strong>연쇄 반응 추적:</strong> 폭주/이탈 발생 시 "원인 체인"을 화살표로 시각화.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 10 ==================== -->
+
+<h2 id="ch10">10. 난이도 &amp; 리플레이</h2>
+
+<h3>10.1 "Losing is Fun" 설계 철학</h3>
+<p>RimWorld의 핵심 사상:</p>
+<ol>
+  <li><strong>실패는 콘텐츠다:</strong> 주민의 죽음, 콜로니의 몰락은 이야기의 일부</li>
+  <li><strong>완벽한 방어는 없다:</strong> 킬존이 완벽해도 드롭포드/인페스테이션이 돌파</li>
+  <li><strong>부유함 ≠ 안전함:</strong> Wealth 상승 → 위협 증가. "성장이 곧 위험"</li>
+  <li><strong>연쇄 반응의 극적 효과:</strong> 데스 스파이럴이 가장 극적인 이야기를 만듦</li>
+  <li><strong>Commitment Mode:</strong> 저장/불러오기 금지로 결정의 영속성 보장</li>
+</ol>
+
+<h3>10.2 시나리오 시스템</h3>
+<table>
+  <tr><th>시나리오</th><th>시작 조건</th><th>특징</th></tr>
+  <tr><td>Crashlanded</td><td>3명, 중간 장비</td><td>표준 시작</td></tr>
+  <tr><td>Rich Explorer</td><td>1명, 고급 장비</td><td>인력 부족 챌린지</td></tr>
+  <tr><td>Lost Tribe</td><td>5명, 열악 장비</td><td>기술 낮지만 인력 풍부</td></tr>
+  <tr><td>Naked Brutality</td><td>1명, 장비 없음</td><td>극한 챌린지</td></tr>
+</table>
+<p>시나리오 에디터로 완전 커스텀 가능: 시작 인원/아이템/특성, 강제 이벤트, 건설 금지 등.</p>
+
+<h3>10.3 절차적 생성 요소</h3>
+<ul>
+  <li><strong>세계:</strong> 구체 형태, 지형/기후/팩션 시드 기반 생성</li>
+  <li><strong>맵:</strong> 착륙 위치별 지형/자원/동굴/유적 무작위</li>
+  <li><strong>주민:</strong> 이름/외모/배경/스킬/특성 조합 무작위</li>
+  <li><strong>관계:</strong> 레이드 적이 주민의 가족일 수 있음 → 드라마</li>
+  <li><strong>이벤트:</strong> 적응형 AI가 콜로니 약점을 파악하여 이벤트 선택</li>
+</ul>
+
+<div class="apply-box">
+  <strong>★ TheSevenSimulation 적용 제안</strong>
+  <ul>
+    <li><strong>"패배해도 재미있는" 설계:</strong> 영웅 전멸/거점 함락을 "게임 오버"가 아니라 <em>"이 회차의 이야기 결말"</em>로 프레이밍. 패배 시에도 발생한 드라마를 요약하는 "회고록" 화면.</li>
+    <li><strong>리플레이 변수:</strong> Phase 2에서 시작 영웅 조합/초기 자원/챕터 순서를 변경 가능하게 하면 리플레이 가치 상승.</li>
+    <li><strong>적응형 습격:</strong> 거점의 약점을 AI가 분석 — 성벽 강하면 지하 침투, 영웅 적으면 대규모 파상, 자원 풍부하면 약탈 집중.</li>
+  </ul>
+</div>
+
+<!-- ==================== Chapter 11 ==================== -->
+
+<h2 id="ch11">11. TheSevenSimulation 적용 종합 제안</h2>
+
+<h3>11.1 핵심 설계 원칙 추출</h3>
+<table>
+  <tr><th>#</th><th>RimWorld 원칙</th><th>TheSevenSimulation 적용</th></tr>
+  <tr><td>1</td><td><strong>단순한 합산 규칙</strong><br>독립적 Thought를 단순 합산 → 복잡한 감정 드라마</td><td>사기 modifier를 개별 추적하되 단순 합산. "왜 이 영웅이 불만인지" 투명하게 표시.</td></tr>
+  <tr><td>2</td><td><strong>이원 구조</strong><br>Memory(과거 사건) + Situational(현재 환경)</td><td>사기 modifier를 "이벤트 기억"(판결, 전투 결과)과 "현재 상태"(갈망, 배치)로 분리.</td></tr>
+  <tr><td>3</td><td><strong>임계값 기반 비선형 폭발</strong><br>서서히 쌓인 불만이 특정 지점에서 폭발</td><td>사기 80↑부터 폭주 확률 체크 (확정이 아닌 확률). 낮을수록도 이탈 확률 체크.</td></tr>
+  <tr><td>4</td><td><strong>양방향 극단</strong><br>나쁜 결과(Break) + 좋은 결과(Inspiration)</td><td>폭주(부정) + 구원(긍정)을 모두 <em>확률적</em>으로 발생시켜 고양 구간도 의미 부여.</td></tr>
+  <tr><td>5</td><td><strong>연쇄 반응</strong><br>Break → 피해 → Thought → Break</td><td>폭주 → 시설/자원 피해 → 다른 영웅 사기 변동 → 추가 폭주/이탈. 단, 카타르시스로 무한 루프 방지.</td></tr>
+  <tr><td>6</td><td><strong>다양성 강제</strong><br>Joy Kind 내성으로 같은 활동 반복 효과 감소</td><td>갈망 충족에 "내성" 시스템. 같은 방법만 반복하면 효과 감소.</td></tr>
+  <tr><td>7</td><td><strong>특성에 의한 차별화</strong><br>같은 사건이 캐릭터마다 다른 반응</td><td>죄종 접사가 이벤트 반응/폭주 유형/작업 효율을 다층적으로 변화.</td></tr>
+  <tr><td>8</td><td><strong>성장 = 위험</strong><br>Wealth 상승 → 위협 증가</td><td>거점 규모 성장 → 습격 규모 상승. 원정 진행도 → 챕터 보스 강화.</td></tr>
+</table>
+
+<h3>11.2 우선 적용 추천 (Phase 1 범위 내)</h3>
+
+<table>
+  <tr><th>우선순위</th><th>항목</th><th>구현 복잡도</th><th>드라마 기여도</th></tr>
+  <tr><td><strong>1</strong></td><td>사기 modifier 시스템 (Thought 방식)</td><td>중간</td><td>매우 높음</td></tr>
+  <tr><td><strong>2</strong></td><td>연쇄 반응 확장 + 카타르시스</td><td>낮음</td><td>매우 높음</td></tr>
+  <tr><td><strong>3</strong></td><td>이벤트 가중치 시스템 (상황 기반)</td><td>중간</td><td>높음</td></tr>
+  <tr><td><strong>4</strong></td><td>습격 유형 다양화 (3종 이상)</td><td>중간</td><td>높음</td></tr>
+  <tr><td><strong>5</strong></td><td>영웅 간 동적 호감도</td><td>중간</td><td>높음</td></tr>
+  <tr><td><strong>6</strong></td><td>죄종-작업 적성 매핑</td><td>낮음</td><td>중간</td></tr>
+  <tr><td><strong>7</strong></td><td>영웅 상태 UI (카드 + modifier 표시)</td><td>중간</td><td>중간 (체감 높음)</td></tr>
+  <tr><td><strong>8</strong></td><td>폭주 확률화 (확정 → 확률)</td><td>낮음</td><td>중간</td></tr>
+</table>
+
+<h3>11.3 시스템 연결 다이어그램 (제안)</h3>
+<pre>
+TheSevenSimulation의 시스템 연결 (RimWorld 방식 적용):
+
+                    [이벤트 시스템]
+                    (스토리텔러 AI)
+                         │
+              ┌──────────┼──────────┐
+              ▼          ▼          ▼
+         [판결 선택]  [외부 사건]  [영웅 간 갈등]
+              │          │          │
+              └────┬─────┘          │
+                   ▼                │
+            ★ [사기 modifier] ◀─────┘
+              (허브/중심축)
+           ┌───┼───┬───┐
+           ▼   ▼   ▼   ▼
+        [갈망] [기억] [관계] [환경]
+           │        │
+           ▼        ▼
+      [폭주/이탈] [전투 성과]
+           │        │
+           ▼        ▼
+      [시설/자원   [원정 결과]
+       피해]        │
+           │        │
+           └───┬────┘
+               ▼
+        [다른 영웅 사기 변동]  ← 연쇄 반응
+               │
+               ▼
+        [추가 이벤트 트리거]
+</pre>
+
+<h3>11.4 RimWorld과 TheSevenSimulation의 핵심 차이점</h3>
+<p>RimWorld 시스템을 그대로 이식할 수 없는 구조적 차이를 인식하고 변형해야 한다:</p>
+<table>
+  <tr><th>차이점</th><th>RimWorld</th><th>TheSevenSimulation</th><th>변형 방향</th></tr>
+  <tr><td>규모</td><td>식민자 3~20명</td><td>영웅 7명 (고정)</td><td>적은 수로 더 깊은 개인 드라마. 1명의 손실이 치명적.</td></tr>
+  <tr><td>전투</td><td>실시간 직접 조작</td><td>완전 자동 (결과만)</td><td>전투 자체보다 "누구를 보내는가"의 편성 판단에 집중.</td></tr>
+  <tr><td>시간</td><td>연속 시간 흐름</td><td>턴 기반 (하루=1턴)</td><td>modifier 지속을 "턴" 단위로 관리. 감쇠도 턴 기반.</td></tr>
+  <tr><td>테마</td><td>범용 SF 서바이벌</td><td>7대 죄악 다크 판타지</td><td>죄종이 특성+Need+Break를 모두 통합하는 강력한 태그.</td></tr>
+  <tr><td>플레이어 역할</td><td>전지적 관리자</td><td>바알(판결자)</td><td>"선택지"를 통한 간접 관리. RimWorld보다 적은 마이크로.</td></tr>
+</table>
+
+<div class="highlight" style="background:#e3f2fd; border-color:#1565c0;">
+  <strong>최종 핵심 메시지:</strong><br>
+  RimWorld의 진짜 교훈은 개별 시스템의 복잡함이 아니라 <strong>"단순한 시스템들이 공유 상태를 통해 연결될 때 창발하는 드라마"</strong>이다.<br><br>
+  TheSevenSimulation에서 <strong>사기(Morale)</strong>를 RimWorld의 Mood처럼 <em>모든 시스템의 허브</em>로 설계하면, 죄종·갈망·판결·전투·관계가 하나의 수치를 통해 서로 영향을 주고받으며 예측 불가능한 드라마를 자동으로 생성할 수 있다.
+</div>
+
+<br><br>
+<p style="text-align:center; color:#888; font-size:9pt;">
+  — 문서 끝 —<br>
+  RimWorld 심층 분석 · TheSevenSimulation 적용 관점<br>
+  작성일: 2026-03-24
+</p>
+
+</body>
+</html>
