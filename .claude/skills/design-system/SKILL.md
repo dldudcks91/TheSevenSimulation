@@ -1,5 +1,5 @@
 ---
-name: system-expert
+name: design-system
 description: 시스템 디자인 전문가 — 사기, 연쇄반응, 죄종 만족/불만, 타락/구원, 포고령
 user-invocable: true
 ---

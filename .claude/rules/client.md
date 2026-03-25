@@ -23,12 +23,21 @@ src/
 │   ├── BaseManager.js
 │   └── TurnManager.js
 ├── scenes/                   # Phaser 씬
+│   ├── TitleScene.js
+│   ├── HeroSelectScene.js
 │   ├── MainScene.js
-│   ├── BattleScene.js
-│   ├── ExpeditionScene.js
-│   └── EventScene.js
+│   ├── ActionScene.js
+│   ├── EventScene.js
+│   ├── BattleSceneA.js       # 돌진형 전투
+│   ├── BattleSceneB.js       # 필드 이동형 전투
+│   ├── DuelBattleScene.js    # 1:1 전투
+│   ├── ResultScene.js
+│   ├── SettlementScene.js
+│   └── GameOverScene.js
 ├── ui/                       # UI 컴포넌트
 │   └── components/
+├── assets/                   # 게임 에셋
+│   └── sprites/              # LPC 스프라이트 (4캐릭터 × 4액션)
 ├── store/                    # 상태 관리
 │   └── Store.js
 └── data/                     # 게임 데이터 JSON

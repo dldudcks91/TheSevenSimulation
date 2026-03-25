@@ -193,6 +193,89 @@ class BaseManager {
         return base.built.map(id => this.allFacilities.find(f => f.id === id)).filter(Boolean);
     }
 
+    /** 시설이 건설되었는지 확인 */
+    hasFacility(facilityId) {
+        const base = this.store.getState('base');
+        return base.built.includes(facilityId);
+    }
+
+    /** 완료된 연구 효과 조회 */
+    getResearchEffect(effectType) {
+        const base = this.store.getState('base');
+        for (const resId of base.researched) {
+            const research = this.allResearch.find(r => r.id === resId);
+            if (research && research.effect && research.effect.type === effectType) {
+                return research.effect.value;
+            }
+        }
+        return null;
+    }
+
+    /** 시장 수입 (연구 보너스 적용) */
+    getPassiveIncomeWithBonus() {
+        let income = this.getPassiveIncome();
+        const bonus = this.getResearchEffect('income_bonus');
+        if (bonus) {
+            income = Math.floor(income * (1 + bonus));
+        }
+        return income;
+    }
+
+    /** 건설 비용 계산 (연구 보너스 적용) */
+    getBuildCost(facility) {
+        const discount = this.getResearchEffect('build_discount');
+        if (discount) {
+            return Math.floor(facility.cost * (1 - discount));
+        }
+        return facility.cost;
+    }
+
+    /** 폭주 임계값 (연구 보너스 적용) */
+    getRampageThreshold() {
+        const threshold = this.getResearchEffect('rampage_threshold');
+        return threshold || 100;
+    }
+
+    /** 감시탑 레벨 조회 */
+    getWatchtowerLevel() {
+        const base = this.store.getState('base');
+        if (base.built.includes('watchtower_3')) return 3;
+        if (base.built.includes('watchtower_2')) return 2;
+        if (base.built.includes('watchtower')) return 1;
+        return 0;
+    }
+
+    /** 감시탑 레벨에 따른 습격 정보 */
+    getRaidInfo(day) {
+        const level = this.getWatchtowerLevel();
+        const scale = Math.floor(day / 3) + 1;
+        const enemyCount = scale + 1;
+        const sizeDesc = scale <= 2 ? '소규모' : scale <= 4 ? '중규모' : '대규모';
+
+        if (level === 0) return { text: '습격 정보 없음 (감시탑 필요)', detail: '' };
+        if (level === 1) return { text: '오늘 밤 습격이 있습니다.', detail: '' };
+        if (level === 2) return { text: `오늘 밤 ${sizeDesc} 습격 예상`, detail: `적 약 ${enemyCount}체` };
+        return { text: `오늘 밤 ${sizeDesc} 습격 예상`, detail: `적 ${enemyCount}체 (HP:${30 + day * 3}, ATK:${8 + day})` };
+    }
+
+    /** 부상 영웅 회복 처리 (턴마다 호출) */
+    processHeroRecovery(heroes) {
+        const hasHospital = this.hasFacility('hospital');
+        const results = [];
+        for (const hero of heroes) {
+            if (hero.status === 'injured') {
+                hero.recoveryTurns = (hero.recoveryTurns || 2) - 1;
+                if (hasHospital) hero.recoveryTurns -= 1; // 병원: 회복 2배속
+                if (hero.recoveryTurns <= 0) {
+                    hero.status = 'idle';
+                    hero.recoveryTurns = 0;
+                    results.push({ name: hero.name, recovered: true });
+                }
+            }
+        }
+        return results;
+    }
+
     /** 현재 건설 상태 */
     getCurrentBuilding() {
         return this.store.getState('base').building;

@@ -11,18 +11,25 @@
 
     <style>
         :root {
-            /* TheSevenRPG 컬러 팔레트 */
+            /* TheSevenRPG 컬러 팔레트 (동일) */
             --bg-primary: #0a0a12;
             --bg-secondary: #12121e;
             --bg-tertiary: #1a1a2a;
+            --bg-card: #161624;
+            --bg-input: #0e0e1a;
             --border-primary: #303048;
             --border-secondary: #484868;
-            --border-highlight: #a0a0c0;
+            --border-highlight: #6868a0;
+            --border-light: #a0a0c0;
             --border-dark: #18182a;
             --text-primary: #e8e8f0;
             --text-secondary: #a0a0c0;
             --text-muted: #606080;
-            --accent-red: #e03030;
+            --text-accent: #e03030;
+            --color-success: #40d870;
+            --color-warning: #f8b830;
+            --color-error: #f04040;
+            --color-info: #40a0f8;
 
             /* 죄종 컬러 */
             --sin-wrath: #e03030;
@@ -32,6 +39,26 @@
             --sin-gluttony: #e07020;
             --sin-lust: #e03080;
             --sin-pride: #8040e0;
+
+            /* RPG 3D 베벨 */
+            --rpg-border-outset:
+                inset -2px -2px 0 0 var(--border-dark),
+                inset 2px 2px 0 0 var(--border-highlight),
+                0 0 0 2px var(--border-primary);
+            --rpg-border-inset:
+                inset 2px 2px 0 0 var(--border-dark),
+                inset -2px -2px 0 0 var(--border-highlight),
+                0 0 0 2px var(--border-primary);
+
+            /* 폰트 */
+            --font-main: 'Galmuri11', 'Galmuri9', monospace;
+            --font-bold: 'Galmuri11 Bold', 'Galmuri11', monospace;
+
+            /* 사이즈 */
+            --font-size-xs: 9px;
+            --font-size-sm: 11px;
+            --font-size-md: 14px;
+            --font-size-lg: 16px;
         }
 
         * {
@@ -46,39 +73,16 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            font-family: 'Galmuri11', 'Galmuri9', monospace;
-            -webkit-font-smoothing: none;
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
+            overflow: hidden;
+            font-family: var(--font-main);
         }
 
         #game-container {
-            /* 3D 베벨 보더 (TheSevenRPG 스타일) */
-            border: 2px solid var(--border-primary);
-            box-shadow:
-                inset 1px 1px 0 var(--border-highlight),
-                inset -1px -1px 0 var(--border-dark),
-                4px 4px 0 rgba(0, 0, 0, 0.5),
-                0 0 20px rgba(224, 48, 48, 0.2);
+            /* Phaser Scale.FIT이 16:9 비율 유지하면서 최대 크기로 채움 */
         }
 
-        /* CRT 스캔라인 오버레이 */
-        #game-container::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent 1px,
-                rgba(0, 0, 0, 0.06) 1px,
-                rgba(0, 0, 0, 0.06) 2px,
-                transparent 2px
-            );
-            pointer-events: none;
-            z-index: 10;
+        #game-container canvas {
+            display: block;
         }
     </style>
 </head>

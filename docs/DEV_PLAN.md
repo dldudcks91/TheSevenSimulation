@@ -1,6 +1,7 @@
 # TheSevenSimulation 개발 계획서
 
 > 작성일: 2026-03-24
+> 마지막 업데이트: 2026-03-25
 
 ---
 
@@ -14,6 +15,7 @@
 | 게임 로직 | JS (ES Modules) — Phaser와 분리 |
 | 데이터 | JSON (게임 데이터, 세이브는 LocalStorage) |
 | UI | Phaser Canvas + HTML 혼합 |
+| 해상도 | **1280×720** |
 | 전투 | **시각 시뮬레이션** (자동전투, 스프라이트 애니메이션) |
 
 ### Phase 2: Godot 이식 (스팀 출시)
@@ -29,12 +31,12 @@
 
 ## Phase 1 개발 계획
 
-### 소스 코드 구조 (계획)
+### 소스 코드 구조
 
 ```
 src/
 ├── index.html
-├── app.js                    # 앱 진입점, Phaser 초기화
+├── app.js                    # 앱 진입점, Phaser 초기화 (해상도 1280x720)
 ├── game_logic/               # 순수 게임 로직 (Godot 이식 대상)
 │   ├── SinSystem.js          # 죄종/사기 시스템 (영웅 간 관계)
 │   ├── HeroManager.js        # 영웅 관리 (랜덤 생성, 스탯, 사기)
@@ -44,12 +46,21 @@ src/
 │   ├── BaseManager.js        # 거점 시설/건설/연구 관리
 │   └── TurnManager.js        # 턴 진행 관리
 ├── scenes/                   # Phaser 씬 (Godot 이식 시 대체)
+│   ├── TitleScene.js         # 타이틀 화면
+│   ├── HeroSelectScene.js    # 영웅 선택 화면
 │   ├── MainScene.js          # 거점 메인 화면
-│   ├── BattleScene.js        # 전투 시각화 (자동전투)
-│   ├── ExpeditionScene.js    # 원정 결과/리플레이
-│   └── EventScene.js         # 이벤트/선택지 화면
+│   ├── ActionScene.js        # 행동 선택 화면
+│   ├── EventScene.js         # 이벤트/선택지 화면
+│   ├── BattleSceneA.js       # 돌진형 전투 시각화 (자동전투)
+│   ├── BattleSceneB.js       # 필드 이동형 전투 시각화 (자동전투)
+│   ├── DuelBattleScene.js    # 1:1 전투 시각화
+│   ├── ResultScene.js        # 전투 결과 화면
+│   ├── SettlementScene.js    # 정산 화면
+│   └── GameOverScene.js      # 게임 오버 화면
 ├── ui/                       # UI 컴포넌트
 │   └── components/
+├── assets/                   # 게임 에셋
+│   └── sprites/              # LPC 스프라이트 (4캐릭터 × 4액션)
 └── data/                     # 게임 데이터 (이식 시 그대로)
     ├── events.json
     ├── sin_relations.json
@@ -71,7 +82,7 @@ src/
 | 6 | 연구 시스템 | [x] |
 | 7 | 폭주 & 이탈 & 연쇄 반응 | [x] |
 | 8 | 원정 파견 & 결과 | [x] |
-| 9 | 전투 엔진 (7스탯 기반 자동 계산 + 시각화) | [x] |
+| 9 | 전투 엔진 (7스탯 기반 자동 계산 + A/B 전투씬 분리 시각화) | [x] |
 | 10 | 밤 습격 (방어전 시각 시뮬레이션) | [x] |
 | 11 | 주점 (영웅 고용) | [x] |
 | 12 | 타락/구원 분기 | [x] |

@@ -38,14 +38,14 @@ const DIR_SOUTH = 2;
 const DIR_EAST = 3;
 const DIR_WEST = 1;
 
-// 기본 스프라이트 (직업 없음, 고정)
+// 캐릭터 스프라이트 타입 매핑
 const DEFAULT_SPRITE = 'warrior_male';
 
 const ENEMY_SPRITES = ['warrior_female', 'base_male', 'base_female'];
 
-class BattleScene extends Phaser.Scene {
+class BattleSceneA extends Phaser.Scene {
     constructor() {
-        super({ key: 'BattleScene' });
+        super({ key: 'BattleSceneA' });
     }
 
     init(data) {
@@ -157,7 +157,8 @@ class BattleScene extends Phaser.Scene {
 
         units.heroes.forEach((u, i) => {
             const heroInfo = this.heroData.find(h => h.name === u.name);
-            const spriteType = DEFAULT_SPRITE;
+            const spriteType = (heroInfo && DEFAULT_SPRITE)
+                || ['warrior_male', 'base_male', 'base_female'][i % 3];
             this._createUnit(u.name, HERO_X_BASE, UNIT_Y_START + i * UNIT_Y_GAP, spriteType, true, u.maxHp);
         });
 
@@ -196,7 +197,8 @@ class BattleScene extends Phaser.Scene {
 
         startEntry.heroes.forEach((name, i) => {
             const heroInfo = this.heroData.find(h => h.name === name);
-            const spriteType = DEFAULT_SPRITE;
+            const spriteType = (heroInfo && DEFAULT_SPRITE)
+                || ['warrior_male', 'base_male', 'base_female'][i % 3];
             this._createUnit(name, HERO_X_BASE, UNIT_Y_START + i * UNIT_Y_GAP, spriteType, true, 100);
         });
 
@@ -575,7 +577,7 @@ class BattleScene extends Phaser.Scene {
 
         this._createBtn(width / 2, height / 2 - 35, '닫 기', () => {
             this.onClose();
-            this.scene.stop('BattleScene');
+            this.scene.stop('BattleSceneA');
         });
     }
 
@@ -656,4 +658,4 @@ class BattleScene extends Phaser.Scene {
     }
 }
 
-export default BattleScene;
+export default BattleSceneA;

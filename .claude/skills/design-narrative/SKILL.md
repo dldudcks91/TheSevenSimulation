@@ -1,5 +1,5 @@
 ---
-name: narrative-expert
+name: design-narrative
 description: 내러티브/이벤트 전문가 — 이벤트 선택지, 스토리, 죄악 테마, 챕터 시나리오
 user-invocable: true
 ---

@@ -1,9 +1,21 @@
 import TitleScene from './scenes/TitleScene.js';
+import HeroSelectScene from './scenes/HeroSelectScene.js';
 import MainScene from './scenes/MainScene.js';
 import EventScene from './scenes/EventScene.js';
 import ActionScene from './scenes/ActionScene.js';
-import BattleScene from './scenes/BattleScene.js';
+import BattleSceneA from './scenes/BattleSceneA.js';
+import BattleSceneB from './scenes/BattleSceneB.js';
+import ResultScene from './scenes/ResultScene.js';
+import SettlementScene from './scenes/SettlementScene.js';
+import DuelBattleScene from './scenes/DuelBattleScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
+
+/**
+ * 전투씬 A/B 전환
+ * 'BattleSceneA' = 돌진형 (카드 배치)
+ * 'BattleSceneB' = 필드 이동형 (자유 이동)
+ */
+const BATTLE_SCENE = 'BattleSceneB';
 
 /**
  * 게임 데이터 로드 후 Phaser 초기화
@@ -19,14 +31,16 @@ async function boot() {
 
     const config = {
         type: Phaser.AUTO,
-        width: 800,
-        height: 600,
+        width: 1280,
+        height: 720,
         parent: 'game-container',
         backgroundColor: '#0a0a12',
-        scene: [TitleScene, MainScene, EventScene, ActionScene, BattleScene, GameOverScene],
+        scene: [TitleScene, HeroSelectScene, MainScene, EventScene, ActionScene, BattleSceneA, BattleSceneB, DuelBattleScene, ResultScene, SettlementScene, GameOverScene],
         scale: {
             mode: Phaser.Scale.FIT,
-            autoCenter: Phaser.Scale.CENTER_BOTH
+            autoCenter: Phaser.Scale.CENTER_BOTH,
+            width: 1280,
+            height: 720
         }
     };
 
@@ -37,6 +51,7 @@ async function boot() {
     game.registry.set('eventsData', eventsData);
     game.registry.set('facilitiesData', facilitiesData);
     game.registry.set('stagesData', stagesData);
+    game.registry.set('battleScene', BATTLE_SCENE);
 }
 
 boot();

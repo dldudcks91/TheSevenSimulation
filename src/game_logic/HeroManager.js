@@ -42,25 +42,41 @@ class HeroManager {
         return heroes;
     }
 
+    /** 미리보기용 초기 영웅 생성 (Store에 저장하지 않음) */
+    previewStartingHeroes() {
+        const heroes = [];
+        const usedSins = [];
+
+        for (let i = 0; i < STARTING_HEROES; i++) {
+            const hero = this._generateHero(usedSins);
+            usedSins.push(hero.sinType);
+            heroes.push(hero);
+        }
+
+        return heroes;
+    }
+
+    /** 미리보기 영웅을 확정하여 Store에 저장 */
+    confirmHeroes(heroes) {
+        this.store.setState('heroes', heroes);
+    }
+
     /** 영웅 1명 랜덤 생성 */
     _generateHero(excludeSins = []) {
         const name = this._randomName();
-        const heroClass = this._randomClass();
         const sinType = this._randomSin(excludeSins);
-        const stats = this._rollStats(heroClass);
+        const stats = this._rollStats();
 
         return {
             id: this._nextId++,
             name,
-            classId: heroClass.id,
-            className: heroClass.name_ko,
             sinType: sinType.id,
             sinName: sinType.name_ko,
             sinFlaw: sinType.flaw,
             morale: MORALE_DEFAULT,
             stats,
-            status: 'idle',        // idle, expedition, construction, research, production, injured
-            location: 'base',      // base, expedition
+            status: 'idle',
+            location: 'base',
             equipment: { weapon: null, armor: null, accessory: null },
             daysIdle: 0,
             expeditionFailStreak: 0
@@ -75,12 +91,6 @@ class HeroManager {
         return `${f} "${l}"`;
     }
 
-    /** 직업 랜덤 선택 */
-    _randomClass() {
-        const classes = this.heroData.classes;
-        return classes[Math.floor(Math.random() * classes.length)];
-    }
-
     /** 죄종 랜덤 선택 (중복 제외) */
     _randomSin(excludeSins = []) {
         const sins = this.heroData.sin_types;
@@ -91,15 +101,11 @@ class HeroManager {
         return available[Math.floor(Math.random() * available.length)];
     }
 
-    /** 7스탯 랜덤 굴림 + 직업 보너스 */
-    _rollStats(heroClass) {
+    /** 7스탯 랜덤 굴림 */
+    _rollStats() {
         const stats = {};
         for (const key of STAT_KEYS) {
             stats[key] = this._rollStat();
-        }
-        // 직업 보너스 적용
-        for (const [stat, bonus] of Object.entries(heroClass.stat_bonus)) {
-            stats[stat] = Math.min(STAT_MAX, stats[stat] + bonus);
         }
         return stats;
     }

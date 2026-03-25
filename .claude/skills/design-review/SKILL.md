@@ -1,5 +1,5 @@
 ---
-name: review
+name: design-review
 description: 기획 리뷰어 — 전체 기획 냉정 평가, 모순/빈곳 찾기, 밸런스 검증
 user-invocable: true
 ---

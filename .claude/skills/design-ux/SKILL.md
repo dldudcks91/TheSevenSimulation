@@ -1,5 +1,5 @@
 ---
-name: ux-expert
+name: design-ux
 description: UX/UI 전문가 — 화면 설계, 정보 표시, 전투 관전 연출, Phaser.js UI
 user-invocable: true
 ---

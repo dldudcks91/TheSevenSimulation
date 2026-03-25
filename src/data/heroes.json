@@ -15,39 +15,6 @@
         ]
     },
 
-    "classes": [
-        {
-            "id": "warrior",
-            "name_ko": "전사",
-            "stat_bonus": { "strength": 2, "vitality": 1 },
-            "description": "검과 방패로 싸우는 전선의 주력"
-        },
-        {
-            "id": "knight",
-            "name_ko": "기사",
-            "stat_bonus": { "leadership": 2, "vitality": 1 },
-            "description": "통솔과 방어에 뛰어난 지휘관"
-        },
-        {
-            "id": "mage",
-            "name_ko": "마법사",
-            "stat_bonus": { "intellect": 2, "perception": 1 },
-            "description": "지능과 감각으로 전장을 지배하는 학자"
-        },
-        {
-            "id": "assassin",
-            "name_ko": "암살자",
-            "stat_bonus": { "agility": 2, "perception": 1 },
-            "description": "빠르고 치명적인 그림자 전투원"
-        },
-        {
-            "id": "healer",
-            "name_ko": "힐러",
-            "stat_bonus": { "charisma": 2, "intellect": 1 },
-            "description": "치유와 보조로 동료를 지탱하는 치유사"
-        }
-    ],
-
     "sin_types": [
         {
             "id": "wrath",

@@ -1,5 +1,6 @@
 /**
  * 원정 관리 — 파티 파견, 자동 전투, 결과 보고
+ * 병사 시스템: 원정/방어 시 병사 풀에서 배정
  */
 import BattleEngine, { BATTLE_TYPES } from './BattleEngine.js';
 
@@ -36,20 +37,23 @@ class ExpeditionManager {
 
     _initState() {
         this.store.setState('expedition', {
-            active: null,       // { heroIds, stageId, chapter }
-            progress: 0,        // 현재 챕터 진행 스테이지 인덱스
+            active: null,       // { heroIds, stageId, chapter, soldierCount }
+            progress: 0,
             chapter: 1,
             lastResult: null
         });
     }
 
-    /** 원정 파견 */
-    dispatch(heroIds, stageIndex) {
+    /** 원정 파견 (병사 배정 포함) */
+    dispatch(heroIds, stageIndex, soldierCount = 0) {
         const heroes = this.store.getState('heroes') || [];
         const expedition = this.store.getState('expedition');
+        const soldiers = this.store.getState('soldiers') || 0;
 
         if (expedition.active) return { success: false, reason: '이미 원정 중' };
         if (heroIds.length === 0 || heroIds.length > 3) return { success: false, reason: '1~3명 선택' };
+        if (soldierCount < 1) return { success: false, reason: '최소 병사 1명 필요' };
+        if (soldierCount > soldiers) return { success: false, reason: '병사 부족' };
 
         const chapter = `ch${expedition.chapter}`;
         const stages = STAGES[chapter];
@@ -65,7 +69,10 @@ class ExpeditionManager {
         }
         this.store.setState('heroes', [...heroes]);
 
-        expedition.active = { heroIds, stageIndex, chapter };
+        // 병사 풀에서 차감
+        this.store.setState('soldiers', soldiers - soldierCount);
+
+        expedition.active = { heroIds, stageIndex, chapter, soldierCount };
         this.store.setState('expedition', { ...expedition });
 
         return { success: true, stage: stages[stageIndex] };
@@ -77,15 +84,18 @@ class ExpeditionManager {
         if (!expedition.active) return null;
 
         const heroes = this.store.getState('heroes') || [];
-        const { heroIds, stageIndex, chapter } = expedition.active;
+        const { heroIds, stageIndex, chapter, soldierCount } = expedition.active;
         const stages = STAGES[chapter];
         const stage = stages[stageIndex];
 
         // 원정 영웅 추출
         const partyHeroes = heroIds.map(id => heroes.find(h => h.id === id)).filter(Boolean);
 
-        // 전투 실행
-        const battleResult = this.battleEngine.simulate(partyHeroes, [...stage.enemies], BATTLE_TYPES.EXPEDITION);
+        // 전투 실행 (병사 포함)
+        const battleResult = this.battleEngine.simulate(
+            partyHeroes, [...stage.enemies],
+            BATTLE_TYPES.EXPEDITION, soldierCount || 0
+        );
 
         // 전투 결과 적용
         for (const hr of battleResult.heroResults) {
@@ -98,6 +108,13 @@ class ExpeditionManager {
                 hero.status = 'idle';
             }
             hero.location = 'base';
+        }
+
+        // 생존 병사 풀로 복귀
+        const soldiersSurvived = battleResult.soldiersSurvived || 0;
+        if (soldiersSurvived > 0) {
+            const currentSoldiers = this.store.getState('soldiers') || 0;
+            this.store.setState('soldiers', currentSoldiers + soldiersSurvived);
         }
 
         // 보상
@@ -123,6 +140,9 @@ class ExpeditionManager {
             isBoss: stage.isBoss || false,
             goldReward,
             heroResults: battleResult.heroResults,
+            soldiersDeployed: battleResult.soldiersDeployed || 0,
+            soldiersSurvived: battleResult.soldiersSurvived || 0,
+            soldiersLost: battleResult.soldiersLost || 0,
             log: battleResult.log,
             rounds: battleResult.rounds
         };
@@ -154,13 +174,14 @@ class ExpeditionManager {
         };
     }
 
-    /** 방어전 (밤 습격) */
+    /** 방어전 (밤 습격) — 잔여 병사 자동 투입 */
     simulateDefense(day) {
         const heroes = this.store.getState('heroes') || [];
         const baseHeroes = heroes.filter(h => h.location === 'base' && h.status !== 'injured');
+        const soldiers = this.store.getState('soldiers') || 0;
 
-        if (baseHeroes.length === 0) {
-            return { victory: false, reason: 'no_defenders', log: [] };
+        if (baseHeroes.length === 0 && soldiers === 0) {
+            return { victory: false, reason: 'no_defenders', log: [], soldiersLost: 0 };
         }
 
         // 습격 규모: 날이 갈수록 강해짐
@@ -175,7 +196,8 @@ class ExpeditionManager {
             });
         }
 
-        const result = this.battleEngine.simulate(baseHeroes, enemies, BATTLE_TYPES.DEFENSE);
+        // 잔여 병사 전부 투입
+        const result = this.battleEngine.simulate(baseHeroes, enemies, BATTLE_TYPES.DEFENSE, soldiers);
 
         // 방어 결과 → 영웅 상태 반영
         for (const hr of result.heroResults) {
@@ -186,9 +208,15 @@ class ExpeditionManager {
         }
         this.store.setState('heroes', [...heroes]);
 
+        // 생존 병사 업데이트 (전체 풀 = 생존 병사)
+        this.store.setState('soldiers', result.soldiersSurvived || 0);
+
         return {
             victory: result.victory,
             heroResults: result.heroResults,
+            soldiersDeployed: result.soldiersDeployed || 0,
+            soldiersSurvived: result.soldiersSurvived || 0,
+            soldiersLost: result.soldiersLost || 0,
             rounds: result.rounds,
             log: result.log,
             enemyCount: enemies.length

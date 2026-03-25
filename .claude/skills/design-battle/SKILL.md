@@ -1,5 +1,5 @@
 ---
-name: battle-expert
+name: design-battle
 description: 전투/밸런스 전문가 — 자동전투, 7스탯 밸런싱, 방어전, 습격 규모, 함정 설계
 user-invocable: true
 ---

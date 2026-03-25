@@ -63,6 +63,26 @@ TheSevenSimulation/
 - 세부 시스템: `docs/game_design/`
 - 스토리: `docs/story/` (TheSevenTactics에서 계승)
 
+## 작업 규칙 (필수)
+- **구현/개발 요청** 시 → `.claude/skills/client-*` 스킬을 먼저 확인하고 호출
+- **기획/디자인 논의** 시 → `.claude/skills/design-*` 스킬을 먼저 확인하고 호출
+- 스킬을 호출하지 않고 직접 작업하지 말 것
+- 매칭되는 스킬이 없을 때만 직접 작업
+- **씬(Scene) 변경 시** → `docs/game_design/ui_design.md`를 **먼저 업데이트**한 후 코드 구현
+
+### 스킬 목록
+| 접두어 | 스킬 | 용도 |
+|--------|------|------|
+| `client-` | `client-implement` | 기능 구현 (구현해줘, 만들어줘, 개발해줘) |
+| `client-` | `client-review` | 코드 리뷰 (리뷰해줘, 검토해줘) |
+| `client-` | `client-debug` | 버그 수정 (버그, 에러, 안 돼) |
+| `design-` | `design-battle` | 전투/밸런스 기획 |
+| `design-` | `design-economy` | 경제/거점 기획 |
+| `design-` | `design-narrative` | 내러티브/이벤트 기획 |
+| `design-` | `design-system` | 시스템 디자인 (사기, 연쇄반응) |
+| `design-` | `design-ux` | UX/UI 설계 |
+| `design-` | `design-review` | 기획 전체 리뷰 |
+
 ## 개발 규칙
 - 기획서는 한국어로 작성
 - 문서 변경 시 마지막 업데이트 날짜 기재

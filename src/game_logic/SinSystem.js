@@ -11,13 +11,19 @@ class SinSystem {
         this.sinRelations = sinRelations;
     }
 
+    /** 폭주 임계값 설정 (연구 보너스 적용 가능) */
+    setRampageThreshold(threshold) {
+        this._rampageThreshold = threshold;
+    }
+
     /** 밤 결산 시 폭주/이탈 체크 → 연쇄 반응 */
     checkExtremes() {
         const heroes = this.store.getState('heroes') || [];
         const results = [];
+        const threshold = this._rampageThreshold || 100;
 
         for (const hero of [...heroes]) {
-            if (hero.morale >= 100) {
+            if (hero.morale >= threshold) {
                 results.push(this._processRampage(hero, heroes));
             } else if (hero.morale <= 0) {
                 results.push(this._processDesertion(hero, heroes));

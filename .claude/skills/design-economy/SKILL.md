@@ -1,5 +1,5 @@
 ---
-name: economy-expert
+name: design-economy
 description: 경제/거점 전문가 — 골드 밸런스, 건설트리, 연구, 교역, 시설 운영
 user-invocable: true
 ---
