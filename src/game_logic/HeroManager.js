@@ -4,6 +4,7 @@
  */
 
 const STAT_KEYS = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
+const SUB_STAT_KEYS = ['aggression', 'greediness', 'pride', 'curiosity', 'tenacity', 'sensitivity', 'independence'];
 
 const MORALE_STATE = {
     DESERTION: 'desertion',
@@ -19,6 +20,8 @@ class HeroManager {
         this.heroData = heroData;
         this.balance = balance;
         this._nextId = 1;
+        this._spriteComposer = null;
+        this._epithets = [];
 
         // balance에서 상수 로드 (기본값 폴백)
         this.MORALE_MIN = balance.morale_min ?? 0;
@@ -31,6 +34,16 @@ class HeroManager {
         this.STAT_ROLL_DICE = balance.stat_roll_dice ?? 3;
         this.STAT_ROLL_SIDES = balance.stat_roll_sides ?? 8;
         this.STAT_ROLL_BONUS = balance.stat_roll_bonus ?? 3;
+    }
+
+    /** SpriteComposer 주입 (런타임 외형 생성용) */
+    setSpriteComposer(composer) {
+        this._spriteComposer = composer;
+    }
+
+    /** 수식어 데이터 주입 */
+    setEpithets(epithets) {
+        this._epithets = epithets || [];
     }
 
     /** 게임 시작 시 초기 영웅 생성 */
@@ -69,9 +82,12 @@ class HeroManager {
 
     /** 영웅 1명 랜덤 생성 */
     _generateHero(excludeSins = []) {
-        const name = this._randomName();
         const sinType = this._randomSin(excludeSins);
         const stats = this._rollStats();
+        const subStats = this._rollSubStats();
+        const epithet = this._pickEpithet(subStats);
+        const firstName = this._randomFirstName();
+        const name = epithet ? `"${epithet}" ${firstName}` : firstName;
 
         return {
             id: this._nextId++,
@@ -81,20 +97,45 @@ class HeroManager {
             sinFlaw: sinType.flaw,
             morale: this.MORALE_DEFAULT,
             stats,
+            subStats,
             status: 'idle',
             location: 'base',
             equipment: { weapon: null, armor: null, accessory: null },
+            appearance: this._spriteComposer ? this._spriteComposer.generateAppearance() : null,
             daysIdle: 0,
             expeditionFailStreak: 0
         };
     }
 
-    /** 이름 랜덤 생성 */
-    _randomName() {
-        const { first, last } = this.heroData.name_pool;
-        const f = first[Math.floor(Math.random() * first.length)];
-        const l = last[Math.floor(Math.random() * last.length)];
-        return `${f} "${l}"`;
+    /** 이름(first name)만 랜덤 */
+    _randomFirstName() {
+        const { first } = this.heroData.name_pool;
+        return first[Math.floor(Math.random() * first.length)];
+    }
+
+    /** 독립 세부스탯 상위 2개 조합으로 수식어 결정 */
+    _pickEpithet(subStats) {
+        if (!subStats || this._epithets.length === 0) return null;
+
+        // 상위 2개 스탯 찾기
+        const sorted = SUB_STAT_KEYS
+            .map(k => ({ key: k, val: subStats[k] || 0 }))
+            .sort((a, b) => b.val - a.val);
+
+        const top1 = sorted[0].key;
+        const top2 = sorted[1].key;
+
+        // CSV에서 매칭 (순서 무관)
+        const match = this._epithets.find(e =>
+            (e.stat1 === top1 && e.stat2 === top2) ||
+            (e.stat1 === top2 && e.stat2 === top1)
+        );
+
+        if (!match) return null;
+
+        // 후보 3개 중 랜덤
+        const candidates = [match.epithet1, match.epithet2, match.epithet3].filter(Boolean);
+        return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
     /** 죄종 랜덤 선택 (중복 제외) */
@@ -107,22 +148,79 @@ class HeroManager {
         return available[Math.floor(Math.random() * available.length)];
     }
 
-    /** 7스탯 랜덤 굴림 */
+    /** 메인스탯 굴림 — 총합 70 고정, 최소 2, 최대 18 */
     _rollStats() {
-        const stats = {};
-        for (const key of STAT_KEYS) {
-            stats[key] = this._rollStat();
+        const TOTAL = 70;
+        const MIN = 2;
+        const MAX = 18;
+        const count = STAT_KEYS.length; // 7
+
+        // 랜덤 분배: 총합 고정 + 범위 제한
+        let values;
+        for (let attempt = 0; attempt < 100; attempt++) {
+            values = this._distributePoints(TOTAL, count, MIN, MAX);
+            if (values) break;
         }
+
+        if (!values) {
+            // 폴백: 균등 분배
+            values = STAT_KEYS.map(() => Math.floor(TOTAL / count));
+            values[0] += TOTAL - values.reduce((a, b) => a + b, 0);
+        }
+
+        // 셔플하여 스탯에 배정
+        for (let i = values.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [values[i], values[j]] = [values[j], values[i]];
+        }
+
+        const stats = {};
+        STAT_KEYS.forEach((key, i) => { stats[key] = values[i]; });
         return stats;
     }
 
-    /** 단일 스탯 굴림 (balance 기반) */
-    _rollStat() {
-        let roll = this.STAT_ROLL_BONUS;
-        for (let i = 0; i < this.STAT_ROLL_DICE; i++) {
-            roll += Math.floor(Math.random() * this.STAT_ROLL_SIDES);
+    /** 총합 고정 포인트 분배 */
+    _distributePoints(total, count, min, max) {
+        // 모든 스탯을 min으로 시작
+        const values = Array(count).fill(min);
+        let remaining = total - min * count;
+
+        if (remaining < 0) return null;
+
+        // 남은 포인트를 랜덤 분배
+        for (let i = 0; i < remaining; i++) {
+            const candidates = [];
+            for (let j = 0; j < count; j++) {
+                if (values[j] < max) candidates.push(j);
+            }
+            if (candidates.length === 0) return null;
+            const idx = candidates[Math.floor(Math.random() * candidates.length)];
+            values[idx]++;
         }
-        return Math.max(this.STAT_MIN, Math.min(this.STAT_MAX, roll));
+
+        return values;
+    }
+
+    /** 독립 세부스탯 7개 랜덤 굴림 (각 1~20) */
+    _rollSubStats() {
+        const subStats = {};
+        for (const key of SUB_STAT_KEYS) {
+            let roll = this.STAT_ROLL_BONUS;
+            for (let i = 0; i < this.STAT_ROLL_DICE; i++) {
+                roll += Math.floor(Math.random() * this.STAT_ROLL_SIDES);
+            }
+            subStats[key] = Math.max(1, Math.min(20, roll));
+        }
+        return subStats;
+    }
+
+    /** 파생 관계 스탯 계산 (기본 스탯/독립 세부스탯에서 산출) */
+    getDerivedStats(hero) {
+        return {
+            commandPower: hero.stats.leadership,
+            charm: hero.stats.charisma,
+            susceptibility: hero.subStats ? (hero.subStats.sensitivity ?? 10) : 10
+        };
     }
 
     /** 사기 변동 */
@@ -212,4 +310,4 @@ class HeroManager {
 }
 
 export default HeroManager;
-export { STAT_KEYS, MORALE_STATE };
+export { STAT_KEYS, SUB_STAT_KEYS, MORALE_STATE };

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/.claude/skills/design-battle/**)",
+      "Edit(/.claude/skills/design-economy/**)",
+      "Edit(/.claude/skills/design-narrative/**)",
+      "Edit(/.claude/skills/design-system/**)"
+    ]
+  }
+}

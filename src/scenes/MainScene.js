@@ -10,6 +10,7 @@ import EventSystem from '../game_logic/EventSystem.js';
 import BaseManager from '../game_logic/BaseManager.js';
 import SinSystem from '../game_logic/SinSystem.js';
 import ExpeditionManager from '../game_logic/ExpeditionManager.js';
+import SpriteComposer from '../game_logic/SpriteComposer.js';
 import SaveManager from '../store/SaveManager.js';
 
 const FONT = 'Galmuri11, Galmuri9, monospace';
@@ -92,11 +93,17 @@ class MainScene extends Phaser.Scene {
         this.balance = balance;
         this.turnManager = new TurnManager(store, phases);
         this.heroManager = new HeroManager(store, heroData, balance);
+        const lpcParts = this.registry.get('lpcParts') || [];
+        const spriteComposer = new SpriteComposer(lpcParts);
+        this.heroManager.setSpriteComposer(spriteComposer);
+        this.heroManager.setEpithets(this.registry.get('heroEpithets') || []);
         this.eventSystem = new EventSystem(store, eventsData);
         this.baseManager = new BaseManager(store, facilitiesData, policies, balance);
         this.sinSystem = new SinSystem(store, this.registry.get('sinRelations'), balance, desertionEffects);
         this.expeditionManager = new ExpeditionManager(store, balance);
         this.expeditionManager.setStagesData(stagesData);
+        const battleSceneKey = this.registry.get('battleScene') || 'BattleSceneB';
+        this.expeditionManager.setBattleMode(battleSceneKey === 'BattleSceneA' ? 'melee' : 'tag');
 
         const startingGold = balance.starting_gold ?? 500;
         const loaded = this.scene.settings.data?.loaded;
@@ -184,6 +191,21 @@ class MainScene extends Phaser.Scene {
 
         this._drawNavButton(width - 220, 6, 70, HUD_H - 12, '턴 종료', C.accentRed, () => this._onEndTurn());
         this._drawNavButton(width - 140, 6, 50, HUD_H - 12, '저장', C.textMuted, () => { SaveManager.save(store); });
+
+        // 전투씬 A/B 전환 (임시 테스트 버튼)
+        const currentScene = this.registry.get('battleScene') || 'BattleSceneA';
+        const label = currentScene === 'BattleSceneA' ? '전투:A' : '전투:B';
+        this._battleToggleBtn = this.add.text(width - 80, HUD_H / 2, `[${label}]`, {
+            fontSize: '10px', fontFamily: FONT, color: '#f8c830'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        this._battleToggleBtn.on('pointerdown', () => {
+            const cur = this.registry.get('battleScene') || 'BattleSceneA';
+            const next = cur === 'BattleSceneA' ? 'BattleSceneB' : 'BattleSceneA';
+            this.registry.set('battleScene', next);
+            this.expeditionManager.setBattleMode(next === 'BattleSceneA' ? 'melee' : 'tag');
+            const newLabel = next === 'BattleSceneA' ? '전투:A' : '전투:B';
+            this._battleToggleBtn.setText(`[${newLabel}]`);
+        });
 
         const settingsIcon = this.add.text(width - 28, HUD_H / 2, '⚙', {
             fontSize: '20px', fontFamily: FONT, color: C.textMuted
@@ -611,7 +633,7 @@ class MainScene extends Phaser.Scene {
 
         // 팝업 크기
         const PW = 560;
-        const PH = 520;
+        const PH = mode === 'heroDetail' ? 710 : 520;
         const px = (width - PW) / 2;
         const py = (height - PH) / 2;
 
@@ -636,6 +658,7 @@ class MainScene extends Phaser.Scene {
             case 'policy': this._popupPolicy(px, py, PW, PH); break;
             case 'recruit': this._popupRecruit(px, py, PW, PH); break;
             case 'heroSelect': this._popupHeroSelect(px, py, PW, PH, data); break;
+            case 'heroDetail': this._popupHeroDetail(px, py, PW, PH, data.hero); break;
         }
     }
 
@@ -1001,6 +1024,224 @@ class MainScene extends Phaser.Scene {
         }
 
         this._popupCloseBtn(px, py, pw, ph);
+    }
+
+    // ═══════════════════════════════════
+    // 팝업: 영웅 상세
+    // ═══════════════════════════════════
+    _popupHeroDetail(px, py, pw, ph, hero) {
+        const cx = px + pw / 2;
+        let y = py + 12;
+        const s = hero.stats;
+        const sub = hero.subStats || {};
+        const derived = this.heroManager.getDerivedStats(hero);
+        const sinColorHex = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+        const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
+
+        // ── 상단 카드 영역 ──
+        const cardX = px + 16;
+        const cardW = pw - 32;
+        const cardH = 140;
+        const cardBg = this._pp(this.add.graphics());
+        cardBg.fillStyle(C.cardBg, 1);
+        cardBg.fillRect(cardX, y, cardW, cardH);
+        cardBg.lineStyle(2, C.borderSecondary);
+        cardBg.strokeRect(cardX, y, cardW, cardH);
+        cardBg.lineStyle(1, C.borderHighlight, 0.25);
+        cardBg.lineBetween(cardX + 2, y + 2, cardX + cardW - 2, y + 2);
+        cardBg.lineStyle(1, C.borderDark, 0.5);
+        cardBg.lineBetween(cardX + 2, y + cardH - 2, cardX + cardW - 2, y + cardH - 2);
+
+        // 죄종 색상 상단 바
+        const sinBarG = this._pp(this.add.graphics());
+        sinBarG.fillStyle(sinColor, 0.6);
+        sinBarG.fillRect(cardX + 2, y + 2, cardW - 4, 4);
+
+        // 초상화
+        const portSize = 100;
+        const portX = cardX + 12;
+        const portY = y + 18;
+        const portG = this._pp(this.add.graphics());
+        portG.fillStyle(0x0e0e1a, 1);
+        portG.fillRect(portX, portY, portSize, portSize);
+        portG.lineStyle(1, C.borderSecondary);
+        portG.strokeRect(portX, portY, portSize, portSize);
+
+        // 스프라이트
+        if (hero.appearance && hero.appearance.layers && this._spriteRenderer) {
+            const heroId = `hero_${hero.id}`;
+            const textures = this._spriteRenderer.compose(hero.appearance, heroId);
+            if (textures && textures.idle) {
+                const spr = this._pp(this.add.sprite(portX + portSize / 2, portY + portSize / 2 + 6, textures.idle, 0));
+                spr.setScale((portSize - 8) / 64);
+                if (this.anims.exists(`${heroId}_idle`)) spr.play(`${heroId}_idle`);
+            }
+        } else {
+            portG.lineStyle(1, C.borderPrimary, 0.4);
+            portG.lineBetween(portX, portY, portX + portSize, portY + portSize);
+            portG.lineBetween(portX + portSize, portY, portX, portY + portSize);
+        }
+
+        // 이름 + 죄종 + 결함
+        const infoX = portX + portSize + 16;
+        let ty = portY + 4;
+        this._pp(this.add.text(infoX, ty, hero.name, {
+            fontSize: '22px', fontFamily: FONT_BOLD, color: C.textPrimary,
+            shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
+        }));
+        ty += 30;
+        this._pp(this.add.text(infoX, ty, `[ ${hero.sinName} ]`, {
+            fontSize: '16px', fontFamily: FONT_BOLD, color: sinColorHex
+        }));
+        ty += 24;
+        if (hero.sinFlaw) {
+            this._pp(this.add.text(infoX, ty, `"${hero.sinFlaw}"`, {
+                fontSize: '12px', fontFamily: FONT, color: C.textMuted, fontStyle: 'italic',
+                wordWrap: { width: cardW - portSize - 46 }
+            }));
+        }
+
+        // 사기 (카드 우측 하단)
+        const moraleState = this.heroManager.getMoraleState(hero.morale);
+        const moraleColor = MORALE_COLORS_HEX[moraleState];
+        const moraleName = this.heroManager.getMoraleStateName(hero.morale);
+        const mBarX = infoX;
+        const mBarY = y + cardH - 22;
+        const mBarW = cardW - portSize - 52;
+        this._pp(this.add.text(mBarX + mBarW + 8, mBarY - 2, `${hero.morale} (${moraleName})`, {
+            fontSize: '13px', fontFamily: FONT_BOLD, color: moraleColor
+        }));
+        const mBg = this._pp(this.add.graphics());
+        mBg.fillStyle(0x0e0e1a, 1);
+        mBg.fillRect(mBarX, mBarY, mBarW, 8);
+        mBg.lineStyle(1, C.borderPrimary);
+        mBg.strokeRect(mBarX, mBarY, mBarW, 8);
+        const mFill = this._pp(this.add.graphics());
+        const mfw = Math.max(0, (hero.morale / 100) * mBarW);
+        mFill.fillStyle(Phaser.Display.Color.HexStringToColor(moraleColor).color, 1);
+        mFill.fillRect(mBarX + 1, mBarY + 1, mfw - 2, 6);
+
+        // 상태
+        const statusMap = { expedition: '원정', injured: '부상', construction: '건설', research: '연구', idle: '대기', hunt: '사냥', gather: '채집' };
+        this._pp(this.add.text(cardX + cardW - 12, y + 10, statusMap[hero.status] || '대기', {
+            fontSize: '11px', fontFamily: FONT, color: C.textMuted
+        }).setOrigin(1, 0));
+
+        y += cardH + 10;
+
+        // ── 스탯 영역 ──
+        const col1X = px + 32;
+        const col2X = px + pw / 2 + 16;
+        const statBarMaxW = 120;
+        const statMax = 20;
+
+        const sep = () => { const g = this._pp(this.add.graphics()); g.lineStyle(1, C.borderPrimary); g.lineBetween(px + 20, y, px + pw - 20, y); y += 10; };
+
+        const _drawStatRow = (xPos, yPos, label, val, labelW = 40, barW = statBarMaxW) => {
+            const valColor = val >= 15 ? '#40d870' : val >= 10 ? '#40a0f8' : val >= 7 ? '#f8b830' : '#f04040';
+            const valColorHex = Phaser.Display.Color.HexStringToColor(valColor).color;
+            this._pp(this.add.text(xPos, yPos, label, { fontSize: '13px', fontFamily: FONT, color: C.textSecondary }));
+            const bx = xPos + labelW;
+            const bw = barW;
+            const bh = 10;
+            const by = yPos + 4;
+            const g = this._pp(this.add.graphics());
+            g.fillStyle(0x0e0e1a, 1);
+            g.fillRect(bx, by, bw, bh);
+            g.lineStyle(1, C.borderPrimary);
+            g.strokeRect(bx, by, bw, bh);
+            const fw = Math.max(0, Math.min(1, val / statMax)) * (bw - 2);
+            g.fillStyle(valColorHex, 1);
+            g.fillRect(bx + 1, by + 1, fw, bh - 2);
+            this._pp(this.add.text(bx + bw + 6, yPos, `${val}`, { fontSize: '13px', fontFamily: FONT_BOLD, color: valColor }));
+        };
+
+        // ■ 기본
+        this._pp(this.add.text(px + 24, y, '기본', {
+            fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
+        }));
+        y += 20;
+
+        const statLabels = [
+            { key: 'strength', label: '힘' }, { key: 'agility', label: '민첩' },
+            { key: 'intellect', label: '지능' }, { key: 'vitality', label: '체력' },
+            { key: 'perception', label: '감각' }, { key: 'leadership', label: '통솔' },
+            { key: 'charisma', label: '매력' }
+        ];
+
+        for (let i = 0; i < statLabels.length; i++) {
+            const st = statLabels[i];
+            const xPos = i % 2 === 0 ? col1X : col2X;
+            _drawStatRow(xPos, y, st.label, s[st.key]);
+            if (i % 2 === 1 || i === statLabels.length - 1) y += 20;
+        }
+        y += 4;
+        sep();
+
+        // ■ 행동
+        this._pp(this.add.text(px + 24, y, '행동', {
+            fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
+        }));
+        y += 20;
+
+        const actionStats = [
+            { label: '사냥', a: 'strength', b: 'agility' },
+            { label: '채집', a: 'agility', b: 'perception' },
+            { label: '건설', a: 'strength', b: 'leadership' },
+            { label: '대장간', a: 'strength', b: 'perception' },
+            { label: '연금술', a: 'agility', b: 'perception' },
+            { label: '연구', a: 'intellect', b: null },
+            { label: '외교', a: 'intellect', b: 'charisma' },
+            { label: '교역', a: 'intellect', b: 'charisma' },
+            { label: '고용', a: 'leadership', b: 'charisma' }
+        ];
+
+        for (let i = 0; i < actionStats.length; i++) {
+            const act = actionStats[i];
+            const xPos = i % 2 === 0 ? col1X : col2X;
+            const val = act.b ? Math.round((s[act.a] + s[act.b]) / 2) : s[act.a];
+            _drawStatRow(xPos, y, act.label, val, 52);
+            if (i % 2 === 1 || i === actionStats.length - 1) y += 20;
+        }
+        y += 4;
+        sep();
+
+        // ■ 감정
+        this._pp(this.add.text(px + 24, y, '감정', {
+            fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
+        }));
+        y += 20;
+
+        const subLabels = [
+            { key: 'aggression', label: '공격성', src: 'sub' },
+            { key: 'greediness', label: '욕심', src: 'sub' },
+            { key: 'pride', label: '자존심', src: 'sub' },
+            { key: 'curiosity', label: '호기심', src: 'sub' },
+            { key: 'tenacity', label: '집요함', src: 'sub' },
+            { key: 'sensitivity', label: '감수성', src: 'sub' },
+            { key: 'independence', label: '독립심', src: 'sub' },
+            { key: 'commandPower', label: '통솔력', src: 'derived' },
+            { key: 'charm', label: '매력도', src: 'derived' },
+            { key: 'susceptibility', label: '민감도', src: 'derived' }
+        ];
+
+        for (let i = 0; i < subLabels.length; i++) {
+            const st = subLabels[i];
+            const xPos = i % 2 === 0 ? col1X : col2X;
+            const val = st.src === 'sub' ? (sub[st.key] ?? 0) : (derived[st.key] ?? 0);
+            _drawStatRow(xPos, y, st.label, val, 52);
+            if (i % 2 === 1 || i === subLabels.length - 1) y += 20;
+        }
+
+        // 하단 버튼
+        this._pp(this._popupButton(cx - 80, py + ph - 40, '해고', () => {
+            this.heroManager.dismissHero(hero.id);
+            this._closePopup();
+            this._refreshActiveTab();
+        }));
+        this._pp(this._popupButton(cx + 80, py + ph - 40, '닫기', () => {
+            this._closePopup();
+        }));
     }
 
     // ═══════════════════════════════════
@@ -1555,6 +1796,11 @@ class MainScene extends Phaser.Scene {
                 fontSize: '11px', fontFamily: FONT_BOLD, color: moraleColor
             }));
 
+            // 카드 클릭 → 영웅 상세 팝업
+            const cardZone = this._p(this.add.zone(px + pw / 2, y + CARD_H / 2, pw, CARD_H).setInteractive({ useHandCursor: true }));
+            const heroRef = hero;
+            cardZone.on('pointerdown', () => this._showPopup('heroDetail', { hero: heroRef }));
+
             y += CARD_H + 6;
         }
 
@@ -1928,7 +2174,7 @@ class MainScene extends Phaser.Scene {
         const turn = this.turnManager.getCurrentTurn();
         const defenseResult = this.expeditionManager.simulateDefense(turn.day);
         const baseHeroes = this.heroManager.getBaseHeroes().filter(h => h.status !== 'injured');
-        const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, sinType: h.sinType }));
+        const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, sinType: h.sinType, appearance: h.appearance || null }));
         const battleSceneKey = this.registry.get('battleScene') || 'BattleSceneB';
         this.scene.launch(battleSceneKey, { log: defenseResult.log || [], victory: defenseResult.victory, stageName: `밤 습격 — ${turn.day}일차`, heroes: heroData,
             onClose: () => {

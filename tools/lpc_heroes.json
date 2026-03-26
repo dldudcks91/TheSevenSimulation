@@ -1,0 +1,165 @@
+{
+  "hero_wrath": {
+    "base": "warrior_male",
+    "desc": "분노 - 동갑옷 전사, 빨간머리, 도끼",
+    "parts": [
+      {
+        "path": "legs/pants/male",
+        "color": "brown"
+      },
+      {
+        "path": "torso/armour/plate/male",
+        "color": "bronze"
+      },
+      {
+        "path": "shoulders/epaulets/male",
+        "color": "bronze"
+      },
+      {
+        "path": "hair/buzzcut/adult",
+        "color": "carrot"
+      },
+      {
+        "path": "weapon/blunt/waraxe"
+      }
+    ]
+  },
+  "hero_envy": {
+    "base": "warrior_female",
+    "desc": "시기 - 가죽갑 정찰병, 갈색긴머리, 단검",
+    "parts": [
+      {
+        "path": "dress/bodice/female",
+        "color": "forest"
+      },
+      {
+        "path": "torso/armour/leather/female",
+        "color": "brown"
+      },
+      {
+        "path": "hair/bangslong/adult",
+        "color": "dark_brown"
+      },
+      {
+        "path": "weapon/sword/dagger"
+      }
+    ]
+  },
+  "hero_greed": {
+    "base": "warrior_male",
+    "desc": "탐욕 - 레기온 금갑 귀족검사, 금곱슬머리, 레이피어",
+    "parts": [
+      {
+        "path": "legs/formal/male",
+        "color": "black"
+      },
+      {
+        "path": "torso/armour/legion/male",
+        "color": "gold"
+      },
+      {
+        "path": "hair/curly_long/adult",
+        "color": "gold"
+      },
+      {
+        "path": "weapon/sword/rapier"
+      }
+    ]
+  },
+  "hero_sloth": {
+    "base": "base_male",
+    "desc": "나태 - 가죽갑 방랑학자, 잠자리머리, 지팡이",
+    "parts": [
+      {
+        "path": "legs/pants/male",
+        "color": "gray"
+      },
+      {
+        "path": "torso/armour/leather/male",
+        "color": "brown"
+      },
+      {
+        "path": "hair/bedhead/adult",
+        "color": "ash"
+      },
+      {
+        "path": "weapon/polearm/cane"
+      }
+    ]
+  },
+  "hero_gluttony": {
+    "base": "warrior_male",
+    "desc": "폭식 - 철갑 중장전사, 아프로, 메이스+방패",
+    "parts": [
+      {
+        "path": "legs/pants/male",
+        "color": "brown"
+      },
+      {
+        "path": "torso/armour/plate/male",
+        "color": "iron"
+      },
+      {
+        "path": "shoulders/epaulets/male",
+        "color": "silver"
+      },
+      {
+        "path": "hair/afro/adult",
+        "color": "dark_brown"
+      },
+      {
+        "path": "weapon/blunt/mace"
+      },
+      {
+        "path": "shield/heater/original/paint",
+        "color": "blue"
+      }
+    ]
+  },
+  "hero_lust": {
+    "base": "base_female",
+    "desc": "색욕 - 보라드레스 마법사, 핑크머리",
+    "parts": [
+      {
+        "path": "dress/bodice/female",
+        "color": "purple"
+      },
+      {
+        "path": "hair/braid/adult",
+        "color": "pink"
+      },
+      {
+        "path": "weapon/magic/wand/female"
+      }
+    ]
+  },
+  "hero_pride": {
+    "base": "warrior_male",
+    "desc": "교만 - 금갑 성기사, 흰망토, 흰머리, 롱소드",
+    "parts": [
+      {
+        "path": "legs/armour/plate/male",
+        "color": "gold"
+      },
+      {
+        "path": "torso/armour/plate/male",
+        "color": "gold"
+      },
+      {
+        "path": "shoulders/epaulets/male",
+        "color": "gold"
+      },
+      {
+        "path": "cape/solid/male",
+        "color": "white"
+      },
+      {
+        "path": "hair/cowlick_tall/adult",
+        "color": "white"
+      },
+      {
+        "path": "weapon/sword/longsword"
+      }
+    ]
+  }
+}

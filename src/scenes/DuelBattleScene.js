@@ -38,6 +38,17 @@ const ANIM_FPS = 8;
 const DEFAULT_SPRITE = 'warrior_male';
 const ENEMY_SPRITE_POOL = ['warrior_female', 'base_male', 'base_female'];
 
+const SIN_SPRITE_MAP = {
+    wrath: 'hero_wrath',
+    envy: 'hero_envy',
+    greed: 'hero_greed',
+    sloth: 'hero_sloth',
+    gluttony: 'hero_gluttony',
+    lust: 'hero_lust',
+    pride: 'hero_pride',
+};
+const HERO_SPRITE_TYPES = Object.values(SIN_SPRITE_MAP);
+
 // ── 색상 ──
 const CLR = {
     bg: 0x0a0a12,
@@ -80,7 +91,7 @@ class DuelBattleScene extends Phaser.Scene {
     }
 
     preload() {
-        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female'];
+        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female', ...HERO_SPRITE_TYPES];
         const actions = ['idle', 'slash', 'hurt'];
 
         for (const type of types) {
@@ -178,7 +189,7 @@ class DuelBattleScene extends Phaser.Scene {
 
     _createHeroUnit() {
         const hero = this._heroData;
-        const spriteType = DEFAULT_SPRITE;
+        const spriteType = SIN_SPRITE_MAP[hero.sinType] || DEFAULT_SPRITE;
         const units = this.engine.getUnits();
         const heroUnit = units.heroes[0];
 
@@ -620,6 +631,44 @@ class DuelBattleScene extends Phaser.Scene {
                     }),
                     frameRate: ANIM_FPS * 1.5,
                     repeat: 0
+                });
+            }
+        }
+
+        // 영웅 스프라이트 (단일 행 — East만)
+        for (const type of HERO_SPRITE_TYPES) {
+            for (const dirName of ['east', 'west']) {
+                const slashKey = `${type}_slash_${dirName}`;
+                if (!this.anims.exists(slashKey)) {
+                    this.anims.create({
+                        key: slashKey,
+                        frames: this.anims.generateFrameNumbers(`${type}_slash`, {
+                            start: 0, end: SHEET_CONFIG.slash.frames - 1
+                        }),
+                        frameRate: ANIM_FPS * 1.5, repeat: 0
+                    });
+                }
+
+                const idleKey = `${type}_idle_${dirName}`;
+                if (!this.anims.exists(idleKey)) {
+                    this.anims.create({
+                        key: idleKey,
+                        frames: this.anims.generateFrameNumbers(`${type}_idle`, {
+                            start: 0, end: SHEET_CONFIG.idle.frames - 1
+                        }),
+                        frameRate: ANIM_FPS, repeat: -1
+                    });
+                }
+            }
+
+            const hurtKey = `${type}_hurt`;
+            if (!this.anims.exists(hurtKey)) {
+                this.anims.create({
+                    key: hurtKey,
+                    frames: this.anims.generateFrameNumbers(`${type}_slash`, {
+                        start: SHEET_CONFIG.slash.frames - 2, end: SHEET_CONFIG.slash.frames - 1
+                    }),
+                    frameRate: ANIM_FPS * 1.5, repeat: 0
                 });
             }
         }

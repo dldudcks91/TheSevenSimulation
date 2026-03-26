@@ -122,7 +122,10 @@ async function loadAllCsv(basePath = './data/') {
         'defense_scaling',
         'phases',
         'morale_states',
-        'desertion_effects'
+        'desertion_effects',
+        'battle_cards',
+        'lpc_parts',
+        'hero_epithets'
     ];
 
     const results = {};
@@ -333,6 +336,15 @@ function buildGameData(csvData) {
 
     // ─── desertion_effects ───
     data.desertionEffects = csvData.desertion_effects;
+
+    // ─── battleCards ───
+    data.battleCards = csvData.battle_cards || [];
+
+    // ─── lpcParts (스프라이트 파츠 매니페스트) ───
+    data.lpcParts = csvData.lpc_parts || [];
+
+    // ─── heroEpithets (이름 수식어) ───
+    data.heroEpithets = csvData.hero_epithets || [];
 
     return data;
 }

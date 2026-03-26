@@ -12,10 +12,10 @@ import { loadAllCsv, buildGameData } from './data/CsvLoader.js';
 
 /**
  * 전투씬 A/B 전환
- * 'BattleSceneA' = 돌진형 (카드 배치)
- * 'BattleSceneB' = 필드 이동형 (자유 이동)
+ * 'BattleSceneA' = X축 오토배틀 + 일기토 (MELEE 모드)
+ * 'BattleSceneB' = X축 태그매치 (TAG 모드)
  */
-const BATTLE_SCENE = 'BattleSceneB';
+const BATTLE_SCENE = 'BattleSceneA';
 
 /**
  * 게임 데이터 로드 후 Phaser 초기화
@@ -58,6 +58,9 @@ async function boot() {
     game.registry.set('moraleStates', gameData.moraleStates);
     game.registry.set('desertionEffects', gameData.desertionEffects);
     game.registry.set('battleScene', BATTLE_SCENE);
+    game.registry.set('battleCards', gameData.battleCards || []);
+    game.registry.set('lpcParts', gameData.lpcParts || []);
+    game.registry.set('heroEpithets', gameData.heroEpithets || []);
 }
 
 boot();

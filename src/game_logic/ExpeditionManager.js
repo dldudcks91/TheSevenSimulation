@@ -3,7 +3,7 @@
  * 스테이지/적 데이터는 CSV에서 로드된 stagesData로 주입
  * 방어전 스케일링도 balance 데이터 기반
  */
-import BattleEngine, { BATTLE_TYPES } from './BattleEngine.js';
+import BattleEngine, { BATTLE_TYPES, BATTLE_MODES } from './BattleEngine.js';
 
 class ExpeditionManager {
     constructor(store, balance = {}) {
@@ -11,7 +11,13 @@ class ExpeditionManager {
         this.balance = balance;
         this.battleEngine = new BattleEngine(balance);
         this._stagesData = {};
+        this._battleMode = BATTLE_MODES.MELEE;
         this._initState();
+    }
+
+    /** 전투 모드 설정 (MELEE / TAG) */
+    setBattleMode(mode) {
+        this._battleMode = mode;
     }
 
     /** stagesData 주입 (app.js에서 registry를 통해 전달) */
@@ -76,7 +82,8 @@ class ExpeditionManager {
 
         const battleResult = this.battleEngine.simulate(
             partyHeroes, [...stage.enemies],
-            BATTLE_TYPES.EXPEDITION, soldierCount || 0
+            BATTLE_TYPES.EXPEDITION, soldierCount || 0,
+            this._battleMode
         );
 
         for (const hr of battleResult.heroResults) {
@@ -177,7 +184,7 @@ class ExpeditionManager {
             });
         }
 
-        const result = this.battleEngine.simulate(baseHeroes, enemies, BATTLE_TYPES.DEFENSE, soldiers);
+        const result = this.battleEngine.simulate(baseHeroes, enemies, BATTLE_TYPES.DEFENSE, soldiers, this._battleMode);
 
         for (const hr of result.heroResults) {
             const hero = heroes.find(h => h.id === hr.id);

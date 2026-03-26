@@ -1,0 +1,6 @@
+id,name_ko,sp_cost,target,effect_type,effect_value,duration,sin_bonus_type,sin_bonus_value,description
+rage_burst,분노폭발,30,ally_all,atk_mult,1.5,3,wrath,1.8,전원 공격력 +50% (분노 시 +80%)
+shield,보호막,20,ally_all,dmg_reduce,0.4,3,sloth,0.4,전원 피해 -40% (나태 시 5턴)
+curse,저주,40,enemy_all,atk_mult,0.7,5,envy,0.7,적 전원 공격력 -30% (시기 시 속도도 -30%)
+heal,회복,25,ally_all,heal_percent,0.2,0,gluttony,0.3,전원 HP 20% 회복 (폭식 시 30%)
+haste,속도증가,20,ally_all,spd_mult,1.5,3,pride,1.5,전원 속도 +50% (교만 시 첫타 2배)

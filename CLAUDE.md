@@ -82,6 +82,7 @@ TheSevenSimulation/
 | `design-` | `design-system` | 시스템 디자인 (사기, 연쇄반응) |
 | `design-` | `design-ux` | UX/UI 설계 |
 | `design-` | `design-review` | 기획 전체 리뷰 |
+| `sprite-` | `sprite-compose` | LPC 스프라이트 생성 (캐릭터 만들어줘, 스프라이트 바꿔줘) |
 
 ## 개발 규칙
 - 기획서는 한국어로 작성

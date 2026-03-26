@@ -4,6 +4,8 @@
  */
 import store from '../store/Store.js';
 import HeroManager from '../game_logic/HeroManager.js';
+import SpriteComposer from '../game_logic/SpriteComposer.js';
+import SpriteRenderer from './SpriteRenderer.js';
 import SaveManager from '../store/SaveManager.js';
 
 const FONT = 'Galmuri11, Galmuri9, monospace';
@@ -27,9 +29,18 @@ const C = {
     accentRed: '#e03030', expYellow: '#f8c830'
 };
 
+const FRAME_SIZE = 64;
+
 class HeroSelectScene extends Phaser.Scene {
     constructor() {
         super({ key: 'HeroSelectScene' });
+    }
+
+    preload() {
+        // 모든 LPC 파츠를 일반 이미지로 프리로드
+        const lpcParts = this.registry.get('lpcParts') || [];
+        this._spriteRenderer = new SpriteRenderer(this);
+        this._spriteRenderer.preloadParts(lpcParts);
     }
 
     create() {
@@ -39,6 +50,12 @@ class HeroSelectScene extends Phaser.Scene {
         const heroData = this.registry.get('heroData');
         const balance = this.registry.get('balance') || {};
         this.heroManager = new HeroManager(store, heroData, balance);
+        const lpcParts = this.registry.get('lpcParts') || [];
+        this.heroManager.setSpriteComposer(new SpriteComposer(lpcParts));
+        this.heroManager.setEpithets(this.registry.get('heroEpithets') || []);
+        if (!this._spriteRenderer) {
+            this._spriteRenderer = new SpriteRenderer(this);
+        }
 
         // 배경 파티클
         this._drawBgParticles(width, height);
@@ -88,12 +105,29 @@ class HeroSelectScene extends Phaser.Scene {
         this._cardElements.forEach(el => el.destroy());
         this._cardElements = [];
 
-        const CARD_W = 260;
-        const CARD_H = 370;
-        const GAP = 30;
+        // 이전 합성 텍스처/애니메이션 정리
+        if (this._prevHeroIds) {
+            for (const heroId of this._prevHeroIds) {
+                for (const action of ['idle', 'walk', 'slash']) {
+                    const texKey = `composed_${heroId}_${action}`;
+                    if (this.textures.exists(texKey)) {
+                        this.textures.remove(texKey);
+                    }
+                    const animKey = `${heroId}_${action}`;
+                    if (this.anims.exists(animKey)) {
+                        this.anims.remove(animKey);
+                    }
+                }
+            }
+        }
+        this._prevHeroIds = this._heroes.map(h => `hero_${h.id}`);
+
+        const CARD_W = 280;
+        const CARD_H = 420;
+        const GAP = 24;
         const totalW = CARD_W * 3 + GAP * 2;
         const startX = (width - totalW) / 2;
-        const cardY = 110;
+        const cardY = 100;
 
         this._heroes.forEach((hero, i) => {
             const cx = startX + i * (CARD_W + GAP) + CARD_W / 2;
@@ -106,7 +140,7 @@ class HeroSelectScene extends Phaser.Scene {
         const x = cx - w / 2;
         const y = cy;
 
-        // 카드 배경 (RPG 베벨 outset)
+        // 카드 배경
         const bg = this.add.graphics();
         bg.fillStyle(C.bgSecondary, 1);
         bg.fillRect(x, y, w, h);
@@ -121,83 +155,122 @@ class HeroSelectScene extends Phaser.Scene {
         this._cardElements.push(bg);
 
         // 죄종 색상 상단 바
-        const sinColor = Phaser.Display.Color.HexStringToColor(SIN_COLOR_HEX[hero.sinType] || '#606080').color;
+        const sinColorHex = SIN_COLOR_HEX[hero.sinType] || '#606080';
+        const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
         const sinBar = this.add.graphics();
         sinBar.fillStyle(sinColor, 0.6);
         sinBar.fillRect(x + 2, y + 2, w - 4, 4);
         this._cardElements.push(sinBar);
 
-        // 초상화 자리 (왼쪽 위, 카드 가로의 ~절반)
-        const PORT_SIZE = Math.floor(w / 2) - 16;
-        const PORT_X = x + 12;
-        const PORT_Y = y + 16;
-        const portG = this.add.graphics();
-        portG.fillStyle(0x0e0e1a, 1);
-        portG.fillRect(PORT_X, PORT_Y, PORT_SIZE, PORT_SIZE);
-        portG.lineStyle(1, C.borderSecondary);
-        portG.strokeRect(PORT_X, PORT_Y, PORT_SIZE, PORT_SIZE);
-        // 대각선 (빈 초상화 표시)
-        portG.lineStyle(1, C.borderPrimary, 0.4);
-        portG.lineBetween(PORT_X, PORT_Y, PORT_X + PORT_SIZE, PORT_Y + PORT_SIZE);
-        portG.lineBetween(PORT_X + PORT_SIZE, PORT_Y, PORT_X, PORT_Y + PORT_SIZE);
-        this._cardElements.push(portG);
+        let ty = y + 18;
 
-        // 이름 (초상화 오른쪽)
-        const infoX = PORT_X + PORT_SIZE + 10;
-        let ty = PORT_Y + 4;
-        this._cardElements.push(this.add.text(infoX, ty, hero.name, {
-            fontSize: '18px', fontFamily: FONT_BOLD, color: C.textPrimary,
+        // ── 상단: 이름 + 짧은 스토리 ──
+        this._cardElements.push(this.add.text(x + 12, ty, hero.name, {
+            fontSize: '16px', fontFamily: FONT_BOLD, color: C.textPrimary,
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         }));
-        ty += 24;
+        this._cardElements.push(this.add.text(x + w - 12, ty + 2, `[ ${hero.sinName} ]`, {
+            fontSize: '11px', fontFamily: FONT_BOLD, color: sinColorHex
+        }).setOrigin(1, 0));
+        ty += 48;
 
-        // 죄종 (초상화 오른쪽)
-        this._cardElements.push(this.add.text(infoX, ty, `[ ${hero.sinName} ]`, {
-            fontSize: '13px', fontFamily: FONT_BOLD, color: SIN_COLOR_HEX[hero.sinType] || C.textMuted
-        }));
-        ty += 22;
+        // 짧은 배경 스토리
+        const storyText = this._getHeroStory(hero.sinType);
+        const storyObj = this.add.text(x + 12, ty, storyText, {
+            fontSize: '11px', fontFamily: FONT, color: C.textMuted,
+            lineSpacing: 4,
+            wordWrap: { width: w - 24 }
+        });
+        this._cardElements.push(storyObj);
+        ty += storyObj.height + 16;
 
-        // 결함 설명 (초상화 오른쪽)
-        if (hero.sinFlaw) {
-            this._cardElements.push(this.add.text(infoX, ty, `"${hero.sinFlaw}"`, {
-                fontSize: '10px', fontFamily: FONT, color: C.textMuted,
-                fontStyle: 'italic',
-                wordWrap: { width: w - PORT_SIZE - 40 }
-            }));
+        // ── 중단+하단: 카드 하단에서 역산하여 배치 ──
+        const HALF_W = Math.floor((w - 24) / 2);
+        const PORT_H = 120;
+        const barH = 14;
+        const statCount = 7;
+        const statTotalH = statCount * (barH + 5);
+
+        // 하단 기준: 카드바닥 - 여백 - 스탯영역 - 구분선 - 사진영역 - 구분선
+        const statStartY = y + h - statTotalH - 10;
+        const divider2Y = statStartY - 10;
+        const portStartY = divider2Y - PORT_H - 6;
+        const divider1Y = portStartY - 8;
+
+        // 구분선 1 (스토리 아래)
+        const divG1 = this.add.graphics();
+        divG1.lineStyle(1, C.borderPrimary);
+        divG1.lineBetween(x + 8, divider1Y, x + w - 8, divider1Y);
+        this._cardElements.push(divG1);
+
+        ty = portStartY;
+
+        // 왼쪽: 일러스트 (빈 카드)
+        const illG = this.add.graphics();
+        illG.fillStyle(0x0e0e1a, 1);
+        illG.fillRect(x + 8, ty, HALF_W, PORT_H);
+        illG.lineStyle(1, C.borderPrimary);
+        illG.strokeRect(x + 8, ty, HALF_W, PORT_H);
+        // 대각선 (placeholder)
+        illG.lineStyle(1, C.borderPrimary, 0.3);
+        illG.lineBetween(x + 8, ty, x + 8 + HALF_W, ty + PORT_H);
+        illG.lineBetween(x + 8 + HALF_W, ty, x + 8, ty + PORT_H);
+        this._cardElements.push(illG);
+        this._cardElements.push(this.add.text(x + 8 + HALF_W / 2, ty + PORT_H / 2, 'ILLUST', {
+            fontSize: '9px', fontFamily: FONT, color: C.textMuted
+        }).setOrigin(0.5).setAlpha(0.4));
+
+        // 오른쪽: LPC 스프라이트
+        const sprX = x + 8 + HALF_W + 8;
+        const sprG = this.add.graphics();
+        sprG.fillStyle(0x0e0e1a, 1);
+        sprG.fillRect(sprX, ty, HALF_W, PORT_H);
+        sprG.lineStyle(1, C.borderPrimary);
+        sprG.strokeRect(sprX, ty, HALF_W, PORT_H);
+        this._cardElements.push(sprG);
+
+        if (hero.appearance && hero.appearance.layers) {
+            const heroId = `hero_${hero.id}`;
+            const textures = this._spriteRenderer.compose(hero.appearance, heroId);
+            if (textures.idle) {
+                const sprCX = sprX + HALF_W / 2;
+                const sprCY = ty + PORT_H / 2 + 8;
+                const scale = (PORT_H - 16) / FRAME_SIZE;
+                const spr = this.add.sprite(sprCX, sprCY, textures.idle, 0);
+                spr.setScale(scale);
+                spr.play(`${heroId}_idle`);
+                this._cardElements.push(spr);
+            }
         }
 
-        ty = PORT_Y + PORT_SIZE + 14;
+        // 구분선 2 (사진 아래)
+        const divG2 = this.add.graphics();
+        divG2.lineStyle(1, C.borderPrimary);
+        divG2.lineBetween(x + 8, divider2Y, x + w - 8, divider2Y);
+        this._cardElements.push(divG2);
 
-        // 구분선
-        const divG = this.add.graphics();
-        divG.lineStyle(1, C.borderPrimary);
-        divG.lineBetween(x + 12, ty, x + w - 12, ty);
-        this._cardElements.push(divG);
-        ty += 12;
+        ty = statStartY;
 
-        // 스탯 라벨
-        this._cardElements.push(this.add.text(cx, ty, '─ 능력치 ─', {
-            fontSize: '9px', fontFamily: FONT, color: C.textMuted
-        }).setOrigin(0.5));
-        ty += 16;
-
-        // 스탯 바 그리기
+        // ── 하단: 스탯 (세로 1열, 풀 이름, 크게) ──
         const statKeys = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
-        const barW = w - 56;
-        const barH = 11;
+        const STAT_FULL = {
+            strength: '힘', agility: '민첩', intellect: '지능',
+            vitality: '체력', perception: '감각', leadership: '통솔', charisma: '매력'
+        };
+        const barW = w - 90;
 
         for (const key of statKeys) {
             const val = hero.stats[key];
-            const label = STAT_LABELS[key];
+            const label = STAT_FULL[key];
 
             // 라벨
-            this._cardElements.push(this.add.text(x + 12, ty + 1, label, {
-                fontSize: '10px', fontFamily: FONT, color: C.textSecondary
+            this._cardElements.push(this.add.text(x + 12, ty, label, {
+                fontSize: '12px', fontFamily: FONT, color: C.textSecondary
             }));
 
-            // 바 배경 (inset)
+            // 바 배경
+            const bx = x + 52;
             const barBg = this.add.graphics();
-            const bx = x + 36;
             barBg.fillStyle(0x0e0e1a, 1);
             barBg.fillRect(bx, ty, barW, barH);
             barBg.lineStyle(1, C.borderPrimary);
@@ -213,19 +286,25 @@ class HeroSelectScene extends Phaser.Scene {
             this._cardElements.push(barFill);
 
             // 수치
-            this._cardElements.push(this.add.text(x + w - 12, ty + 1, `${val}`, {
-                fontSize: '10px', fontFamily: FONT_BOLD, color: C.textPrimary
+            this._cardElements.push(this.add.text(x + w - 12, ty, `${val}`, {
+                fontSize: '12px', fontFamily: FONT_BOLD, color: C.textPrimary
             }).setOrigin(1, 0));
 
             ty += barH + 5;
         }
+    }
 
-        ty += 8;
-
-        // 사기
-        this._cardElements.push(this.add.text(cx, ty, `사기: ${hero.morale}`, {
-            fontSize: '11px', fontFamily: FONT, color: '#a0a0c0'
-        }).setOrigin(0.5));
+    _getHeroStory(sinType) {
+        const stories = {
+            wrath: '전쟁에서 돌아온 뒤로 분노를 멈출 수 없었다.\n칼을 내려놓으면 손이 떨렸고,\n결국 바알의 부름에 응했다.',
+            envy: '언제나 형의 그림자 속에 있었다.\n인정받지 못한 재능은 독이 되어\n결국 그를 이곳으로 이끌었다.',
+            greed: '가진 것을 모두 잃은 날,\n다시는 빈손이 되지 않겠다고 맹세했다.\n그 집착이 바알의 눈에 띄었다.',
+            sloth: '한때 뛰어난 학자였으나 모든 것을 포기했다.\n세상에 지쳐 쓰러진 그를\n바알이 주워 담았다.',
+            gluttony: '굶주림의 기억은 지워지지 않았다.\n아무리 채워도 부족했고,\n결국 악마의 식탁에 앉게 되었다.',
+            lust: '사랑에 실패한 뒤 혼자가 되는 것이 두려웠다.\n누군가 곁에 있어야만 했고,\n그 절박함이 이곳까지 왔다.',
+            pride: '왕좌에서 쫓겨난 지휘관.\n자신이 옳다는 확신은 변하지 않았고,\n바알 아래서라도 증명하려 한다.',
+        };
+        return stories[sinType] || '어둠 속에서 바알의 부름을 들었다.\n갈 곳 없는 자에게 선택지란 없었다.';
     }
 
     _drawButtons(width, height) {
