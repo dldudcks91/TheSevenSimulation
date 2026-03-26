@@ -13,38 +13,55 @@
 ```
 src/
 ├── index.html
-├── app.js                    # 진입점, Phaser 초기화
+├── app.js                    # 진입점, CSV 전체 로드 + Phaser 초기화
 ├── game_logic/               # 순수 게임 로직 (Phaser 의존 금지)
-│   ├── SinSystem.js
-│   ├── HeroManager.js
-│   ├── EventSystem.js
-│   ├── ExpeditionManager.js
-│   ├── BattleEngine.js
-│   ├── BaseManager.js
-│   └── TurnManager.js
+│   ├── SinSystem.js          # 죄종/사기/폭주/이탈/연쇄반응
+│   ├── HeroManager.js        # 영웅 랜덤 생성, 사기 관리
+│   ├── EventSystem.js        # 이벤트/선택지
+│   ├── ExpeditionManager.js  # 원정/방어전 (stagesData 주입)
+│   ├── BattleEngine.js       # 전투 계산 (balance 주입)
+│   ├── BaseManager.js        # 거점/건설/연구/포고령 (policies 주입)
+│   └── TurnManager.js        # 턴 진행 (phases 주입)
 ├── scenes/                   # Phaser 씬
 │   ├── TitleScene.js
 │   ├── HeroSelectScene.js
-│   ├── MainScene.js
-│   ├── ActionScene.js
+│   ├── MainScene.js          # 영내/영외 전환 + 우측 패널 + 팝업 행동
 │   ├── EventScene.js
 │   ├── BattleSceneA.js       # 돌진형 전투
-│   ├── BattleSceneB.js       # 필드 이동형 전투
-│   ├── DuelBattleScene.js    # 1:1 전투
+│   ├── BattleSceneB.js       # 필드 이동형 전투 (기본값)
+│   ├── DuelBattleScene.js    # 1:1 전투 (사냥)
 │   ├── ResultScene.js
 │   ├── SettlementScene.js
 │   └── GameOverScene.js
 ├── ui/                       # UI 컴포넌트
 │   └── components/
 ├── assets/                   # 게임 에셋
-│   └── sprites/              # LPC 스프라이트 (4캐릭터 × 4액션)
+│   └── sprites/
 ├── store/                    # 상태 관리
 │   └── Store.js
-└── data/                     # 게임 데이터 JSON
-    ├── events.json
-    ├── sin_relations.json
-    ├── facilities.json
-    └── stages.json
+└── data/                     # 게임 데이터 (CSV)
+    ├── CsvLoader.js          # CSV 파서 + 전체 로더 + 데이터 조립
+    ├── balance.csv            # 밸런스 상수 (전투/사기/보상)
+    ├── hero_names.csv         # 영웅 이름 풀
+    ├── sin_types.csv          # 7죄종 정의
+    ├── sin_relations.csv      # 죄종 간 관계 매트릭스
+    ├── sin_satisfaction.csv   # 죄종별 만족/불만 조건
+    ├── sin_rampage_chain.csv  # 폭주 연쇄 반응
+    ├── events.csv             # 이벤트 본체
+    ├── event_choices.csv      # 이벤트 선택지
+    ├── event_effects.csv      # 선택지 효과
+    ├── facilities.csv         # 시설 정보
+    ├── research.csv           # 연구 항목
+    ├── chapters.csv           # 7챕터 정보
+    ├── stages.csv             # 스테이지 정보
+    ├── stage_enemies.csv      # 스테이지별 적
+    ├── policies.csv           # 포고령 종류/효과
+    ├── hunt_enemies.csv       # 사냥 적
+    ├── phases.csv             # 턴 페이즈
+    ├── morale_states.csv      # 사기 5단계
+    ├── desertion_effects.csv  # 이탈 효과
+    ├── defense_scaling.csv    # 방어전 스케일링
+    └── stat_names.csv         # 스탯 한글명
 ```
 
 ---
@@ -265,33 +282,29 @@ const SaveManager = {
 | 상수 | UPPER_SNAKE | `MAX_HEROES`, `MORALE_MAX` |
 | 파일명 | PascalCase (클래스) | `HeroManager.js`, `BattleScene.js` |
 | data 속성 | snake_case | `data-action`, `data-hero-id` |
-| JSON 키 | snake_case | `sin_type`, `base_stat` |
+| CSV 헤더/키 | snake_case | `sin_type`, `base_stat` |
 
 ---
 
 ## 게임 데이터 (data/)
 
-### JSON 형식
-```json
-{
-    "id": "hero_001",
-    "sin_type": "wrath",
-    "stats": {
-        "strength": 15,
-        "agility": 10,
-        "intellect": 5,
-        "vitality": 14,
-        "perception": 8,
-        "leadership": 12,
-        "charisma": 9
-    }
-}
+### CSV 형식 (데이터 주도 설계)
+모든 게임 데이터는 CSV로 관리. 게임 시작 시 `CsvLoader.loadAllCsv()`로 전체 로드 후 `buildGameData()`로 JS 객체로 조립.
+
+```
+[CSV 파일] → CsvLoader.parseCsv() → 객체 배열
+[전체 CSV] → loadAllCsv() → buildGameData() → registry에 등록
+[game_logic] ← 생성자에서 데이터 주입 (balance, policies 등)
 ```
 
-### 규칙
-- 게임 데이터는 JSON 파일로 관리
-- 런타임에 JSON 수정 금지 (읽기 전용)
+### CSV 규칙
+- 첫 줄 = 헤더 (컬럼명, snake_case)
+- 숫자 자동 변환, 빈 셀 = null, true/false = boolean
+- 따옴표로 감싼 셀 내 콤마/줄바꿈 지원
+- 런타임에 CSV 수정 금지 (읽기 전용)
 - 플레이어 진행 상태는 Store + LocalStorage
+- 밸런스 상수는 `balance.csv`에 key-value로 관리
+- 하드코딩된 게임 수치는 반드시 CSV로 추출
 
 ---
 
@@ -302,4 +315,4 @@ const SaveManager = {
 - `console.log` 배포 금지 → 개발 중에만 사용
 - game_logic/ 안에서 DOM/Phaser API 접근 금지
 - 전역 변수 금지 → Store 또는 모듈 스코프 사용
-- 매직 넘버 금지 → 상수 정의 (`const MORALE_MAX = 100;`)
+- 매직 넘버 금지 → `balance.csv`에서 로드 (`this.balance.morale_max ?? 100`)

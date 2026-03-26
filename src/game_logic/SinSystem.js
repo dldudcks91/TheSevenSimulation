@@ -1,14 +1,20 @@
 /**
  * 죄종/사기 시스템 — 폭주, 이탈, 연쇄 반응, 타락/구원
+ * 모든 상수는 balance + desertionEffects 데이터에서 주입
  */
 
-const CORRUPTION_CHANCE = 0.7;  // 타락 확률 70%
-const SALVATION_CHANCE = 0.3;   // 구원 확률 30%
-
 class SinSystem {
-    constructor(store, sinRelations) {
+    constructor(store, sinRelations, balance = {}, desertionEffects = []) {
         this.store = store;
         this.sinRelations = sinRelations;
+        this.balance = balance;
+        this.desertionEffects = desertionEffects;
+
+        this.CORRUPTION_CHANCE = balance.corruption_chance ?? 0.7;
+        this.SALVATION_CHANCE = balance.salvation_chance ?? 0.3;
+        this.RAMPAGE_RESET = balance.rampage_morale_reset ?? 70;
+        this.SALVATION_RESET = balance.salvation_morale_reset ?? 50;
+        this.MAX_CHAINS = balance.max_chain_reactions ?? 3;
     }
 
     /** 폭주 임계값 설정 (연구 보너스 적용 가능) */
@@ -30,7 +36,6 @@ class SinSystem {
             }
         }
 
-        // 연쇄 반응 체크 (폭주 결과가 다른 영웅에게 영향)
         const chainResults = this._processChainReactions(results, heroes);
         results.push(...chainResults);
 
@@ -38,7 +43,7 @@ class SinSystem {
         return results;
     }
 
-    /** 폭주 처리 (사기 100) */
+    /** 폭주 처리 */
     _processRampage(hero, heroes) {
         const chain = this.sinRelations.rampage_chain[hero.sinType];
         const result = {
@@ -53,17 +58,15 @@ class SinSystem {
         };
 
         // 타락/구원 판정
-        if (Math.random() < CORRUPTION_CHANCE) {
+        if (Math.random() < this.CORRUPTION_CHANCE) {
             result.corruptionResult = 'corruption';
-            hero.morale = 70; // 리셋
-            // 타락: 더 강하지만 더 위험 (폭주 임계 낮아짐 등은 Phase 2)
+            hero.morale = this.RAMPAGE_RESET;
         } else {
             result.corruptionResult = 'salvation';
-            hero.morale = 50; // 안정화
-            // 구원: 고유 능력 해금 등은 Phase 2
+            hero.morale = this.SALVATION_RESET;
         }
 
-        // 연쇄 반응: 폭주 결과가 다른 영웅에게 영향
+        // 연쇄 반응
         if (chain) {
             if (chain.target === 'all') {
                 for (const h of heroes) {
@@ -80,7 +83,6 @@ class SinSystem {
                     result.affectedHeroes.push({ id: t.id, name: t.name, delta: chain.morale_delta });
                 }
             } else {
-                // 특정 죄종 타겟
                 const target = heroes.find(h => h.sinType === chain.target && h.id !== hero.id);
                 if (target) {
                     target.morale = Math.max(0, Math.min(100, target.morale + chain.morale_delta));
@@ -92,7 +94,7 @@ class SinSystem {
         return result;
     }
 
-    /** 이탈 처리 (사기 0) */
+    /** 이탈 처리 (사기 0) — CSV desertion_effects 기반 */
     _processDesertion(hero, heroes) {
         const sinData = this.sinRelations.sin_names_ko;
         const result = {
@@ -105,47 +107,34 @@ class SinSystem {
             affectedHeroes: []
         };
 
-        // 죄종별 이탈 효과
-        switch (hero.sinType) {
-            case 'wrath':
-                result.description = `${hero.name}가 폭력적으로 탈영합니다.`;
-                // 전체 사기 소폭 하락
-                for (const h of heroes) {
-                    if (h.id !== hero.id) {
-                        h.morale = Math.max(0, h.morale - 5);
-                        result.affectedHeroes.push({ id: h.id, name: h.name, delta: -5 });
+        // CSV에서 이탈 효과 조회
+        const effect = this.desertionEffects.find(e => e.sin === hero.sinType);
+        const sinDef = this.sinRelations.sin_names_ko[hero.sinType];
+
+        if (effect) {
+            // 이탈 설명 (sin_types에서 desertion 필드)
+            result.description = `${hero.name}가 거점을 떠납니다.`;
+
+            if (effect.effect_type === 'morale') {
+                if (effect.target === 'all') {
+                    for (const h of heroes) {
+                        if (h.id !== hero.id) {
+                            h.morale = Math.max(0, h.morale + effect.value);
+                            result.affectedHeroes.push({ id: h.id, name: h.name, delta: effect.value });
+                        }
+                    }
+                } else if (effect.target === 'random_1') {
+                    const others = heroes.filter(h => h.id !== hero.id);
+                    if (others.length > 0) {
+                        const victim = others[Math.floor(Math.random() * others.length)];
+                        victim.morale = Math.max(0, victim.morale + effect.value);
+                        result.affectedHeroes.push({ id: victim.id, name: victim.name, delta: effect.value });
                     }
                 }
-                break;
-            case 'greed':
-                result.description = `${hero.name}가 창고를 털고 도주합니다.`;
+            } else if (effect.effect_type === 'gold') {
                 const gold = this.store.getState('gold') || 0;
-                this.store.setState('gold', Math.max(0, gold - 80));
-                break;
-            case 'lust':
-                result.description = `${hero.name}가 다른 영웅을 꼬여서 함께 떠나려 합니다.`;
-                // 랜덤 1명 사기 급락
-                const others = heroes.filter(h => h.id !== hero.id);
-                if (others.length > 0) {
-                    const victim = others[Math.floor(Math.random() * others.length)];
-                    victim.morale = Math.max(0, victim.morale - 20);
-                    result.affectedHeroes.push({ id: victim.id, name: victim.name, delta: -20 });
-                }
-                break;
-            case 'envy':
-                result.description = `${hero.name}가 사보타주 후 이탈합니다.`;
-                break;
-            case 'sloth':
-                result.description = `${hero.name}가 조용히 사라집니다.`;
-                break;
-            case 'gluttony':
-                result.description = `${hero.name}가 보급품을 갖고 이탈합니다.`;
-                break;
-            case 'pride':
-                result.description = `${hero.name}: "너 밑에 있을 수준이 아니다."`;
-                break;
-            default:
-                result.description = `${hero.name}가 거점을 떠납니다.`;
+                this.store.setState('gold', Math.max(0, gold + effect.value));
+            }
         }
 
         // 영웅 제거
@@ -155,10 +144,10 @@ class SinSystem {
         return result;
     }
 
-    /** 연쇄 반응: 폭주/이탈 결과로 다른 영웅이 극단에 도달할 수 있음 */
+    /** 연쇄 반응 */
     _processChainReactions(initialResults, heroes) {
         const chainResults = [];
-        let maxChains = 3; // 무한 루프 방지
+        let maxChains = this.MAX_CHAINS;
 
         while (maxChains > 0) {
             let triggered = false;

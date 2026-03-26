@@ -1,0 +1,8 @@
+sin,target,morale_delta,description
+wrath,all,-10,건물 파괴 → 전체 사기 하락
+greed,gluttony,-20,자원 도난 → 폭식 사기 급락
+pride,wrath,15,명령 거부 → 분노 사기 급상승(폭주 방향)
+envy,greed,-15,장비 파괴 → 탐욕 사기 하락
+gluttony,all,-10,식량 소진 → 전체 사기 하락
+sloth,all,-10,행동 거부 전염 → 전체 사기 하락
+lust,random_2,20,분쟁 유발 → 관련 2명 사기 급상승(폭주 방향)

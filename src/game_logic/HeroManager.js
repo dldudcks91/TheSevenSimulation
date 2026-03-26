@@ -1,30 +1,36 @@
 /**
  * 영웅 관리 — 랜덤 생성, 사기 관리, 폭주/이탈 체크
+ * 모든 상수는 balance 데이터에서 주입
  */
-
-const MORALE_MIN = 0;
-const MORALE_MAX = 100;
-const MORALE_DEFAULT = 50;
-const STAT_MIN = 1;
-const STAT_MAX = 20;
-const MAX_HEROES = 7;
-const STARTING_HEROES = 3;
 
 const STAT_KEYS = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
 
 const MORALE_STATE = {
-    DESERTION: 'desertion',   // 0
-    UNHAPPY: 'unhappy',       // 1~30
-    STABLE: 'stable',         // 31~70
-    ELEVATED: 'elevated',     // 71~99
-    RAMPAGE: 'rampage'         // 100
+    DESERTION: 'desertion',
+    UNHAPPY: 'unhappy',
+    STABLE: 'stable',
+    ELEVATED: 'elevated',
+    RAMPAGE: 'rampage'
 };
 
 class HeroManager {
-    constructor(store, heroData) {
+    constructor(store, heroData, balance = {}) {
         this.store = store;
         this.heroData = heroData;
+        this.balance = balance;
         this._nextId = 1;
+
+        // balance에서 상수 로드 (기본값 폴백)
+        this.MORALE_MIN = balance.morale_min ?? 0;
+        this.MORALE_MAX = balance.morale_max ?? 100;
+        this.MORALE_DEFAULT = balance.morale_default ?? 50;
+        this.STAT_MIN = balance.stat_min ?? 1;
+        this.STAT_MAX = balance.stat_max ?? 20;
+        this.MAX_HEROES = balance.max_heroes ?? 7;
+        this.STARTING_HEROES = balance.starting_heroes ?? 3;
+        this.STAT_ROLL_DICE = balance.stat_roll_dice ?? 3;
+        this.STAT_ROLL_SIDES = balance.stat_roll_sides ?? 8;
+        this.STAT_ROLL_BONUS = balance.stat_roll_bonus ?? 3;
     }
 
     /** 게임 시작 시 초기 영웅 생성 */
@@ -32,7 +38,7 @@ class HeroManager {
         const heroes = [];
         const usedSins = [];
 
-        for (let i = 0; i < STARTING_HEROES; i++) {
+        for (let i = 0; i < this.STARTING_HEROES; i++) {
             const hero = this._generateHero(usedSins);
             usedSins.push(hero.sinType);
             heroes.push(hero);
@@ -47,7 +53,7 @@ class HeroManager {
         const heroes = [];
         const usedSins = [];
 
-        for (let i = 0; i < STARTING_HEROES; i++) {
+        for (let i = 0; i < this.STARTING_HEROES; i++) {
             const hero = this._generateHero(usedSins);
             usedSins.push(hero.sinType);
             heroes.push(hero);
@@ -73,7 +79,7 @@ class HeroManager {
             sinType: sinType.id,
             sinName: sinType.name_ko,
             sinFlaw: sinType.flaw,
-            morale: MORALE_DEFAULT,
+            morale: this.MORALE_DEFAULT,
             stats,
             status: 'idle',
             location: 'base',
@@ -110,11 +116,13 @@ class HeroManager {
         return stats;
     }
 
-    /** 단일 스탯 굴림 (1~20, 정규분포 느낌) */
+    /** 단일 스탯 굴림 (balance 기반) */
     _rollStat() {
-        // 3d8 → 3~24 → 클램프 1~20 (중앙값 ~13)
-        const roll = Math.floor(Math.random() * 8) + Math.floor(Math.random() * 8) + Math.floor(Math.random() * 8) + 3;
-        return Math.max(STAT_MIN, Math.min(STAT_MAX, roll));
+        let roll = this.STAT_ROLL_BONUS;
+        for (let i = 0; i < this.STAT_ROLL_DICE; i++) {
+            roll += Math.floor(Math.random() * this.STAT_ROLL_SIDES);
+        }
+        return Math.max(this.STAT_MIN, Math.min(this.STAT_MAX, roll));
     }
 
     /** 사기 변동 */
@@ -124,7 +132,7 @@ class HeroManager {
         if (!hero) return null;
 
         const oldMorale = hero.morale;
-        hero.morale = Math.max(MORALE_MIN, Math.min(MORALE_MAX, hero.morale + delta));
+        hero.morale = Math.max(this.MORALE_MIN, Math.min(this.MORALE_MAX, hero.morale + delta));
 
         this.store.setState('heroes', [...heroes]);
 
@@ -188,7 +196,7 @@ class HeroManager {
     /** 영웅 고용 */
     recruitHero(hero) {
         const heroes = this.getHeroes();
-        if (heroes.length >= MAX_HEROES) return false;
+        if (heroes.length >= this.MAX_HEROES) return false;
         heroes.push(hero);
         this.store.setState('heroes', [...heroes]);
         return true;
@@ -204,4 +212,4 @@ class HeroManager {
 }
 
 export default HeroManager;
-export { MORALE_MIN, MORALE_MAX, MORALE_DEFAULT, STAT_KEYS, MORALE_STATE, MAX_HEROES };
+export { STAT_KEYS, MORALE_STATE };

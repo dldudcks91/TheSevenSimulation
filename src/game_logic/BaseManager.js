@@ -1,33 +1,34 @@
 /**
- * 거점 시설/건설/연구 관리
- * HOMM3 방식: 턴당 건설 1개, 턴당 연구 1개 진행
+ * 거점 시설/건설/연구 관리 + 포고령
+ * 포고령 효과는 policies CSV 데이터에서 로드
  */
 
 class BaseManager {
-    constructor(store, facilitiesData) {
+    constructor(store, facilitiesData, policies = [], balance = {}) {
         this.store = store;
         this.allFacilities = facilitiesData.facilities;
         this.allResearch = facilitiesData.research;
+        this.policies = policies;
+        this.balance = balance;
         this._initState();
     }
 
     _initState() {
         this.store.setState('base', {
-            built: [],              // 완성된 시설 ID 목록
-            building: null,         // { facilityId, turnsLeft, assignedHeroId }
-            researched: [],         // 완료된 연구 ID 목록
-            researching: null,      // { researchId, turnsLeft, assignedHeroId }
-            policies: {             // 포고령
-                ration: 'normal',       // lavish / normal / austerity
-                training: 'normal',     // intense / normal / relaxed
-                alert: 'normal'         // max / normal / min
+            built: [],
+            building: null,
+            researched: [],
+            researching: null,
+            policies: {
+                ration: 'normal',
+                training: 'normal',
+                alert: 'normal'
             }
         });
     }
 
     // ─── 건설 ───
 
-    /** 건설 가능한 시설 목록 */
     getAvailableBuilds() {
         const base = this.store.getState('base');
         const gold = this.store.getState('gold') || 0;
@@ -40,7 +41,6 @@ class BaseManager {
         });
     }
 
-    /** 건설 시작 */
     startBuilding(facilityId, heroId) {
         const base = this.store.getState('base');
         if (base.building) return { success: false, reason: '이미 건설 중' };
@@ -63,7 +63,6 @@ class BaseManager {
         return { success: true, facility };
     }
 
-    /** 턴 진행 시 건설 처리 */
     processBuildTurn() {
         const base = this.store.getState('base');
         if (!base.building) return null;
@@ -75,8 +74,6 @@ class BaseManager {
             base.built.push(completed.facilityId);
             base.building = null;
             this.store.setState('base', { ...base });
-
-            // 시장 완성 시 턴당 수입 시작
             return { type: 'complete', facilityId: completed.facilityId, name: completed.name };
         }
 
@@ -86,7 +83,6 @@ class BaseManager {
 
     // ─── 연구 ───
 
-    /** 연구 가능한 목록 */
     getAvailableResearch() {
         const base = this.store.getState('base');
         const gold = this.store.getState('gold') || 0;
@@ -100,7 +96,6 @@ class BaseManager {
         });
     }
 
-    /** 연구 시작 */
     startResearch(researchId, heroId) {
         const base = this.store.getState('base');
         if (base.researching) return { success: false, reason: '이미 연구 중' };
@@ -123,7 +118,6 @@ class BaseManager {
         return { success: true, research };
     }
 
-    /** 턴 진행 시 연구 처리 */
     processResearchTurn() {
         const base = this.store.getState('base');
         if (!base.researching) return null;
@@ -142,7 +136,7 @@ class BaseManager {
         return { type: 'progress', turnsLeft: base.researching.turnsLeft, name: base.researching.name };
     }
 
-    // ─── 포고령 ───
+    // ─── 포고령 (CSV 데이터 기반) ───
 
     setPolicy(policyKey, value) {
         const base = this.store.getState('base');
@@ -154,27 +148,24 @@ class BaseManager {
         return false;
     }
 
-    /** 포고령에 의한 턴당 사기 변동 계산 */
+    /** 포고령에 의한 턴당 사기 변동 계산 — policies CSV 기반 */
     getPolicyMoraleEffect() {
         const base = this.store.getState('base');
         const p = base.policies;
         let delta = 0;
 
-        if (p.ration === 'lavish') delta += 5;
-        else if (p.ration === 'austerity') delta -= 3;
-
-        if (p.training === 'intense') delta -= 3;
-        else if (p.training === 'relaxed') delta += 3;
-
-        if (p.alert === 'max') delta -= 2;
-        else if (p.alert === 'min') delta += 2;
+        for (const [key, val] of Object.entries(p)) {
+            const policyRow = this.policies.find(r => r.policy === key && r.value === val);
+            if (policyRow) {
+                delta += policyRow.morale_delta;
+            }
+        }
 
         return delta;
     }
 
     // ─── 턴 수입 ───
 
-    /** 시장 등 시설에 의한 턴당 수입 */
     getPassiveIncome() {
         const base = this.store.getState('base');
         let income = 0;
@@ -187,19 +178,16 @@ class BaseManager {
         return income;
     }
 
-    /** 건설된 시설 목록 (UI용) */
     getBuiltFacilities() {
         const base = this.store.getState('base');
         return base.built.map(id => this.allFacilities.find(f => f.id === id)).filter(Boolean);
     }
 
-    /** 시설이 건설되었는지 확인 */
     hasFacility(facilityId) {
         const base = this.store.getState('base');
         return base.built.includes(facilityId);
     }
 
-    /** 완료된 연구 효과 조회 */
     getResearchEffect(effectType) {
         const base = this.store.getState('base');
         for (const resId of base.researched) {
@@ -211,32 +199,24 @@ class BaseManager {
         return null;
     }
 
-    /** 시장 수입 (연구 보너스 적용) */
     getPassiveIncomeWithBonus() {
         let income = this.getPassiveIncome();
         const bonus = this.getResearchEffect('income_bonus');
-        if (bonus) {
-            income = Math.floor(income * (1 + bonus));
-        }
+        if (bonus) income = Math.floor(income * (1 + bonus));
         return income;
     }
 
-    /** 건설 비용 계산 (연구 보너스 적용) */
     getBuildCost(facility) {
         const discount = this.getResearchEffect('build_discount');
-        if (discount) {
-            return Math.floor(facility.cost * (1 - discount));
-        }
+        if (discount) return Math.floor(facility.cost * (1 - discount));
         return facility.cost;
     }
 
-    /** 폭주 임계값 (연구 보너스 적용) */
     getRampageThreshold() {
         const threshold = this.getResearchEffect('rampage_threshold');
         return threshold || 100;
     }
 
-    /** 감시탑 레벨 조회 */
     getWatchtowerLevel() {
         const base = this.store.getState('base');
         if (base.built.includes('watchtower_3')) return 3;
@@ -245,9 +225,17 @@ class BaseManager {
         return 0;
     }
 
-    /** 감시탑 레벨에 따른 습격 정보 */
+    /** 감시탑 레벨에 따른 습격 정보 — defense_scaling CSV 기반 */
     getRaidInfo(day) {
         const level = this.getWatchtowerLevel();
+
+        // balance에서 방어 스케일링 값 사용
+        const b = this.balance;
+        const defHpBase = b.defense_enemy_hp_base ?? 30;
+        const defHpPerDay = b.defense_enemy_hp_per_day ?? 3;
+        const defAtkBase = b.defense_enemy_atk_base ?? 8;
+        const defAtkPerDay = b.defense_enemy_atk_per_day ?? 1;
+
         const scale = Math.floor(day / 3) + 1;
         const enemyCount = scale + 1;
         const sizeDesc = scale <= 2 ? '소규모' : scale <= 4 ? '중규모' : '대규모';
@@ -255,17 +243,16 @@ class BaseManager {
         if (level === 0) return { text: '습격 정보 없음 (감시탑 필요)', detail: '' };
         if (level === 1) return { text: '오늘 밤 습격이 있습니다.', detail: '' };
         if (level === 2) return { text: `오늘 밤 ${sizeDesc} 습격 예상`, detail: `적 약 ${enemyCount}체` };
-        return { text: `오늘 밤 ${sizeDesc} 습격 예상`, detail: `적 ${enemyCount}체 (HP:${30 + day * 3}, ATK:${8 + day})` };
+        return { text: `오늘 밤 ${sizeDesc} 습격 예상`, detail: `적 ${enemyCount}체 (HP:${defHpBase + day * defHpPerDay}, ATK:${defAtkBase + day * defAtkPerDay})` };
     }
 
-    /** 부상 영웅 회복 처리 (턴마다 호출) */
     processHeroRecovery(heroes) {
         const hasHospital = this.hasFacility('hospital');
         const results = [];
         for (const hero of heroes) {
             if (hero.status === 'injured') {
                 hero.recoveryTurns = (hero.recoveryTurns || 2) - 1;
-                if (hasHospital) hero.recoveryTurns -= 1; // 병원: 회복 2배속
+                if (hasHospital) hero.recoveryTurns -= 1;
                 if (hero.recoveryTurns <= 0) {
                     hero.status = 'idle';
                     hero.recoveryTurns = 0;
@@ -276,15 +263,8 @@ class BaseManager {
         return results;
     }
 
-    /** 현재 건설 상태 */
-    getCurrentBuilding() {
-        return this.store.getState('base').building;
-    }
-
-    /** 현재 연구 상태 */
-    getCurrentResearch() {
-        return this.store.getState('base').researching;
-    }
+    getCurrentBuilding() { return this.store.getState('base').building; }
+    getCurrentResearch() { return this.store.getState('base').researching; }
 }
 
 export default BaseManager;

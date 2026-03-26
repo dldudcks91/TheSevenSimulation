@@ -1,0 +1,8 @@
+sin,satisfy,frustrate,satisfy_delta,frustrate_delta
+pride,boss_expedition_success,expedition_fail_streak_3,15,-15
+greed,resource_invested,resource_denied,10,-10
+wrath,expedition_dispatched,idle_3_days,10,-15
+envy,self_level_up,other_grew_more,10,-10
+lust,with_preferred_ally,separated_from_ally,10,-10
+sloth,resting,consecutive_assignment,10,-10
+gluttony,fully_equipped,empty_slot,10,-10

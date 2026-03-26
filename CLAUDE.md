@@ -15,7 +15,7 @@
 - 게임 엔진: **Phaser.js** (2D 게임 프레임워크)
 - 게임 로직: JS (ES Modules) — Phaser와 분리
 - 전투: **시각 시뮬레이션** (자동전투, 스프라이트 애니메이션)
-- 데이터: JSON (게임 데이터, 세이브는 LocalStorage)
+- 데이터: **CSV** (게임 데이터 21개 파일, 세이브는 LocalStorage)
 - Phase 2 이후: Godot(GDScript)으로 이식 → 스팀 출시
 
 ## 프로젝트 구조
@@ -51,10 +51,10 @@ TheSevenSimulation/
 │       ├── game-design.md     # 기획 논의 규칙
 │       └── workflow.md        # 구현 워크플로우
 └── src/                       # 소스 코드 (Phase 1: Phaser.js)
-    ├── game_logic/            # 순수 게임 로직 (Godot 이식 대상)
+    ├── game_logic/            # 순수 게임 로직 (Godot 이식 대상, balance 주입)
     ├── scenes/                # Phaser 씬 (Godot 이식 시 대체)
     ├── ui/                    # UI 컴포넌트
-    └── data/                  # 게임 데이터 JSON
+    └── data/                  # 게임 데이터 CSV (21개) + CsvLoader.js
 ```
 
 ## 기획 문서 위치
@@ -88,3 +88,6 @@ TheSevenSimulation/
 - 문서 변경 시 마지막 업데이트 날짜 기재
 - 기획 논의 시 `game-design` 규칙을 따른다
 - 구현 시 `workflow` 규칙을 따른다
+- 게임 데이터는 **CSV**로 관리 (JSON 아님)
+- 밸런스 수치는 `balance.csv`에서 로드, **코드 내 하드코딩 금지**
+- game_logic 모듈은 생성자에서 데이터를 주입받음 (`balance`, `policies` 등)

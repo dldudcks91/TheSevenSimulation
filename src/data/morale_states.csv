@@ -1,0 +1,6 @@
+id,name_ko,min,max,color
+desertion,이탈,0,0,#f04040
+unhappy,불만,1,30,#f8b830
+stable,안정,31,70,#a0a0c0
+elevated,고양,71,99,#40d870
+rampage,폭주,100,100,#e03030

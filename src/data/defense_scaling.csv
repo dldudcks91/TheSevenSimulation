@@ -1,0 +1,5 @@
+key,formula_desc,base,per_day,divisor
+enemy_count,floor(day/divisor)+1+1,1,1,3
+enemy_hp,base + day * per_day,30,3,
+enemy_atk,base + day * per_day,8,1,
+enemy_spd,fixed,5,,

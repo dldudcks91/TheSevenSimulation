@@ -1,0 +1,10 @@
+policy,value,morale_delta,label_ko,description
+ration,lavish,5,풍족,사기+5 비용↑
+ration,normal,0,보통,
+ration,austerity,-3,긴축,사기-3 비용↓
+training,intense,-3,강화,경험↑ 사기-3
+training,normal,0,보통,
+training,relaxed,3,완화,경험↓ 사기+3
+alert,max,-2,최대,방어↑ 사기-2
+alert,normal,0,보통,
+alert,min,2,최소,방어↓ 사기+2

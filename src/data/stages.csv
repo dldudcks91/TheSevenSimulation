@@ -1,0 +1,5 @@
+id,chapter,name,is_boss,reward
+ch1_s1,1,불타는 전초기지,false,80
+ch1_s2,1,재의 계곡,false,120
+ch1_s3,1,용암의 성채,false,160
+ch1_boss,1,사탄의 왕좌,true,300

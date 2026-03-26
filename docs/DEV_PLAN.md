@@ -1,7 +1,7 @@
 # TheSevenSimulation 개발 계획서
 
 > 작성일: 2026-03-24
-> 마지막 업데이트: 2026-03-25
+> 마지막 업데이트: 2026-03-26
 
 ---
 
@@ -13,8 +13,8 @@
 | 서버 | **없음** (클라이언트 전용, 싱글플레이어) |
 | 게임 엔진 | **Phaser.js** (2D 게임 프레임워크) |
 | 게임 로직 | JS (ES Modules) — Phaser와 분리 |
-| 데이터 | JSON (게임 데이터, 세이브는 LocalStorage) |
-| UI | Phaser Canvas + HTML 혼합 |
+| 데이터 | **CSV** (게임 데이터, 세이브는 LocalStorage) |
+| UI | Phaser Canvas (팝업 오버레이 + 우측 패널) |
 | 해상도 | **1280×720** |
 | 전투 | **시각 시뮬레이션** (자동전투, 스프라이트 애니메이션) |
 
@@ -23,9 +23,9 @@
 |------|------|
 | 엔진 | Godot 4.x (GDScript) |
 | 플랫폼 | PC (Steam) |
-| 데이터 | JSON → Resource |
+| 데이터 | CSV → Resource |
 
-> Phaser.js → Godot 이식 시 게임 로직(JS)은 GDScript로 변환, 렌더링은 Godot 씬으로 대체.
+> Phaser.js → Godot 이식 시 game_logic(JS) → GDScript 변환, scenes → Godot 씬 대체. CSV 데이터는 그대로 사용 가능.
 
 ---
 
@@ -36,39 +36,59 @@
 ```
 src/
 ├── index.html
-├── app.js                    # 앱 진입점, Phaser 초기화 (해상도 1280x720)
+├── app.js                    # 진입점, CSV 전체 로드 + Phaser 초기화
 ├── game_logic/               # 순수 게임 로직 (Godot 이식 대상)
-│   ├── SinSystem.js          # 죄종/사기 시스템 (영웅 간 관계)
-│   ├── HeroManager.js        # 영웅 관리 (랜덤 생성, 스탯, 사기)
+│   ├── SinSystem.js          # 죄종/사기/폭주/이탈/연쇄반응 (balance+desertionEffects 주입)
+│   ├── HeroManager.js        # 영웅 관리 (balance 주입)
 │   ├── EventSystem.js        # 이벤트/선택지
-│   ├── ExpeditionManager.js  # 원정 관리
-│   ├── BattleEngine.js       # 전투 계산 (7스탯 기반)
-│   ├── BaseManager.js        # 거점 시설/건설/연구 관리
-│   └── TurnManager.js        # 턴 진행 관리
+│   ├── ExpeditionManager.js  # 원정/방어전 (stagesData+balance 주입)
+│   ├── BattleEngine.js       # 전투 계산 (balance 주입)
+│   ├── BaseManager.js        # 거점/건설/연구/포고령 (policies+balance 주입)
+│   └── TurnManager.js        # 턴 진행 (phases 주입)
 ├── scenes/                   # Phaser 씬 (Godot 이식 시 대체)
 │   ├── TitleScene.js         # 타이틀 화면
 │   ├── HeroSelectScene.js    # 영웅 선택 화면
-│   ├── MainScene.js          # 거점 메인 화면
-│   ├── ActionScene.js        # 행동 선택 화면
+│   ├── MainScene.js          # 거점 메인 (영내/영외 전환 + 우측 패널 + 팝업)
 │   ├── EventScene.js         # 이벤트/선택지 화면
-│   ├── BattleSceneA.js       # 돌진형 전투 시각화 (자동전투)
-│   ├── BattleSceneB.js       # 필드 이동형 전투 시각화 (자동전투)
-│   ├── DuelBattleScene.js    # 1:1 전투 시각화
+│   ├── BattleSceneA.js       # 돌진형 전투 시각화
+│   ├── BattleSceneB.js       # 필드 이동형 전투 시각화 (기본값)
+│   ├── DuelBattleScene.js    # 1:1 전투 (사냥)
 │   ├── ResultScene.js        # 전투 결과 화면
 │   ├── SettlementScene.js    # 정산 화면
 │   └── GameOverScene.js      # 게임 오버 화면
 ├── ui/                       # UI 컴포넌트
 │   └── components/
 ├── assets/                   # 게임 에셋
-│   └── sprites/              # LPC 스프라이트 (4캐릭터 × 4액션)
-└── data/                     # 게임 데이터 (이식 시 그대로)
-    ├── events.json
-    ├── sin_relations.json
-    ├── facilities.json
-    └── stages.json
+│   └── sprites/
+├── store/                    # 상태 관리
+│   ├── Store.js
+│   └── SaveManager.js
+└── data/                     # 게임 데이터 (CSV, 21개 파일)
+    ├── CsvLoader.js           # CSV 파서 + 전체 로더 + 데이터 조립
+    ├── balance.csv            # 밸런스 상수 70+개
+    ├── hero_names.csv         # 영웅 이름 풀
+    ├── sin_types.csv          # 7죄종 정의
+    ├── sin_relations.csv      # 죄종 관계 매트릭스
+    ├── sin_satisfaction.csv   # 만족/불만 조건
+    ├── sin_rampage_chain.csv  # 폭주 연쇄 반응
+    ├── events.csv             # 이벤트 30개 본체
+    ├── event_choices.csv      # 선택지 105개
+    ├── event_effects.csv      # 효과 140개
+    ├── facilities.csv         # 시설 9종
+    ├── research.csv           # 연구 6종
+    ├── chapters.csv           # 7챕터
+    ├── stages.csv             # 스테이지
+    ├── stage_enemies.csv      # 스테이지별 적
+    ├── policies.csv           # 포고령 3×3
+    ├── hunt_enemies.csv       # 사냥 적 5종
+    ├── defense_scaling.csv    # 방어전 스케일링
+    ├── phases.csv             # 턴 4페이즈
+    ├── morale_states.csv      # 사기 5단계
+    ├── desertion_effects.csv  # 이탈 효과
+    └── stat_names.csv         # 스탯 한글명
 ```
 
-> **핵심**: `game_logic/`는 Phaser 의존 없는 순수 JS. `scenes/`가 Phaser 렌더링 담당. Godot 이식 시 game_logic → GDScript, scenes → Godot 씬.
+> **핵심**: `game_logic/`는 Phaser 의존 없는 순수 JS. 모든 밸런스 상수는 CSV에서 로드하여 생성자로 주입. 하드코딩 금지.
 
 ### 구현 순서
 
@@ -90,7 +110,24 @@ src/
 | 14 | 챕터1 콘텐츠 (스테이지 3 + 보스 + 보스 서사) | [x] |
 | 15 | 세이브/로드 | [x] |
 | 16 | UI 폴리시 | [x] |
+| 17 | ActionScene 삭제 → MainScene 영내/영외 전환 + 팝업 | [x] |
+| 18 | JSON → CSV 전면 전환 + 하드코딩 데이터 추출 | [x] |
 
 ---
 
-*마지막 업데이트: 2026-03-25 (Phase 1 전체 구현 완료)*
+## 다음 작업 (미완료)
+
+기획서 대비 코드 점검 결과 아래 항목이 미반영 또는 불일치:
+
+| # | 항목 | 상태 | 상세 |
+|---|------|------|------|
+| 1 | **장비 시스템** | 미구현 | equipment_design.md "재설계 예정". 슬롯 구조만 존재, 아이템 없음 |
+| 2 | **챕터 2~7 콘텐츠** | 미구현 | chapters.csv에 7챕터 정의 완료, stages.csv는 챕터1만 |
+| 3 | **영웅 초상화** | 진행중 | HeroSelectScene에 초상화 자리 추가됨, 이미지 미연결 |
+| 4 | **챕터별 환경 변조 적용** | 미확인 | chapters.csv에 morale_modifier 있으나 게임 내 적용 여부 확인 필요 |
+| 5 | **영웅 서브스탯** | 미구현 | hero_design.md에 7개 서브스탯 정의, 코드 미반영 |
+| 6 | **채집 시스템 상세화** | 기초만 | 영외 카드로 UI 있으나 기획서에 상세 규칙 없음 |
+
+---
+
+*마지막 업데이트: 2026-03-26 (ActionScene→팝업, JSON→CSV 전환, 영내/영외 UI, 기획서 점검)*

@@ -37,7 +37,8 @@ class HeroSelectScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor(C.bgPrimary);
 
         const heroData = this.registry.get('heroData');
-        this.heroManager = new HeroManager(store, heroData);
+        const balance = this.registry.get('balance') || {};
+        this.heroManager = new HeroManager(store, heroData, balance);
 
         // 배경 파티클
         this._drawBgParticles(width, height);
@@ -87,9 +88,9 @@ class HeroSelectScene extends Phaser.Scene {
         this._cardElements.forEach(el => el.destroy());
         this._cardElements = [];
 
-        const CARD_W = 320;
-        const CARD_H = 420;
-        const GAP = 40;
+        const CARD_W = 260;
+        const CARD_H = 370;
+        const GAP = 30;
         const totalW = CARD_W * 3 + GAP * 2;
         const startX = (width - totalW) / 2;
         const cardY = 110;
@@ -126,61 +127,77 @@ class HeroSelectScene extends Phaser.Scene {
         sinBar.fillRect(x + 2, y + 2, w - 4, 4);
         this._cardElements.push(sinBar);
 
-        let ty = y + 20;
+        // 초상화 자리 (왼쪽 위, 카드 가로의 ~절반)
+        const PORT_SIZE = Math.floor(w / 2) - 16;
+        const PORT_X = x + 12;
+        const PORT_Y = y + 16;
+        const portG = this.add.graphics();
+        portG.fillStyle(0x0e0e1a, 1);
+        portG.fillRect(PORT_X, PORT_Y, PORT_SIZE, PORT_SIZE);
+        portG.lineStyle(1, C.borderSecondary);
+        portG.strokeRect(PORT_X, PORT_Y, PORT_SIZE, PORT_SIZE);
+        // 대각선 (빈 초상화 표시)
+        portG.lineStyle(1, C.borderPrimary, 0.4);
+        portG.lineBetween(PORT_X, PORT_Y, PORT_X + PORT_SIZE, PORT_Y + PORT_SIZE);
+        portG.lineBetween(PORT_X + PORT_SIZE, PORT_Y, PORT_X, PORT_Y + PORT_SIZE);
+        this._cardElements.push(portG);
 
-        // 이름
-        this._cardElements.push(this.add.text(cx, ty, hero.name, {
-            fontSize: '20px', fontFamily: FONT_BOLD, color: C.textPrimary,
+        // 이름 (초상화 오른쪽)
+        const infoX = PORT_X + PORT_SIZE + 10;
+        let ty = PORT_Y + 4;
+        this._cardElements.push(this.add.text(infoX, ty, hero.name, {
+            fontSize: '18px', fontFamily: FONT_BOLD, color: C.textPrimary,
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
-        }).setOrigin(0.5));
-        ty += 30;
+        }));
+        ty += 24;
 
-        // 죄종
-        this._cardElements.push(this.add.text(cx, ty, `[ ${hero.sinName} ]`, {
-            fontSize: '16px', fontFamily: FONT_BOLD, color: SIN_COLOR_HEX[hero.sinType] || C.textMuted
-        }).setOrigin(0.5));
-        ty += 28;
+        // 죄종 (초상화 오른쪽)
+        this._cardElements.push(this.add.text(infoX, ty, `[ ${hero.sinName} ]`, {
+            fontSize: '13px', fontFamily: FONT_BOLD, color: SIN_COLOR_HEX[hero.sinType] || C.textMuted
+        }));
+        ty += 22;
 
-        // 결함 설명
+        // 결함 설명 (초상화 오른쪽)
         if (hero.sinFlaw) {
-            this._cardElements.push(this.add.text(cx, ty, `"${hero.sinFlaw}"`, {
-                fontSize: '11px', fontFamily: FONT, color: C.textMuted,
-                fontStyle: 'italic', align: 'center',
-                wordWrap: { width: w - 40 }
-            }).setOrigin(0.5));
-            ty += 30;
+            this._cardElements.push(this.add.text(infoX, ty, `"${hero.sinFlaw}"`, {
+                fontSize: '10px', fontFamily: FONT, color: C.textMuted,
+                fontStyle: 'italic',
+                wordWrap: { width: w - PORT_SIZE - 40 }
+            }));
         }
+
+        ty = PORT_Y + PORT_SIZE + 14;
 
         // 구분선
         const divG = this.add.graphics();
         divG.lineStyle(1, C.borderPrimary);
-        divG.lineBetween(x + 16, ty, x + w - 16, ty);
+        divG.lineBetween(x + 12, ty, x + w - 12, ty);
         this._cardElements.push(divG);
-        ty += 14;
+        ty += 12;
 
         // 스탯 라벨
         this._cardElements.push(this.add.text(cx, ty, '─ 능력치 ─', {
             fontSize: '9px', fontFamily: FONT, color: C.textMuted
         }).setOrigin(0.5));
-        ty += 18;
+        ty += 16;
 
         // 스탯 바 그리기
         const statKeys = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
-        const barW = w - 60;
-        const barH = 12;
+        const barW = w - 56;
+        const barH = 11;
 
         for (const key of statKeys) {
             const val = hero.stats[key];
             const label = STAT_LABELS[key];
 
             // 라벨
-            this._cardElements.push(this.add.text(x + 16, ty + 1, label, {
-                fontSize: '11px', fontFamily: FONT, color: C.textSecondary
+            this._cardElements.push(this.add.text(x + 12, ty + 1, label, {
+                fontSize: '10px', fontFamily: FONT, color: C.textSecondary
             }));
 
             // 바 배경 (inset)
             const barBg = this.add.graphics();
-            const bx = x + 40;
+            const bx = x + 36;
             barBg.fillStyle(0x0e0e1a, 1);
             barBg.fillRect(bx, ty, barW, barH);
             barBg.lineStyle(1, C.borderPrimary);
@@ -196,11 +213,11 @@ class HeroSelectScene extends Phaser.Scene {
             this._cardElements.push(barFill);
 
             // 수치
-            this._cardElements.push(this.add.text(x + w - 16, ty + 1, `${val}`, {
-                fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
+            this._cardElements.push(this.add.text(x + w - 12, ty + 1, `${val}`, {
+                fontSize: '10px', fontFamily: FONT_BOLD, color: C.textPrimary
             }).setOrigin(1, 0));
 
-            ty += barH + 6;
+            ty += barH + 5;
         }
 
         ty += 8;
@@ -223,7 +240,8 @@ class HeroSelectScene extends Phaser.Scene {
         // 시작
         this._createBtn(width / 2 + 140, btnY, 180, 40, '▶ 여정 시작', '#e03030', () => {
             SaveManager.deleteSave();
-            store.setState('gold', 500);
+            const balance = this.registry.get('balance') || {};
+            store.setState('gold', balance.starting_gold ?? 500);
             this.heroManager.confirmHeroes(this._heroes);
 
             // 페이드 아웃
