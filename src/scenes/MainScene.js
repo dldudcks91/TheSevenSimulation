@@ -1165,7 +1165,7 @@ class MainScene extends Phaser.Scene {
         const _drawStatRow = (xPos, yPos, label, val, labelW = 36, barW = statBarMaxW) => {
             const valColor = val >= 15 ? '#40d870' : val >= 10 ? '#40a0f8' : val >= 7 ? '#f8b830' : '#f04040';
             const valColorHex = Phaser.Display.Color.HexStringToColor(valColor).color;
-            this._pp(this.add.text(xPos, yPos, label, { fontSize: '11px', fontFamily: FONT, color: C.textSecondary }));
+            this._pp(this.add.text(xPos, yPos, label, { fontSize: '12px', fontFamily: FONT, color: C.textSecondary }));
             const bx = xPos + labelW;
             const bw = barW;
             const bh = 10;
@@ -1178,7 +1178,7 @@ class MainScene extends Phaser.Scene {
             const fw = Math.max(0, Math.min(1, val / statMax)) * (bw - 2);
             g.fillStyle(valColorHex, 1);
             g.fillRect(bx + 1, by + 1, fw, bh - 2);
-            this._pp(this.add.text(bx + bw + 6, yPos, `${val}`, { fontSize: '11px', fontFamily: FONT_BOLD, color: valColor }));
+            this._pp(this.add.text(bx + bw + 6, yPos, `${val}`, { fontSize: '12px', fontFamily: FONT_BOLD, color: valColor }));
         };
 
         // ■ 기본
@@ -1194,7 +1194,7 @@ class MainScene extends Phaser.Scene {
         for (let i = 0; i < statLabels.length; i++) {
             const st = statLabels[i];
             const xPos = i % 2 === 0 ? col1X : col2X;
-            _drawStatRow(xPos, y, st.label, s[st.key]);
+            _drawStatRow(xPos, y, st.label, s[st.key], 40);
             if (i % 2 === 1 || i === statLabels.length - 1) y += rowH;
         }
         y += sectionGap;
@@ -1218,7 +1218,7 @@ class MainScene extends Phaser.Scene {
             const act = actionStats[i];
             const xPos = i % 2 === 0 ? col1X : col2X;
             const val = act.b ? Math.round((s[act.a] + s[act.b]) / 2) : s[act.a];
-            _drawStatRow(xPos, y, act.label, val, 44);
+            _drawStatRow(xPos, y, act.label, val, 48);
             if (i % 2 === 1 || i === actionStats.length - 1) y += rowH;
         }
         y += sectionGap;
@@ -1243,7 +1243,7 @@ class MainScene extends Phaser.Scene {
             const st = subLabels[i];
             const xPos = i % 2 === 0 ? col1X : col2X;
             const val = st.src === 'sub' ? (sub[st.key] ?? 0) : (derived[st.key] ?? 0);
-            _drawStatRow(xPos, y, st.label, val, 44);
+            _drawStatRow(xPos, y, st.label, val, 48);
             if (i % 2 === 1 || i === subLabels.length - 1) y += rowH;
         }
         y += sectionGap;
@@ -2169,6 +2169,7 @@ class MainScene extends Phaser.Scene {
     // 턴 진행 (기존 로직 유지)
     // ═══════════════════════════════════
     _startMorningPhase() {
+        SaveManager.save(store);  // 아침 시작 자동 저장
         this._updatePhaseDisplay();
         const events = this.eventSystem.generateEvents();
         if (events.length > 0) { this._eventQueue = [...events]; this._showNextEvent(); }
@@ -2181,7 +2182,7 @@ class MainScene extends Phaser.Scene {
     }
     _onEndTurn() {
         if (this.turnManager.getCurrentTurn().phase !== 'day') return;
-        this._processDayPhase(); this.turnManager.advancePhase(); this._updatePhaseDisplay(); this._processEveningPhase();
+        this._processDayPhase(); SaveManager.save(store); this.turnManager.advancePhase(); this._updatePhaseDisplay(); this._processEveningPhase();
     }
     _processDayPhase() {
         this.baseManager.processBuildTurn(); this.baseManager.processResearchTurn();
@@ -2198,7 +2199,7 @@ class MainScene extends Phaser.Scene {
                 onComplete: () => { this._refreshActiveTab(); this._updateGold(); if (expResult.isBoss && expResult.victory) { this.scene.start('GameOverScene', { reason: 'victory', day: this.turnManager.getCurrentTurn().day }); return; } this._startNightPhase(); } });
         } else { this._startNightPhase(); }
     }
-    _startNightPhase() { this.turnManager.advancePhase(); this._updatePhaseDisplay(); this._processNightPhase(); }
+    _startNightPhase() { SaveManager.save(store); this.turnManager.advancePhase(); this._updatePhaseDisplay(); this._processNightPhase(); }
     _processNightPhase() {
         const policyDelta = this.baseManager.getPolicyMoraleEffect();
         if (policyDelta !== 0) for (const h of this.heroManager.getHeroes()) this.heroManager.updateMorale(h.id, policyDelta);

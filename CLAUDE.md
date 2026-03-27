@@ -52,9 +52,17 @@ TheSevenSimulation/
 │       └── workflow.md        # 구현 워크플로우
 └── src/                       # 소스 코드 (Phase 1: Phaser.js)
     ├── game_logic/            # 순수 게임 로직 (Godot 이식 대상, balance 주입)
+    │   ├── BattleEngine.js    # 전투 계산 (MELEE/TAG/DUEL 3모드 + SP/카드)
+    │   ├── SpriteComposer.js  # LPC 랜덤 외형 생성 (순수 JS)
+    │   └── ...
     ├── scenes/                # Phaser 씬 (Godot 이식 시 대체)
+    │   ├── MapScene.js        # 단일 맵 뷰 (모든 페이즈, 영내+영외)
+    │   ├── MapDefenseMode.js  # 방어전 오버레이 (MapScene 위, 3~5일 간격)
+    │   ├── MapHuntPopup.js    # 사냥 1:1 팝업 (MapScene 위)
+    │   ├── SpriteRenderer.js  # LPC 스프라이트 런타임 합성 (RenderTexture)
+    │   └── ...
     ├── ui/                    # UI 컴포넌트
-    └── data/                  # 게임 데이터 CSV (21개) + CsvLoader.js
+    └── data/                  # 게임 데이터 CSV (21개+) + CsvLoader.js
 ```
 
 ## 기획 문서 위치

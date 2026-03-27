@@ -16,6 +16,9 @@ import SinSystem from '../game_logic/SinSystem.js';
 import ExpeditionManager from '../game_logic/ExpeditionManager.js';
 import SpriteComposer from '../game_logic/SpriteComposer.js';
 import SaveManager from '../store/SaveManager.js';
+import MapDefenseMode from './MapDefenseMode.js';
+import MapHuntPopup from './MapHuntPopup.js';
+import BattleEngine, { BATTLE_MODES } from '../game_logic/BattleEngine.js';
 import { FONT, FONT_BOLD } from '../constants.js';
 
 // ═══ 색상 ═══
@@ -71,15 +74,14 @@ const TABS = [
     { id: 'policy', icon: '📜', label: '정책' },
 ];
 
-// 건물 슬롯 — 이미지 좌측 성벽 안 5x5 그리드
-// 이미지 기준 성벽 영역: 약 x:30~490, y:20~415 (1280x440 표시 시)
-const GRID_X = 35;       // 그리드 시작 X
-const GRID_Y = 22;       // 그리드 시작 Y
+// 건물 슬롯 — 이미지 좌측 성벽 안 5x5 그리드 (디버그로 확정)
+const GRID_X = 34;
+const GRID_Y = 70;
 const GRID_COLS = 5;
 const GRID_ROWS = 5;
-const CELL_W = 90;       // 셀 폭
-const CELL_H = 78;       // 셀 높이
-const CELL_GAP = 2;      // 셀 간격
+const CELL_W = 65;
+const CELL_H = 65;
+const CELL_GAP = 4;
 
 const BUILDING_SLOTS = [];
 for (let r = 0; r < GRID_ROWS; r++) {
@@ -92,11 +94,18 @@ for (let r = 0; r < GRID_ROWS; r++) {
 }
 const PLAZA_INDEX = 12; // 중앙 (2,2)
 
-// 영외 카드 위치 (우측 600px 안에 3장)
-const OUTSIDE_CARDS = [
-    { x: 780,  icon: '🌿', title: '채집', desc: '자원 채집', color: 0x30b050, colorHex: '#30b050', action: 'gather' },
-    { x: 980,  icon: '⚔️', title: '원정', desc: '파티 파견', color: 0xe03030, colorHex: '#e03030', action: 'expeditionList' },
-    { x: 1180, icon: '🏹', title: '사냥', desc: '1명 사냥', color: 0xd0a020, colorHex: '#d0a020', action: 'hunt' },
+// 영외 행동 슬롯 (가운데 상단, 4개 나란히)
+const _OS_GAP = 10;
+const _OS_W = 100;
+const _OS_COUNT = 4;
+const _OS_TOTAL = _OS_COUNT * _OS_W + (_OS_COUNT - 1) * _OS_GAP;
+const _OS_START_X = (1280 - _OS_TOTAL) / 2 + _OS_W / 2;
+const _OS_Y = 60;
+const OUTSIDE_SLOTS = [
+    { x: _OS_START_X + 0 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🌿', title: '채집', color: 0x30b050, colorHex: '#30b050', action: 'gather' },
+    { x: _OS_START_X + 1 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🪓', title: '벌목', color: 0x8a6a3a, colorHex: '#8a6a3a', action: 'lumber' },
+    { x: _OS_START_X + 2 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🏹', title: '사냥', color: 0xd0a020, colorHex: '#d0a020', action: 'hunt' },
+    { x: _OS_START_X + 3 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '⚔️', title: '원정', color: 0xe03030, colorHex: '#e03030', action: 'expeditionList' },
 ];
 
 class MapScene extends Phaser.Scene {
@@ -110,6 +119,25 @@ class MapScene extends Phaser.Scene {
     preload() {
         // 맵 배경 이미지
         this.load.image('map_bg', './assets/map_bg.png');
+
+        // 방어전/사냥용 몬스터 + 영웅 스프라이트
+        const spriteTypes = [
+            'warrior_male', 'warrior_female', 'base_male', 'base_female',
+            'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
+            'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
+            'boss_demon', 'boss_shadow',
+        ];
+        const actions = ['idle', 'slash', 'hurt'];
+        for (const type of spriteTypes) {
+            for (const action of actions) {
+                const key = `${type}_${action}`;
+                if (!this.textures.exists(key)) {
+                    this.load.spritesheet(key, `assets/sprites/${type}/${action}.png`, {
+                        frameWidth: 64, frameHeight: 64
+                    });
+                }
+            }
+        }
     }
 
     create() {
@@ -179,6 +207,16 @@ class MapScene extends Phaser.Scene {
         } else {
             const turn = this.turnManager.getCurrentTurn();
             if (turn.phase === 'morning') this._startMorningPhase();
+        }
+
+    }
+
+    update(time, delta) {
+        if (this._defenseMode && this._defenseMode.active) {
+            this._defenseMode.update(time, delta);
+        }
+        if (this._huntPopup && this._huntPopup.active) {
+            this._huntPopup.update(time, delta);
         }
     }
 
@@ -286,10 +324,12 @@ class MapScene extends Phaser.Scene {
     _drawMapWorld() {
         const mc = this.mapContainer;
 
-        // 배경 이미지 (있으면 높이 맞춰서 반복 배치, 없으면 폴백)
+        // 배경 이미지 (높이 기준 비율 유지, 가로는 맵 폭에 맞춤)
         if (this.textures.exists('map_bg')) {
             const bgImg = this.add.image(0, 0, 'map_bg').setOrigin(0, 0);
-            bgImg.setDisplaySize(1280, MAP_WORLD_H);
+            const tex = this.textures.get('map_bg').getSourceImage();
+            const scale = MAP_WORLD_H / tex.height;
+            bgImg.setScale(scale);
             mc.add(bgImg);
         } else {
             const ground = this.add.graphics();
@@ -337,34 +377,34 @@ class MapScene extends Phaser.Scene {
             this.buildingSlots.push({ bg, nameText, statusText, heroText, slotIndex: i });
         });
 
-        // 영외 카드들
-        const CARD_W = 180;
-        const CARD_H = 300;
-        OUTSIDE_CARDS.forEach((card) => {
-            const cardX = card.x - CARD_W / 2;
-            const cardY = (MAP_WORLD_H - CARD_H) / 2;
+        // 영외 행동 슬롯 (건물 슬롯과 동일 반투명 스타일)
+        const OS_W = 100;
+        const OS_H = 80;
+        const osHw = OS_W / 2;
+        const osHh = OS_H / 2;
+        OUTSIDE_SLOTS.forEach((slot) => {
+            const container = this.add.container(slot.x, slot.y);
 
             const bg = this.add.graphics();
-            this._drawOutsideCard(bg, cardX, cardY, CARD_W, CARD_H, card.color, false);
-            mc.add(bg);
+            this._drawSlotBg(bg, osHw, osHh, C.emptySlot, 0.3);
+            container.add(bg);
 
-            const iconT = this.add.text(card.x, cardY + CARD_H * 0.25, card.icon, { fontSize: '48px', fontFamily: FONT }).setOrigin(0.5);
-            mc.add(iconT);
-            const titleT = this.add.text(card.x, cardY + CARD_H * 0.52, card.title, {
-                fontSize: '20px', fontFamily: FONT_BOLD, color: card.colorHex,
-                shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
-            }).setOrigin(0.5);
-            mc.add(titleT);
-            const descT = this.add.text(card.x, cardY + CARD_H * 0.68, card.desc, {
-                fontSize: '10px', fontFamily: FONT, color: C.textSecondary, align: 'center', lineSpacing: 5
-            }).setOrigin(0.5);
-            mc.add(descT);
+            const iconT = this.add.text(0, -14, slot.icon, { fontSize: '22px', fontFamily: FONT }).setOrigin(0.5);
+            container.add(iconT);
 
-            const zone = this.add.zone(card.x, MAP_WORLD_H / 2, CARD_W, CARD_H).setInteractive({ useHandCursor: true });
-            zone.on('pointerover', () => this._drawOutsideCard(bg, cardX, cardY, CARD_W, CARD_H, card.color, true));
-            zone.on('pointerout', () => this._drawOutsideCard(bg, cardX, cardY, CARD_W, CARD_H, card.color, false));
-            zone.on('pointerdown', () => { this._showPanelAction(card.action); });
-            mc.add(zone);
+            const titleT = this.add.text(0, 16, slot.title, {
+                fontSize: '10px', fontFamily: FONT, color: slot.colorHex,
+                shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
+            }).setOrigin(0.5);
+            container.add(titleT);
+
+            const zone = this.add.zone(0, 0, OS_W, OS_H).setInteractive({ useHandCursor: true });
+            zone.on('pointerover', () => { this._drawSlotBg(bg, osHw, osHh, C.buildingHover, 0.45, slot.color); });
+            zone.on('pointerout', () => { this._drawSlotBg(bg, osHw, osHh, C.emptySlot, 0.3); });
+            zone.on('pointerdown', () => { this._showPanelAction(slot.action); });
+            container.add(zone);
+
+            mc.add(container);
         });
 
         this._updateBuildings();
@@ -397,21 +437,6 @@ class MapScene extends Phaser.Scene {
         bg.strokeRoundedRect(-hw, -hh, hw * 2, hh * 2, 3);
     }
 
-    _drawOutsideCard(bg, x, y, w, h, accentColor, hover) {
-        bg.clear();
-        bg.fillStyle(hover ? C.bgTertiary : C.bgSecondary, 1);
-        bg.fillRoundedRect(x, y, w, h, 6);
-        bg.lineStyle(2, hover ? accentColor : C.borderSecondary);
-        bg.strokeRoundedRect(x, y, w, h, 6);
-        bg.fillStyle(accentColor, hover ? 0.8 : 0.5);
-        bg.fillRect(x + 3, y + 3, w - 6, 4);
-        bg.lineStyle(1, C.borderHighlight, hover ? 0.3 : 0.15);
-        bg.lineBetween(x + 3, y + 3, x + w - 3, y + 3);
-        bg.lineBetween(x + 3, y + 3, x + 3, y + h - 3);
-        bg.lineStyle(1, C.borderDark, 0.5);
-        bg.lineBetween(x + w - 3, y + 3, x + w - 3, y + h - 3);
-        bg.lineBetween(x + 3, y + h - 3, x + w - 3, y + h - 3);
-    }
 
     // ═══════════════════════════════════
     // 하단 UI 패널 (고정)
@@ -1483,11 +1508,13 @@ class MapScene extends Phaser.Scene {
 
         const goldReward = (b.hunt_gold_base ?? 15) + day * (b.hunt_gold_per_day ?? 3);
 
-        this.scene.launch('DuelBattleScene', {
+        this._huntPopup = new MapHuntPopup(this, {
             hero,
             enemy,
+            balance: b,
             stageName: `사냥 — ${template.name}`,
-            onClose: (result) => {
+            onComplete: (result) => {
+                this._huntPopup = null;
                 if (result.victory) {
                     const gold = store.getState('gold') || 0;
                     store.setState('gold', gold + goldReward);
@@ -1501,6 +1528,7 @@ class MapScene extends Phaser.Scene {
                 this._updateGold();
             }
         });
+        this._huntPopup.start();
     }
 
     // ═══════════════════════════════════
@@ -1932,6 +1960,7 @@ class MapScene extends Phaser.Scene {
     // 턴 진행
     // ═══════════════════════════════════
     _startMorningPhase() {
+        SaveManager.save(store);  // 아침 시작 자동 저장
         this._updatePhaseDisplay();
         const events = this.eventSystem.generateEvents();
         if (events.length > 0) { this._eventQueue = [...events]; this._showNextEvent(); }
@@ -1950,6 +1979,7 @@ class MapScene extends Phaser.Scene {
     _onEndTurn() {
         if (this.turnManager.getCurrentTurn().phase !== 'day') return;
         this._processDayPhase();
+        SaveManager.save(store);  // 낮→저녁 전환 자동 저장
         this.turnManager.advancePhase();
         this._updatePhaseDisplay();
         this._processEveningPhase();
@@ -1982,43 +2012,114 @@ class MapScene extends Phaser.Scene {
         } else { this._startNightPhase(); }
     }
 
-    _startNightPhase() { this.turnManager.advancePhase(); this._updatePhaseDisplay(); this._processNightPhase(); }
+    _startNightPhase() { SaveManager.save(store); this.turnManager.advancePhase(); this._updatePhaseDisplay(); this._processNightPhase(); }
 
     _processNightPhase() {
         const policyDelta = this.baseManager.getPolicyMoraleEffect();
         if (policyDelta !== 0) for (const h of this.heroManager.getHeroes()) this.heroManager.updateMorale(h.id, policyDelta);
         const turn = this.turnManager.getCurrentTurn();
-        const defenseResult = this.expeditionManager.simulateDefense(turn.day);
+
+        // 습격 빈도 체크 (3~5일 간격)
+        if (!this.expeditionManager.shouldRaid(turn.day)) {
+            // 습격 없는 밤 → 바로 결산
+            this._finishNightPhase(turn, null);
+            return;
+        }
+
+        // 방어전 시뮬레이션용 엔진 생성
         const baseHeroes = this.heroManager.getBaseHeroes().filter(h => h.status !== 'injured');
+        const soldiers = store.getState('soldiers') || 0;
         const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, sinType: h.sinType, appearance: h.appearance || null }));
-        const battleSceneKey = this.registry.get('battleScene') || 'BattleSceneB';
-        this.scene.launch(battleSceneKey, {
-            log: defenseResult.log || [], victory: defenseResult.victory, stageName: `밤 습격 — ${turn.day}일차`, heroes: heroData,
-            onClose: () => {
-                const b = this.balance;
-                if (defenseResult.victory) {
-                    store.setState('gold', (store.getState('gold') || 0) + (b.defense_victory_gold_base ?? 10) + turn.day * (b.defense_victory_gold_per_day ?? 2));
-                    for (const h of this.heroManager.getHeroes()) this.heroManager.updateMorale(h.id, b.defense_victory_morale ?? 5);
-                } else {
-                    for (const h of this.heroManager.getHeroes()) this.heroManager.updateMorale(h.id, b.defense_defeat_morale ?? -10);
+
+        if (baseHeroes.length === 0 && soldiers === 0) {
+            // 방어 불가
+            this._finishNightPhase(turn, { victory: false, reason: 'no_defenders', log: [], soldiersLost: 0 });
+            return;
+        }
+
+        // 적 생성 (balance 기반 스케일링)
+        const b = this.balance;
+        const scale = Math.floor(turn.day / 3) + 1;
+        const enemies = [];
+        for (let i = 0; i < scale + 1; i++) {
+            enemies.push({
+                name: `습격병 ${i + 1}`,
+                hp: (b.defense_enemy_hp_base ?? 30) + turn.day * (b.defense_enemy_hp_per_day ?? 3),
+                atk: (b.defense_enemy_atk_base ?? 8) + turn.day * (b.defense_enemy_atk_per_day ?? 1),
+                spd: b.defense_enemy_spd ?? 5
+            });
+        }
+
+        // BattleEngine 실시간 모드로 초기화
+        const engine = new BattleEngine(this.balance);
+        engine.init(baseHeroes, enemies, 'defense', soldiers, BATTLE_MODES.MELEE);
+
+        const cards = this.registry.get('battleCards') || [];
+
+        // MapDefenseMode 오버레이 시작
+        this._defenseMode = new MapDefenseMode(this, {
+            engine,
+            heroData,
+            reserveHeroes: [],
+            stageName: `밤 습격 — ${turn.day}일차`,
+            cards,
+            onComplete: (victory) => {
+                this._defenseMode = null;
+
+                // 전투 결과 반영 (영웅 상태 + 병사)
+                const result = engine.getResult();
+                const heroes = this.heroManager.store.getState('heroes') || [];
+                for (const hr of result.heroResults) {
+                    const hero = heroes.find(h => h.id === hr.id);
+                    if (hero && !hr.alive) hero.status = 'injured';
                 }
-                this._checkSinConditions();
-                this.sinSystem.setRampageThreshold(this.baseManager.getRampageThreshold());
-                const extremeResults = this.sinSystem.checkExtremes();
-                this.scene.launch('SettlementScene', {
-                    defenseResult, extremeResults, turn, heroes: this.heroManager.getHeroes(),
-                    onComplete: () => {
-                        this._refreshActiveTab(); this._updateGold(); this._updateSoldiers(); this._updateBuildings();
-                        if (this.heroManager.getHeroes().length === 0) {
-                            this.scene.start('GameOverScene', { reason: 'defeat', day: turn.day, details: '모든 영웅이 떠났습니다.' });
-                            return;
-                        }
-                        SaveManager.save(store);
-                        this.turnManager.advancePhase();
-                        this._updatePhaseDisplay();
-                        this._startMorningPhase();
-                    }
-                });
+                this.heroManager.store.setState('heroes', [...heroes]);
+                store.setState('soldiers', result.soldiersSurvived || 0);
+
+                const defenseResult = {
+                    victory,
+                    heroResults: result.heroResults,
+                    soldiersDeployed: result.soldiersDeployed || 0,
+                    soldiersSurvived: result.soldiersSurvived || 0,
+                    soldiersLost: result.soldiersLost || 0,
+                    rounds: result.rounds,
+                    log: result.log,
+                    enemyCount: enemies.length
+                };
+
+                this._finishNightPhase(turn, defenseResult);
+            }
+        });
+        this._defenseMode.start();
+    }
+
+    /** 밤 페이즈 종료 처리 (방어전 결과 반영 + 결산) */
+    _finishNightPhase(turn, defenseResult) {
+        const b = this.balance;
+        if (defenseResult) {
+            if (defenseResult.victory) {
+                store.setState('gold', (store.getState('gold') || 0) + (b.defense_victory_gold_base ?? 10) + turn.day * (b.defense_victory_gold_per_day ?? 2));
+                for (const h of this.heroManager.getHeroes()) this.heroManager.updateMorale(h.id, b.defense_victory_morale ?? 5);
+            } else {
+                for (const h of this.heroManager.getHeroes()) this.heroManager.updateMorale(h.id, b.defense_defeat_morale ?? -10);
+            }
+        }
+        this._checkSinConditions();
+        this.sinSystem.setRampageThreshold(this.baseManager.getRampageThreshold());
+        const extremeResults = this.sinSystem.checkExtremes();
+        this.scene.launch('SettlementScene', {
+            defenseResult: defenseResult || { victory: true, noRaid: true },
+            extremeResults, turn, heroes: this.heroManager.getHeroes(),
+            onComplete: () => {
+                this._refreshActiveTab(); this._updateGold(); this._updateSoldiers(); this._updateBuildings();
+                if (this.heroManager.getHeroes().length === 0) {
+                    this.scene.start('GameOverScene', { reason: 'defeat', day: turn.day, details: '모든 영웅이 떠났습니다.' });
+                    return;
+                }
+                SaveManager.save(store);
+                this.turnManager.advancePhase();
+                this._updatePhaseDisplay();
+                this._startMorningPhase();
             }
         });
     }

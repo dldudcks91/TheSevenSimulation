@@ -77,3 +77,5 @@ defense_enemy_hp_per_day,8
 defense_enemy_atk_base,12
 defense_enemy_atk_per_day,2
 defense_enemy_spd,5
+raid_interval_min,3
+raid_interval_max,5

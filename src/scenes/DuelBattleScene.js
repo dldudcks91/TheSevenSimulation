@@ -35,7 +35,46 @@ const DIR_SOUTH = 2;
 const ANIM_FPS = 8;
 
 const DEFAULT_SPRITE = 'warrior_male';
-const ENEMY_SPRITE_POOL = ['warrior_female', 'base_male', 'base_female'];
+
+// 몬스터 스프라이트 (LPC monsters)
+const MONSTER_SPRITES = [
+    'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
+    'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
+];
+const BOSS_SPRITES = ['boss_demon', 'boss_shadow'];
+
+const ENEMY_NAME_SPRITE_MAP = {
+    '박쥐': 'monster_bat',
+    '사냥개': 'monster_worm',
+    '졸개': 'monster_slime',
+    '전사': 'monster_ghost',
+    '마법사': 'monster_eyeball',
+    '근위병': 'monster_pumpking',
+    '정예': 'monster_snake',
+    '꽃': 'monster_bee',
+    '늑대': 'monster_worm',
+    '멧돼지': 'monster_slime',
+    '거미': 'monster_bee',
+    '곰': 'monster_pumpking',
+    '벌레': 'monster_worm',
+    '유령': 'monster_ghost',
+    '슬라임': 'monster_slime',
+    '뱀': 'monster_snake',
+    '눈알': 'monster_eyeball',
+    '호박': 'monster_pumpking',
+};
+
+function pickEnemySprite(name, index = 0) {
+    if (name.includes('—') || name.includes('화신')) {
+        return BOSS_SPRITES[index % BOSS_SPRITES.length];
+    }
+    for (const [keyword, sprite] of Object.entries(ENEMY_NAME_SPRITE_MAP)) {
+        if (name.includes(keyword)) return sprite;
+    }
+    return MONSTER_SPRITES[index % MONSTER_SPRITES.length];
+}
+
+const ENEMY_SPRITE_POOL = MONSTER_SPRITES; // 하위 호환
 
 const SIN_SPRITE_MAP = {
     wrath: 'hero_wrath',
@@ -90,7 +129,12 @@ class DuelBattleScene extends Phaser.Scene {
     }
 
     preload() {
-        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female', ...HERO_SPRITE_TYPES];
+        const types = [
+            'warrior_male', 'warrior_female', 'base_male', 'base_female',
+            ...HERO_SPRITE_TYPES,
+            ...MONSTER_SPRITES,
+            ...BOSS_SPRITES,
+        ];
         const actions = ['idle', 'slash', 'hurt'];
 
         for (const type of types) {
@@ -200,7 +244,7 @@ class DuelBattleScene extends Phaser.Scene {
 
     _createEnemyUnit() {
         const enemy = this._enemyData;
-        const spriteType = ENEMY_SPRITE_POOL[Math.floor(Math.random() * ENEMY_SPRITE_POOL.length)];
+        const spriteType = pickEnemySprite(enemy.name);
         const units = this.engine.getUnits();
         const enemyUnit = units.enemies[0];
 
@@ -224,9 +268,7 @@ class DuelBattleScene extends Phaser.Scene {
         sprite.setScale(SPRITE_SCALE);
         sprite.play(idleAnim);
 
-        if (!isHero) {
-            sprite.setTint(0xff8888);
-        }
+        // 몬스터 전용 스프라이트 사용 — 틴트 불필요
         container.add(sprite);
 
         const halfH = (FRAME_SIZE * SPRITE_SCALE) / 2;
@@ -585,7 +627,8 @@ class DuelBattleScene extends Phaser.Scene {
     // ═══════════════════════════════════
 
     _createAnimations() {
-        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female'];
+        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female',
+            ...MONSTER_SPRITES, ...BOSS_SPRITES];
 
         for (const type of types) {
             // slash east

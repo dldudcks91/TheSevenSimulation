@@ -32,7 +32,50 @@ const DIR_EAST = 3;
 const DIR_WEST = 1;
 
 const DEFAULT_SPRITE = 'warrior_male';
-const ENEMY_SPRITES = ['warrior_female', 'base_male', 'base_female'];
+
+// 몬스터 스프라이트 (LPC monsters)
+const MONSTER_SPRITES = [
+    'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
+    'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
+];
+const BOSS_SPRITES = ['boss_demon', 'boss_shadow'];
+
+// 적 이름 키워드 → 스프라이트 매핑
+const ENEMY_NAME_SPRITE_MAP = {
+    '박쥐': 'monster_bat',
+    '사냥개': 'monster_worm',
+    '졸개': 'monster_slime',
+    '전사': 'monster_ghost',
+    '마법사': 'monster_eyeball',
+    '근위병': 'monster_pumpking',
+    '정예': 'monster_snake',
+    '꽃': 'monster_bee',
+    '늑대': 'monster_worm',
+    '멧돼지': 'monster_slime',
+    '거미': 'monster_bee',
+    '곰': 'monster_pumpking',
+    '벌레': 'monster_worm',
+    '유령': 'monster_ghost',
+    '슬라임': 'monster_slime',
+    '뱀': 'monster_snake',
+    '눈알': 'monster_eyeball',
+    '호박': 'monster_pumpking',
+};
+
+function pickEnemySprite(name, index) {
+    // 보스 체크 (이름에 '—' 포함)
+    if (name.includes('—') || name.includes('화신')) {
+        return BOSS_SPRITES[index % BOSS_SPRITES.length];
+    }
+    // 키워드 매칭
+    for (const [keyword, sprite] of Object.entries(ENEMY_NAME_SPRITE_MAP)) {
+        if (name.includes(keyword)) return sprite;
+    }
+    // 폴백: 인덱스 순환
+    return MONSTER_SPRITES[index % MONSTER_SPRITES.length];
+}
+
+const ENEMY_SPRITES = MONSTER_SPRITES; // 하위 호환
 
 const SIN_SPRITE_MAP = {
     wrath: 'hero_wrath',
@@ -67,7 +110,12 @@ class BattleSceneB extends Phaser.Scene {
     }
 
     preload() {
-        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female', ...HERO_SPRITE_TYPES];
+        const types = [
+            'warrior_male', 'warrior_female', 'base_male', 'base_female',
+            ...HERO_SPRITE_TYPES,
+            ...MONSTER_SPRITES,
+            ...BOSS_SPRITES,
+        ];
         const actions = ['idle', 'slash', 'hurt'];
         for (const type of types) {
             for (const action of actions) {
@@ -189,7 +237,7 @@ class BattleSceneB extends Phaser.Scene {
         this._enemyNames = unitsData.enemies.map(u => u.name);
         this._enemySpriteMap = {};
         unitsData.enemies.forEach((u, i) => {
-            this._enemySpriteMap[u.name] = ENEMY_SPRITES[i % ENEMY_SPRITES.length];
+            this._enemySpriteMap[u.name] = pickEnemySprite(u.name, i);
         });
 
         if (unitsData.soldiers) {
@@ -235,7 +283,7 @@ class BattleSceneB extends Phaser.Scene {
         this._enemyNames = [...startEntry.enemies];
         this._enemySpriteMap = {};
         startEntry.enemies.forEach((name, i) => {
-            this._enemySpriteMap[name] = ENEMY_SPRITES[i % ENEMY_SPRITES.length];
+            this._enemySpriteMap[name] = pickEnemySprite(name, i);
         });
 
         if (startEntry.soldiers) {
@@ -379,7 +427,7 @@ class BattleSceneB extends Phaser.Scene {
         const sprite = this.add.sprite(0, 0, `${spriteType}_idle`);
         sprite.setScale(SPRITE_SCALE);
         sprite.play(`${spriteType}_idle_${isHero ? 'east' : 'west'}`);
-        if (!isHero) sprite.setTint(0xff8888);
+        // 몬스터 전용 스프라이트 사용 — 틴트 불필요
         container.add(sprite);
 
         const halfH = DISPLAY_SIZE / 2;
@@ -558,7 +606,8 @@ class BattleSceneB extends Phaser.Scene {
     // ═══════════════════════════════════
 
     _createAnimations() {
-        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female'];
+        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female',
+            ...MONSTER_SPRITES, ...BOSS_SPRITES];
         const dirs = [DIR_EAST, DIR_WEST];
 
         for (const type of types) {

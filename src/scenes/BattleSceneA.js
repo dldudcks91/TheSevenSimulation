@@ -44,11 +44,22 @@ const SPRITE_RANGE = {
     hero_gluttony: ENGAGE_RANGE_MELEE,  // 메이스 — 근접
     hero_lust: ENGAGE_RANGE_RANGED,     // 지팡이 — 원거리
     hero_pride: ENGAGE_RANGE_MELEE,     // 롱소드 — 근접
-    // 기존 스프라이트 (적/기본)
+    // 기존 스프라이트 (기본)
     warrior_male: ENGAGE_RANGE_MELEE,
     warrior_female: ENGAGE_RANGE_MELEE,
     base_male: ENGAGE_RANGE_MELEE,
     base_female: ENGAGE_RANGE_RANGED,
+    // 몬스터 스프라이트
+    monster_slime: ENGAGE_RANGE_MELEE,
+    monster_bat: ENGAGE_RANGE_MELEE,
+    monster_snake: ENGAGE_RANGE_MELEE,
+    monster_ghost: ENGAGE_RANGE_MELEE,
+    monster_eyeball: ENGAGE_RANGE_RANGED,
+    monster_pumpking: ENGAGE_RANGE_MELEE,
+    monster_bee: ENGAGE_RANGE_MELEE,
+    monster_worm: ENGAGE_RANGE_MELEE,
+    boss_demon: ENGAGE_RANGE_MELEE,
+    boss_shadow: ENGAGE_RANGE_MELEE,
 };
 
 // 스프라이트
@@ -62,7 +73,33 @@ const DIR_EAST = 3;
 const DIR_WEST = 1;
 
 const DEFAULT_SPRITE = 'warrior_male';
-const ENEMY_SPRITES = ['warrior_female', 'base_male', 'base_female'];
+
+const MONSTER_SPRITES = [
+    'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
+    'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
+];
+const BOSS_SPRITES = ['boss_demon', 'boss_shadow'];
+
+const ENEMY_NAME_SPRITE_MAP = {
+    '박쥐': 'monster_bat', '사냥개': 'monster_worm', '졸개': 'monster_slime',
+    '전사': 'monster_ghost', '마법사': 'monster_eyeball', '근위병': 'monster_pumpking',
+    '정예': 'monster_snake', '꽃': 'monster_bee', '늑대': 'monster_worm',
+    '멧돼지': 'monster_slime', '거미': 'monster_bee', '곰': 'monster_pumpking',
+    '벌레': 'monster_worm', '유령': 'monster_ghost', '슬라임': 'monster_slime',
+    '뱀': 'monster_snake', '눈알': 'monster_eyeball', '호박': 'monster_pumpking',
+};
+
+function pickEnemySprite(name, index = 0) {
+    if (name.includes('—') || name.includes('화신')) {
+        return BOSS_SPRITES[index % BOSS_SPRITES.length];
+    }
+    for (const [keyword, sprite] of Object.entries(ENEMY_NAME_SPRITE_MAP)) {
+        if (name.includes(keyword)) return sprite;
+    }
+    return MONSTER_SPRITES[index % MONSTER_SPRITES.length];
+}
+
+const ENEMY_SPRITES = MONSTER_SPRITES;
 
 // 죄종 → 영웅 스프라이트 매핑
 const SIN_SPRITE_MAP = {
@@ -100,8 +137,13 @@ class BattleSceneA extends Phaser.Scene {
     }
 
     preload() {
-        // 기존 스프라이트 (적 + 폴백)
-        const types = ['warrior_male', 'warrior_female', 'base_male', 'base_female', ...HERO_SPRITE_TYPES];
+        // 기존 스프라이트 + 몬스터
+        const types = [
+            'warrior_male', 'warrior_female', 'base_male', 'base_female',
+            ...HERO_SPRITE_TYPES,
+            ...MONSTER_SPRITES,
+            ...BOSS_SPRITES,
+        ];
         const actions = ['idle', 'walk', 'slash', 'hurt'];
         for (const type of types) {
             for (const action of actions) {
@@ -332,7 +374,7 @@ class BattleSceneA extends Phaser.Scene {
         });
 
         unitsData.enemies.forEach((u, i) => {
-            const spriteType = ENEMY_SPRITES[i % ENEMY_SPRITES.length];
+            const spriteType = pickEnemySprite(u.name, i);
             const fx = ENEMY_START_X - i * 30;
             const fy = GROUND_Y + (Y_OFFSETS[i] || 0);
             this._createUnit(u.name, fx, fy, spriteType, false, u.maxHp);
@@ -379,7 +421,7 @@ class BattleSceneA extends Phaser.Scene {
         });
 
         startEntry.enemies.forEach((name, i) => {
-            const spriteType = ENEMY_SPRITES[i % ENEMY_SPRITES.length];
+            const spriteType = pickEnemySprite(name, i);
             const fx = ENEMY_START_X - i * 30;
             const fy = GROUND_Y + (Y_OFFSETS[i] || 0);
             this._createUnit(name, fx, fy, spriteType, false, 100);
@@ -878,7 +920,7 @@ class BattleSceneA extends Phaser.Scene {
             sprite.setScale(SPRITE_SCALE);
             sprite.play(`${spriteType}_idle_${dir}`);
         }
-        if (!isHero) sprite.setTint(0xff8888);
+        // 몬스터 전용 스프라이트 사용 — 틴트 불필요
         container.add(sprite);
 
         const halfH = DISPLAY_SIZE / 2;
@@ -931,7 +973,8 @@ class BattleSceneA extends Phaser.Scene {
 
     _createAnimations() {
         // 기존 4행 스프라이트 (적용)
-        const oldTypes = ['warrior_male', 'warrior_female', 'base_male', 'base_female'];
+        const oldTypes = ['warrior_male', 'warrior_female', 'base_male', 'base_female',
+            ...MONSTER_SPRITES, ...BOSS_SPRITES];
         const dirs = [DIR_EAST, DIR_WEST];
 
         for (const type of oldTypes) {

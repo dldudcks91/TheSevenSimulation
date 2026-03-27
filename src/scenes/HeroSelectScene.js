@@ -319,7 +319,7 @@ class HeroSelectScene extends Phaser.Scene {
 
         // 시작
         this._createBtn(width / 2 + 140, btnY, 180, 40, '▶ 여정 시작', '#e03030', () => {
-            SaveManager.deleteSave();
+            // 기존 세이브를 여기서 삭제하지 않음 — MapScene 진입 시 자동 저장으로 덮어씀
             const balance = this.registry.get('balance') || {};
             store.setState('gold', balance.starting_gold ?? 500);
             store.setState('food', balance.starting_food ?? 100);

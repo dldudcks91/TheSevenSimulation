@@ -30,8 +30,25 @@ class ExpeditionManager {
             active: null,
             progress: 0,
             chapter: 1,
-            lastResult: null
+            lastResult: null,
+            lastRaidDay: 0,
+            nextRaidDay: 0
         });
+    }
+
+    /** 습격 발생 여부 판단 (3~5일 간격) */
+    shouldRaid(day) {
+        const expedition = this.store.getState('expedition');
+        if (day < (expedition.nextRaidDay || 0)) return false;
+
+        const min = this.balance.raid_interval_min ?? 3;
+        const max = this.balance.raid_interval_max ?? 5;
+        const interval = min + Math.floor(Math.random() * (max - min + 1));
+
+        expedition.lastRaidDay = day;
+        expedition.nextRaidDay = day + interval;
+        this.store.setState('expedition', { ...expedition });
+        return true;
     }
 
     /** 원정 파견 (병사 배정 포함) */

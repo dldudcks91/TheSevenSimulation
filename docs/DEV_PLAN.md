@@ -1,7 +1,7 @@
 # TheSevenSimulation 개발 계획서
 
 > 작성일: 2026-03-24
-> 마지막 업데이트: 2026-03-26
+> 마지막 업데이트: 2026-03-27
 
 ---
 
@@ -47,14 +47,18 @@ src/
 │   └── TurnManager.js        # 턴 진행 (phases 주입)
 ├── scenes/                   # Phaser 씬 (Godot 이식 시 대체)
 │   ├── TitleScene.js         # 타이틀 화면
-│   ├── HeroSelectScene.js    # 영웅 선택 화면
-│   ├── MainScene.js          # 거점 메인 (영내/영외 전환 + 우측 패널 + 팝업)
-│   ├── EventScene.js         # 이벤트/선택지 화면
-│   ├── BattleSceneA.js       # 돌진형 전투 시각화
-│   ├── BattleSceneB.js       # 필드 이동형 전투 시각화 (기본값)
-│   ├── DuelBattleScene.js    # 1:1 전투 (사냥)
-│   ├── ResultScene.js        # 전투 결과 화면
-│   ├── SettlementScene.js    # 정산 화면
+│   ├── IntroScene.js         # 인트로 연출
+│   ├── HeroSelectScene.js    # 영웅 선택 화면 (LPC 합성)
+│   ├── MapScene.js           # 단일 맵 뷰 (모든 페이즈 처리)
+│   ├── MapDefenseMode.js     # 방어전 오버레이 (MapScene 위)
+│   ├── MapHuntPopup.js       # 사냥 1:1 팝업 (MapScene 위)
+│   ├── EventScene.js         # 이벤트/선택지 (오버레이)
+│   ├── BattleSceneA.js       # X축 오토배틀 (원정 리플레이용)
+│   ├── BattleSceneB.js       # 태그매치 (프로토 보관)
+│   ├── DuelBattleScene.js    # 1:1 전투 (레거시)
+│   ├── SpriteRenderer.js     # LPC 스프라이트 런타임 합성
+│   ├── ResultScene.js        # 원정 결과 (오버레이)
+│   ├── SettlementScene.js    # 결산 (오버레이)
 │   └── GameOverScene.js      # 게임 오버 화면
 ├── ui/                       # UI 컴포넌트
 │   └── components/
@@ -112,6 +116,13 @@ src/
 | 16 | UI 폴리시 | [x] |
 | 17 | ActionScene 삭제 → MainScene 영내/영외 전환 + 팝업 | [x] |
 | 18 | JSON → CSV 전면 전환 + 하드코딩 데이터 추출 | [x] |
+| 19 | MainScene → MapScene 단일 맵 뷰 전환 | [x] |
+| 20 | 전투 방식 확정 (X축 오토배틀 + 카드 + 일기토) | [x] |
+| 21 | LPC 스프라이트 런타임 합성 (SpriteComposer + SpriteRenderer) | [x] |
+| 22 | 영웅 수식어 시스템 (독립 세부스탯 상위2 조합) | [x] |
+| 23 | 방어전 MapDefenseMode (맵 위 오버레이) | [x] |
+| 24 | 사냥 MapHuntPopup (맵 위 팝업) | [x] |
+| 25 | 기획서 전면 업데이트 (3자원, HP 모델, 습격 빈도) | [x] |
 
 ---
 
@@ -121,13 +132,15 @@ src/
 
 | # | 항목 | 상태 | 상세 |
 |---|------|------|------|
-| 1 | **장비 시스템** | 미구현 | equipment_design.md "재설계 예정". 슬롯 구조만 존재, 아이템 없음 |
-| 2 | **챕터 2~7 콘텐츠** | 미구현 | chapters.csv에 7챕터 정의 완료, stages.csv는 챕터1만 |
-| 3 | **영웅 초상화** | 진행중 | HeroSelectScene에 초상화 자리 추가됨, 이미지 미연결 |
-| 4 | **챕터별 환경 변조 적용** | 미확인 | chapters.csv에 morale_modifier 있으나 게임 내 적용 여부 확인 필요 |
-| 5 | **영웅 서브스탯** | 미구현 | hero_design.md에 7개 서브스탯 정의, 코드 미반영 |
-| 6 | **채집 시스템 상세화** | 기초만 | 영외 카드로 UI 있으나 기획서에 상세 규칙 없음 |
+| 1 | **장비 시스템** | Phase 2 | equipment_design.md "재설계 예정" |
+| 2 | **챕터 2~7 콘텐츠** | Phase 2 | chapters.csv에 7챕터 정의 완료, stages.csv는 챕터1만 |
+| 3 | **3자원 체계 구현** | 미구현 | 기획 확정 (식량/나무/골드). Store+HUD+채집/벌목 행동 구현 필요 |
+| 4 | **원정 실시간 전투** | 미구현 | 결과형→실시간 오토배틀+카드로 전환 예정 |
+| 5 | **챕터별 환경 변조 적용** | 미확인 | chapters.csv에 morale_modifier 있으나 적용 여부 확인 필요 |
+| 6 | **방어전 테스트** | 필요 | MapDefenseMode 구현 완료, 실제 플레이 테스트 필요 |
+| 7 | **사냥 테스트** | 필요 | MapHuntPopup 구현 완료, 실제 플레이 테스트 필요 |
+| 8 | **밸런싱** | 미착수 | 사기 변동량, 전투 계수, 습격 스케일링, 죄종 만족조건 |
 
 ---
 
-*마지막 업데이트: 2026-03-26 (ActionScene→팝업, JSON→CSV 전환, 영내/영외 UI, 기획서 점검)*
+*마지막 업데이트: 2026-03-27 (MapDefenseMode/MapHuntPopup 구현, 기획서 전면 정합성 업데이트, HP 모델 확정, 3자원 확정)*
