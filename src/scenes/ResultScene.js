@@ -2,7 +2,7 @@
  * 원정 결과 화면 (저녁)
  * 원정 결과 + 감시탑 정보 표시 → 확인 후 밤으로
  */
-const FONT = 'Galmuri11, Galmuri9, monospace';
+import { FONT } from '../constants.js';
 
 class ResultScene extends Phaser.Scene {
     constructor() {

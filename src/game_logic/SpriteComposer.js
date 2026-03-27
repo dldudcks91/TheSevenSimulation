@@ -75,8 +75,8 @@ class SpriteComposer {
         const cape = Math.random() < 0.2 ? this._pick(capes) : null;
         const shield = Math.random() < 0.3 ? this._pick(shields) : null;
 
-        // 레이어 순서: base → legs → torso → cape → shoulders → hair → weapon → shield
-        const layers = [base, legs, torso, cape, shoulder, hair, weapon, shield].filter(Boolean);
+        // 레이어 순서: base → legs → torso → cape → shoulders → hair (weapon/shield는 전투 시에만)
+        const layers = [base, legs, torso, cape, shoulder, hair].filter(Boolean);
 
         return {
             base: base?.id,
@@ -115,7 +115,8 @@ class SpriteComposer {
         const weapon = this._pick(weapons);
         const cape = Math.random() < 0.2 ? this._pick(capes) : null;
 
-        const layers = [base, legs, dress, torso, cape, hair, weapon].filter(Boolean);
+        // 레이어 순서: base → legs → dress → torso → cape → hair (weapon은 전투 시에만)
+        const layers = [base, legs, dress, torso, cape, hair].filter(Boolean);
 
         return {
             base: base?.id,

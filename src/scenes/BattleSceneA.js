@@ -9,8 +9,7 @@
  */
 import { BATTLE_MODES } from '../game_logic/BattleEngine.js';
 import SpriteRenderer from './SpriteRenderer.js';
-
-const FONT = 'Galmuri11, Galmuri9, monospace';
+import { FONT } from '../constants.js';
 const FRAME_SIZE = 64;
 const SPRITE_SCALE = 1.5;
 const DISPLAY_SIZE = FRAME_SIZE * SPRITE_SCALE;

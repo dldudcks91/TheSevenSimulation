@@ -7,6 +7,12 @@ stat_max,20
 max_heroes,7
 starting_heroes,3
 starting_gold,500
+starting_food,100
+starting_wood,50
+stat_total_min,60
+stat_total_max,80
+food_cost_base,5
+food_cost_divisor,4
 stat_roll_dice,3
 stat_roll_sides,8
 stat_roll_bonus,3

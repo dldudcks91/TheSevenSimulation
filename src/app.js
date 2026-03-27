@@ -1,6 +1,7 @@
 import TitleScene from './scenes/TitleScene.js';
+import IntroScene from './scenes/IntroScene.js';
 import HeroSelectScene from './scenes/HeroSelectScene.js';
-import MainScene from './scenes/MainScene.js';
+import MapScene from './scenes/MapScene.js';
 import EventScene from './scenes/EventScene.js';
 import BattleSceneA from './scenes/BattleSceneA.js';
 import BattleSceneB from './scenes/BattleSceneB.js';
@@ -32,12 +33,17 @@ async function boot() {
         height: 720,
         parent: 'game-container',
         backgroundColor: '#0a0a12',
-        scene: [TitleScene, HeroSelectScene, MainScene, EventScene, BattleSceneA, BattleSceneB, DuelBattleScene, ResultScene, SettlementScene, GameOverScene],
+        scene: [TitleScene, IntroScene, HeroSelectScene, MapScene, EventScene, BattleSceneA, BattleSceneB, DuelBattleScene, ResultScene, SettlementScene, GameOverScene],
         scale: {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
             width: 1280,
             height: 720
+        },
+        input: {
+            keyboard: {
+                capture: []  // 스페이스바 등 브라우저 기본 동작 캡처 비활성화
+            }
         }
     };
 

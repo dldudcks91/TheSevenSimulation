@@ -98,6 +98,7 @@ class HeroManager {
             morale: this.MORALE_DEFAULT,
             stats,
             subStats,
+            foodCost: this.calcFoodCost(stats),
             status: 'idle',
             location: 'base',
             equipment: { weapon: null, armor: null, accessory: null },
@@ -148,9 +149,11 @@ class HeroManager {
         return available[Math.floor(Math.random() * available.length)];
     }
 
-    /** 메인스탯 굴림 — 총합 70 고정, 최소 2, 최대 18 */
+    /** 메인스탯 굴림 — 총합 60~80 랜덤, 최소 2, 최대 18 */
     _rollStats() {
-        const TOTAL = 70;
+        const totalMin = this.balance.stat_total_min ?? 60;
+        const totalMax = this.balance.stat_total_max ?? 80;
+        const TOTAL = totalMin + Math.floor(Math.random() * (totalMax - totalMin + 1));
         const MIN = 2;
         const MAX = 18;
         const count = STAT_KEYS.length; // 7
@@ -177,6 +180,15 @@ class HeroManager {
         const stats = {};
         STAT_KEYS.forEach((key, i) => { stats[key] = values[i]; });
         return stats;
+    }
+
+    /** 영웅 식량 비용 계산 (스탯 총합 기반) */
+    calcFoodCost(stats) {
+        const total = STAT_KEYS.reduce((sum, k) => sum + (stats[k] || 0), 0);
+        const base = this.balance.food_cost_base ?? 5;
+        const divisor = this.balance.food_cost_divisor ?? 4;
+        const totalMin = this.balance.stat_total_min ?? 60;
+        return base + Math.round((total - totalMin) / divisor);
     }
 
     /** 총합 고정 포인트 분배 */

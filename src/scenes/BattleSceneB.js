@@ -8,8 +8,7 @@
  * 모드: realtime (engine tick) / replay (log 재생)
  */
 import { BATTLE_MODES } from '../game_logic/BattleEngine.js';
-
-const FONT = 'Galmuri11, Galmuri9, monospace';
+import { FONT } from '../constants.js';
 const FRAME_SIZE = 64;
 const SPRITE_SCALE = 2.0;
 const DISPLAY_SIZE = FRAME_SIZE * SPRITE_SCALE;

@@ -11,8 +11,7 @@
  *   onClose  — 전투 종료 콜백 (result: { victory, heroResult })
  */
 import BattleEngine, { BATTLE_TYPES } from '../game_logic/BattleEngine.js';
-
-const FONT = 'Galmuri11, Galmuri9, monospace';
+import { FONT } from '../constants.js';
 
 // ── 레이아웃 ──
 const GROUND_Y = 340;

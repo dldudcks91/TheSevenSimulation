@@ -7,9 +7,7 @@ import HeroManager from '../game_logic/HeroManager.js';
 import SpriteComposer from '../game_logic/SpriteComposer.js';
 import SpriteRenderer from './SpriteRenderer.js';
 import SaveManager from '../store/SaveManager.js';
-
-const FONT = 'Galmuri11, Galmuri9, monospace';
-const FONT_BOLD = 'Galmuri11 Bold, Galmuri11, monospace';
+import { FONT, FONT_BOLD } from '../constants.js';
 
 const SIN_COLOR_HEX = {
     wrath: '#e03030', envy: '#30b050', greed: '#d0a020',
@@ -172,6 +170,9 @@ class HeroSelectScene extends Phaser.Scene {
         this._cardElements.push(this.add.text(x + w - 12, ty + 2, `[ ${hero.sinName} ]`, {
             fontSize: '11px', fontFamily: FONT_BOLD, color: sinColorHex
         }).setOrigin(1, 0));
+        this._cardElements.push(this.add.text(x + w - 12, ty + 18, `비용 ${hero.foodCost ?? '?'}/턴`, {
+            fontSize: '10px', fontFamily: FONT, color: '#a08040'
+        }).setOrigin(1, 0));
         ty += 48;
 
         // 짧은 배경 스토리
@@ -308,7 +309,7 @@ class HeroSelectScene extends Phaser.Scene {
     }
 
     _drawButtons(width, height) {
-        const btnY = height - 60;
+        const btnY = height - 90;
 
         // 다시 뽑기
         this._createBtn(width / 2 - 140, btnY, 180, 40, '🎲 다시 뽑기', '#f8c830', () => {
@@ -321,6 +322,8 @@ class HeroSelectScene extends Phaser.Scene {
             SaveManager.deleteSave();
             const balance = this.registry.get('balance') || {};
             store.setState('gold', balance.starting_gold ?? 500);
+            store.setState('food', balance.starting_food ?? 100);
+            store.setState('wood', balance.starting_wood ?? 50);
             this.heroManager.confirmHeroes(this._heroes);
 
             // 페이드 아웃
@@ -328,7 +331,7 @@ class HeroSelectScene extends Phaser.Scene {
             fade.setDepth(200);
             this.tweens.add({
                 targets: fade, alpha: 1, duration: 500,
-                onComplete: () => this.scene.start('MainScene')
+                onComplete: () => this.scene.start('MapScene')
             });
         });
     }

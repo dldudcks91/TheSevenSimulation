@@ -4,8 +4,7 @@
  */
 import SaveManager from '../store/SaveManager.js';
 import store from '../store/Store.js';
-
-const FONT = 'Galmuri11, Galmuri9, monospace';
+import { FONT } from '../constants.js';
 
 const SIN_SYMBOLS = [
     { name: '분노', color: 0xe03030, char: '⚔' },
@@ -272,7 +271,7 @@ class TitleScene extends Phaser.Scene {
         // 새 게임
         const newGameBtn = this._createBtn(w / 2, 440, '새  게  임', () => {
             this._fadeOut(() => {
-                this.scene.start('HeroSelectScene');
+                this.scene.start('IntroScene');
             });
         });
         newGameBtn.container.setAlpha(0);
@@ -293,7 +292,7 @@ class TitleScene extends Phaser.Scene {
                     const data = SaveManager.load();
                     if (data) {
                         SaveManager.restore(store, data);
-                        this.scene.start('MainScene', { loaded: true });
+                        this.scene.start('MapScene', { loaded: true });
                     }
                 });
             });

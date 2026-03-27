@@ -4,7 +4,13 @@
       "Edit(/.claude/skills/design-battle/**)",
       "Edit(/.claude/skills/design-economy/**)",
       "Edit(/.claude/skills/design-narrative/**)",
-      "Edit(/.claude/skills/design-system/**)"
+      "Edit(/.claude/skills/design-system/**)",
+      "Read(//c/Users/82109/Desktop/LYC/git/TheSevenRPG/**)",
+      "Read(//c/Users/82109/Desktop/LYC/git/TheSevenRPGForge/**)",
+      "Read(//c/Users/82109/Desktop/LYC/git/TheSevenTactics/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\82109\\Desktop\\LYC\\git\\TheSevenSimulation\\.claude"
     ]
   }
 }

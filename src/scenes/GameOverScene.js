@@ -1,7 +1,7 @@
 /**
  * 게임오버 / 엔딩 화면
  */
-const FONT = 'Galmuri11, Galmuri9, monospace';
+import { FONT } from '../constants.js';
 
 class GameOverScene extends Phaser.Scene {
     constructor() {

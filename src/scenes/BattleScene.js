@@ -8,7 +8,7 @@
  * - realtime: engine을 직접 받아 tick 구동 (방어전)
  * - replay: log 배열을 받아 재생 (원정 리플레이)
  */
-const FONT = 'Galmuri11, Galmuri9, monospace';
+import { FONT } from '../constants.js';
 
 const SIN_COLORS = {
     wrath: 0xe03030, envy: 0x30b050, greed: 0xd0a020,

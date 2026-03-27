@@ -12,9 +12,7 @@ import SinSystem from '../game_logic/SinSystem.js';
 import ExpeditionManager from '../game_logic/ExpeditionManager.js';
 import SpriteComposer from '../game_logic/SpriteComposer.js';
 import SaveManager from '../store/SaveManager.js';
-
-const FONT = 'Galmuri11, Galmuri9, monospace';
-const FONT_BOLD = 'Galmuri11 Bold, Galmuri11, monospace';
+import { FONT, FONT_BOLD } from '../constants.js';
 
 // ═══ 색상 (TheSevenRPG 동일) ═══
 const C = {
@@ -110,6 +108,8 @@ class MainScene extends Phaser.Scene {
         if (!loaded) {
             if (!store.getState('heroes') || store.getState('heroes').length === 0) {
                 store.setState('gold', startingGold);
+                store.setState('food', balance.starting_food ?? 100);
+                store.setState('wood', balance.starting_wood ?? 50);
                 this.heroManager.initStartingHeroes();
             }
         }
@@ -633,7 +633,7 @@ class MainScene extends Phaser.Scene {
 
         // 팝업 크기
         const PW = 560;
-        const PH = mode === 'heroDetail' ? 710 : 520;
+        const PH = mode === 'heroDetail' ? 680 : 520;
         const px = (width - PW) / 2;
         const py = (height - PH) / 2;
 
@@ -1067,14 +1067,14 @@ class MainScene extends Phaser.Scene {
         portG.lineStyle(1, C.borderSecondary);
         portG.strokeRect(portX, portY, portSize, portSize);
 
-        // 스프라이트
+        // 스프라이트 (걷기 애니메이션)
         if (hero.appearance && hero.appearance.layers && this._spriteRenderer) {
             const heroId = `hero_${hero.id}`;
             const textures = this._spriteRenderer.compose(hero.appearance, heroId);
-            if (textures && textures.idle) {
-                const spr = this._pp(this.add.sprite(portX + portSize / 2, portY + portSize / 2 + 6, textures.idle, 0));
+            if (textures && textures.walk) {
+                const spr = this._pp(this.add.sprite(portX + portSize / 2, portY + portSize / 2 + 6, textures.walk, 0));
                 spr.setScale((portSize - 8) / 64);
-                if (this.anims.exists(`${heroId}_idle`)) spr.play(`${heroId}_idle`);
+                if (this.anims.exists(`${heroId}_walk`)) spr.play(`${heroId}_walk`);
             }
         } else {
             portG.lineStyle(1, C.borderPrimary, 0.4);
@@ -1082,44 +1082,28 @@ class MainScene extends Phaser.Scene {
             portG.lineBetween(portX + portSize, portY, portX, portY + portSize);
         }
 
-        // 이름 + 죄종 + 결함
+        // 이름 + [죄종] (같은 줄)
         const infoX = portX + portSize + 16;
         let ty = portY + 4;
-        this._pp(this.add.text(infoX, ty, hero.name, {
+        const nameObj = this._pp(this.add.text(infoX, ty, hero.name, {
             fontSize: '22px', fontFamily: FONT_BOLD, color: C.textPrimary,
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         }));
-        ty += 30;
-        this._pp(this.add.text(infoX, ty, `[ ${hero.sinName} ]`, {
+        this._pp(this.add.text(infoX + nameObj.width + 10, ty + 4, `[${hero.sinName}]`, {
             fontSize: '16px', fontFamily: FONT_BOLD, color: sinColorHex
         }));
-        ty += 24;
-        if (hero.sinFlaw) {
-            this._pp(this.add.text(infoX, ty, `"${hero.sinFlaw}"`, {
-                fontSize: '12px', fontFamily: FONT, color: C.textMuted, fontStyle: 'italic',
-                wordWrap: { width: cardW - portSize - 46 }
-            }));
-        }
-
-        // 사기 (카드 우측 하단)
-        const moraleState = this.heroManager.getMoraleState(hero.morale);
-        const moraleColor = MORALE_COLORS_HEX[moraleState];
-        const moraleName = this.heroManager.getMoraleStateName(hero.morale);
-        const mBarX = infoX;
-        const mBarY = y + cardH - 22;
-        const mBarW = cardW - portSize - 52;
-        this._pp(this.add.text(mBarX + mBarW + 8, mBarY - 2, `${hero.morale} (${moraleName})`, {
-            fontSize: '13px', fontFamily: FONT_BOLD, color: moraleColor
+        this._pp(this.add.text(infoX + nameObj.width + 10, ty + 22, `비용 ${hero.foodCost ?? '?'}/턴`, {
+            fontSize: '11px', fontFamily: FONT, color: '#a08040'
         }));
-        const mBg = this._pp(this.add.graphics());
-        mBg.fillStyle(0x0e0e1a, 1);
-        mBg.fillRect(mBarX, mBarY, mBarW, 8);
-        mBg.lineStyle(1, C.borderPrimary);
-        mBg.strokeRect(mBarX, mBarY, mBarW, 8);
-        const mFill = this._pp(this.add.graphics());
-        const mfw = Math.max(0, (hero.morale / 100) * mBarW);
-        mFill.fillStyle(Phaser.Display.Color.HexStringToColor(moraleColor).color, 1);
-        mFill.fillRect(mBarX + 1, mBarY + 1, mfw - 2, 6);
+        ty += 30;
+
+        // 배경 스토리
+        const storyText = this._getHeroStory(hero.sinType);
+        this._pp(this.add.text(infoX, ty, storyText, {
+            fontSize: '11px', fontFamily: FONT, color: C.textMuted,
+            lineSpacing: 3,
+            wordWrap: { width: cardW - portSize - 46 }
+        }));
 
         // 상태
         const statusMap = { expedition: '원정', injured: '부상', construction: '건설', research: '연구', idle: '대기', hunt: '사냥', gather: '채집' };
@@ -1129,38 +1113,76 @@ class MainScene extends Phaser.Scene {
 
         y += cardH + 10;
 
+        // ── 사기 바 (기본 스탯 바로 위) ──
+        const moraleState = this.heroManager.getMoraleState(hero.morale);
+        const moraleColor = MORALE_COLORS_HEX[moraleState];
+        const moraleName = this.heroManager.getMoraleStateName(hero.morale);
+        const mBarX = px + 32;
+        const mBarW = pw - 160;
+        this._pp(this.add.text(mBarX, y - 2, '사기', {
+            fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
+        }));
+        const mBarStartX = mBarX + 36;
+        const mBg = this._pp(this.add.graphics());
+        mBg.fillStyle(0x0e0e1a, 1);
+        mBg.fillRect(mBarStartX, y + 2, mBarW, 10);
+        mBg.lineStyle(1, C.borderPrimary);
+        mBg.strokeRect(mBarStartX, y + 2, mBarW, 10);
+        const mFill = this._pp(this.add.graphics());
+        const mfw = Math.max(0, (hero.morale / 100) * (mBarW - 2));
+        mFill.fillStyle(Phaser.Display.Color.HexStringToColor(moraleColor).color, 1);
+        mFill.fillRect(mBarStartX + 1, y + 3, mfw, 8);
+        this._pp(this.add.text(mBarStartX + mBarW + 8, y - 2, `${hero.morale} (${moraleName})`, {
+            fontSize: '13px', fontFamily: FONT_BOLD, color: moraleColor
+        }));
+        y += 22;
+
         // ── 스탯 영역 ──
-        const col1X = px + 32;
-        const col2X = px + pw / 2 + 16;
-        const statBarMaxW = 120;
+        const margin = 24;
+        const col1X = px + margin + 8;
+        const col2X = px + pw / 2 + 8;
+        const statBarMaxW = pw / 2 - margin - 72;
         const statMax = 20;
+        const rowH = 22;
+        const sectionGap = 6;
 
-        const sep = () => { const g = this._pp(this.add.graphics()); g.lineStyle(1, C.borderPrimary); g.lineBetween(px + 20, y, px + pw - 20, y); y += 10; };
+        const _drawSectionHeader = (label) => {
+            const lineY = y + 8;
+            const tx = px + margin + 12;
+            const textObj = this.add.text(tx, y, ` ${label} `, {
+                fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
+            });
+            this._pp(textObj);
+            const tw = textObj.width;
+            // 선: 라벨 왼쪽 + 라벨 오른쪽 (라벨을 피해서 그림)
+            const lineG = this._pp(this.add.graphics());
+            lineG.lineStyle(1, C.borderSecondary, 0.6);
+            lineG.lineBetween(px + margin, lineY, tx - 6, lineY);
+            lineG.lineBetween(tx + tw + 6, lineY, px + pw - margin, lineY);
+            y += 22;
+        };
 
-        const _drawStatRow = (xPos, yPos, label, val, labelW = 40, barW = statBarMaxW) => {
+        const _drawStatRow = (xPos, yPos, label, val, labelW = 36, barW = statBarMaxW) => {
             const valColor = val >= 15 ? '#40d870' : val >= 10 ? '#40a0f8' : val >= 7 ? '#f8b830' : '#f04040';
             const valColorHex = Phaser.Display.Color.HexStringToColor(valColor).color;
-            this._pp(this.add.text(xPos, yPos, label, { fontSize: '13px', fontFamily: FONT, color: C.textSecondary }));
+            this._pp(this.add.text(xPos, yPos, label, { fontSize: '11px', fontFamily: FONT, color: C.textSecondary }));
             const bx = xPos + labelW;
             const bw = barW;
             const bh = 10;
-            const by = yPos + 4;
+            const by = yPos + 3;
             const g = this._pp(this.add.graphics());
             g.fillStyle(0x0e0e1a, 1);
             g.fillRect(bx, by, bw, bh);
-            g.lineStyle(1, C.borderPrimary);
+            g.lineStyle(1, C.borderPrimary, 0.6);
             g.strokeRect(bx, by, bw, bh);
             const fw = Math.max(0, Math.min(1, val / statMax)) * (bw - 2);
             g.fillStyle(valColorHex, 1);
             g.fillRect(bx + 1, by + 1, fw, bh - 2);
-            this._pp(this.add.text(bx + bw + 6, yPos, `${val}`, { fontSize: '13px', fontFamily: FONT_BOLD, color: valColor }));
+            this._pp(this.add.text(bx + bw + 6, yPos, `${val}`, { fontSize: '11px', fontFamily: FONT_BOLD, color: valColor }));
         };
 
         // ■ 기본
-        this._pp(this.add.text(px + 24, y, '기본', {
-            fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
-        }));
-        y += 20;
+        _drawSectionHeader('기본');
 
         const statLabels = [
             { key: 'strength', label: '힘' }, { key: 'agility', label: '민첩' },
@@ -1173,16 +1195,12 @@ class MainScene extends Phaser.Scene {
             const st = statLabels[i];
             const xPos = i % 2 === 0 ? col1X : col2X;
             _drawStatRow(xPos, y, st.label, s[st.key]);
-            if (i % 2 === 1 || i === statLabels.length - 1) y += 20;
+            if (i % 2 === 1 || i === statLabels.length - 1) y += rowH;
         }
-        y += 4;
-        sep();
+        y += sectionGap;
 
         // ■ 행동
-        this._pp(this.add.text(px + 24, y, '행동', {
-            fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
-        }));
-        y += 20;
+        _drawSectionHeader('행동');
 
         const actionStats = [
             { label: '사냥', a: 'strength', b: 'agility' },
@@ -1200,17 +1218,13 @@ class MainScene extends Phaser.Scene {
             const act = actionStats[i];
             const xPos = i % 2 === 0 ? col1X : col2X;
             const val = act.b ? Math.round((s[act.a] + s[act.b]) / 2) : s[act.a];
-            _drawStatRow(xPos, y, act.label, val, 52);
-            if (i % 2 === 1 || i === actionStats.length - 1) y += 20;
+            _drawStatRow(xPos, y, act.label, val, 44);
+            if (i % 2 === 1 || i === actionStats.length - 1) y += rowH;
         }
-        y += 4;
-        sep();
+        y += sectionGap;
 
         // ■ 감정
-        this._pp(this.add.text(px + 24, y, '감정', {
-            fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
-        }));
-        y += 20;
+        _drawSectionHeader('감정');
 
         const subLabels = [
             { key: 'aggression', label: '공격성', src: 'sub' },
@@ -1229,9 +1243,13 @@ class MainScene extends Phaser.Scene {
             const st = subLabels[i];
             const xPos = i % 2 === 0 ? col1X : col2X;
             const val = st.src === 'sub' ? (sub[st.key] ?? 0) : (derived[st.key] ?? 0);
-            _drawStatRow(xPos, y, st.label, val, 52);
-            if (i % 2 === 1 || i === subLabels.length - 1) y += 20;
+            _drawStatRow(xPos, y, st.label, val, 44);
+            if (i % 2 === 1 || i === subLabels.length - 1) y += rowH;
         }
+        y += sectionGap;
+        const endLineG = this._pp(this.add.graphics());
+        endLineG.lineStyle(1, C.borderSecondary, 0.6);
+        endLineG.lineBetween(px + margin, y, px + pw - margin, y);
 
         // 하단 버튼
         this._pp(this._popupButton(cx - 80, py + ph - 40, '해고', () => {
@@ -1242,6 +1260,19 @@ class MainScene extends Phaser.Scene {
         this._pp(this._popupButton(cx + 80, py + ph - 40, '닫기', () => {
             this._closePopup();
         }));
+    }
+
+    _getHeroStory(sinType) {
+        const stories = {
+            wrath: '전쟁에서 돌아온 뒤로 분노를 멈출 수 없었다.\n칼을 내려놓으면 손이 떨렸고,\n결국 바알의 부름에 응했다.',
+            envy: '언제나 형의 그림자 속에 있었다.\n인정받지 못한 재능은 독이 되어\n결국 그를 이곳으로 이끌었다.',
+            greed: '가진 것을 모두 잃은 날,\n다시는 빈손이 되지 않겠다고 맹세했다.\n그 집착이 바알의 눈에 띄었다.',
+            sloth: '한때 뛰어난 학자였으나 모든 것을 포기했다.\n세상에 지쳐 쓰러진 그를\n바알이 주워 담았다.',
+            gluttony: '굶주림의 기억은 지워지지 않았다.\n아무리 채워도 부족했고,\n결국 악마의 식탁에 앉게 되었다.',
+            lust: '사랑에 실패한 뒤 혼자가 되는 것이 두려웠다.\n누군가 곁에 있어야만 했고,\n그 절박함이 이곳까지 왔다.',
+            pride: '왕좌에서 쫓겨난 지휘관.\n자신이 옳다는 확신은 변하지 않았고,\n바알 아래서라도 증명하려 한다.',
+        };
+        return stories[sinType] || '어둠 속에서 바알의 부름을 들었다.\n갈 곳 없는 자에게 선택지란 없었다.';
     }
 
     // ═══════════════════════════════════

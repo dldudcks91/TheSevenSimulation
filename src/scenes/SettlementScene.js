@@ -2,7 +2,7 @@
  * 결산 화면 (밤 끝)
  * 방어 결과 + 사기 변동 + 폭주/이탈 연쇄 반응 표시
  */
-const FONT = 'Galmuri11, Galmuri9, monospace';
+import { FONT } from '../constants.js';
 
 const MORALE_COLORS = {
     desertion: '#f04040', unhappy: '#f8b830', stable: '#a0a0c0',
