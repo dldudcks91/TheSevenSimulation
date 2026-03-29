@@ -7,7 +7,14 @@
       "Edit(/.claude/skills/design-system/**)",
       "Read(//c/Users/82109/Desktop/LYC/git/TheSevenRPG/**)",
       "Read(//c/Users/82109/Desktop/LYC/git/TheSevenRPGForge/**)",
-      "Read(//c/Users/82109/Desktop/LYC/git/TheSevenTactics/**)"
+      "Read(//c/Users/82109/Desktop/LYC/git/TheSevenTactics/**)",
+      "WebFetch(domain:namu.wiki)",
+      "WebFetch(domain:thewiki.kr)",
+      "WebFetch(domain:librewiki.net)",
+      "WebFetch(domain:www.tooli.co.kr)",
+      "WebFetch(domain:gamefaqs.gamespot.com)",
+      "WebFetch(domain:kongming.net)",
+      "WebFetch(domain:m.cafe.daum.net)"
     ],
     "additionalDirectories": [
       "C:\\Users\\82109\\Desktop\\LYC\\git\\TheSevenSimulation\\.claude"
