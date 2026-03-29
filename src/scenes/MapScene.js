@@ -68,8 +68,9 @@ const ZONE_OUTSIDE_START = 680; // 영외: 680~1280
 
 // 탭 정의
 const TABS = [
-    { id: 'hero', icon: '⚔', label: '영웅' },
     { id: 'base', icon: '🏰', label: '시설' },
+    { id: 'hero', icon: '⚔', label: '영웅' },
+    { id: 'item', icon: '🎒', label: '아이템' },
     { id: 'expedition', icon: '🗺', label: '원정' },
     { id: 'policy', icon: '📜', label: '정책' },
 ];
@@ -97,21 +98,22 @@ const PLAZA_INDEX = 12; // 중앙 (2,2)
 // 영외 행동 슬롯 (가운데 상단, 4개 나란히)
 const _OS_GAP = 10;
 const _OS_W = 100;
-const _OS_COUNT = 4;
+const _OS_COUNT = 5;
 const _OS_TOTAL = _OS_COUNT * _OS_W + (_OS_COUNT - 1) * _OS_GAP;
 const _OS_START_X = (1280 - _OS_TOTAL) / 2 + _OS_W / 2;
 const _OS_Y = 60;
 const OUTSIDE_SLOTS = [
-    { x: _OS_START_X + 0 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🌿', title: '채집', color: 0x30b050, colorHex: '#30b050', action: 'gather' },
-    { x: _OS_START_X + 1 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🪓', title: '벌목', color: 0x8a6a3a, colorHex: '#8a6a3a', action: 'lumber' },
-    { x: _OS_START_X + 2 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🏹', title: '사냥', color: 0xd0a020, colorHex: '#d0a020', action: 'hunt' },
-    { x: _OS_START_X + 3 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '⚔️', title: '원정', color: 0xe03030, colorHex: '#e03030', action: 'expeditionList' },
+    { x: _OS_START_X + 0 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🛡️', title: '방어 배치', color: 0x4080e0, colorHex: '#4080e0', action: 'defense' },
+    { x: _OS_START_X + 1 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🌿', title: '채집', color: 0x30b050, colorHex: '#30b050', action: 'gather' },
+    { x: _OS_START_X + 2 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🪓', title: '벌목', color: 0x8a6a3a, colorHex: '#8a6a3a', action: 'lumber' },
+    { x: _OS_START_X + 3 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🏹', title: '사냥', color: 0xd0a020, colorHex: '#d0a020', action: 'hunt' },
+    { x: _OS_START_X + 4 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '⚔️', title: '원정', color: 0xe03030, colorHex: '#e03030', action: 'expeditionList' },
 ];
 
 class MapScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MapScene' });
-        this._activeTab = 'hero';
+        this._activeTab = 'base';
         this._panelElements = [];
         this._mapElements = [];
     }
@@ -123,11 +125,13 @@ class MapScene extends Phaser.Scene {
         // 방어전/사냥용 몬스터 + 영웅 스프라이트
         const spriteTypes = [
             'warrior_male', 'warrior_female', 'base_male', 'base_female',
+            'hero_wrath', 'hero_envy', 'hero_greed', 'hero_sloth',
+            'hero_gluttony', 'hero_lust', 'hero_pride',
             'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
             'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
             'boss_demon', 'boss_shadow',
         ];
-        const actions = ['idle', 'slash', 'hurt'];
+        const actions = ['idle', 'walk', 'slash', 'hurt'];
         for (const type of spriteTypes) {
             for (const action of actions) {
                 const key = `${type}_${action}`;
@@ -157,7 +161,7 @@ class MapScene extends Phaser.Scene {
         const spriteComposer = new SpriteComposer(lpcParts);
         this.heroManager.setSpriteComposer(spriteComposer);
         this.heroManager.setEpithets(this.registry.get('heroEpithets') || []);
-        this.eventSystem = new EventSystem(store, eventsData);
+        this.eventSystem = new EventSystem(store, eventsData, balance);
         this.baseManager = new BaseManager(store, facilitiesData, policies, balance);
         this.sinSystem = new SinSystem(store, this.registry.get('sinRelations'), balance, desertionEffects);
         this.expeditionManager = new ExpeditionManager(store, balance);
@@ -192,15 +196,22 @@ class MapScene extends Phaser.Scene {
         this._drawMapWorld();
         this._drawBottomPanel();
 
-        store.subscribe('heroes', () => this._refreshActiveTab());
-        store.subscribe('base', () => { this._updateBuildings(); this._refreshActiveTab(); });
-        store.subscribe('gold', () => this._updateGold());
-        store.subscribe('soldiers', () => this._updateSoldiers());
+        this._unsubscribers = [
+            store.subscribe('heroes', () => this._refreshActiveTab()),
+            store.subscribe('base', () => { this._updateBuildings(); this._refreshActiveTab(); }),
+            store.subscribe('gold', () => this._updateResources()),
+            store.subscribe('food', () => this._updateResources()),
+            store.subscribe('wood', () => this._updateResources()),
+            store.subscribe('soldiers', () => this._updateSoldiers()),
+        ];
 
-        this._updateGold();
+        // 씬 종료 시 리소스 정리
+        this.events.once('shutdown', () => this._cleanup());
+
+        this._updateResources();
         this._updateSoldiers();
         this._updatePhaseDisplay();
-        this._switchTab('hero');
+        this._switchTab('base');
 
         if (!loaded) {
             this._startMorningPhase();
@@ -209,6 +220,28 @@ class MapScene extends Phaser.Scene {
             if (turn.phase === 'morning') this._startMorningPhase();
         }
 
+    }
+
+    /** 씬 종료 시 리소스 정리 */
+    _cleanup() {
+        // store 구독 해제
+        if (this._unsubscribers) {
+            this._unsubscribers.forEach(unsub => unsub());
+            this._unsubscribers = [];
+        }
+        // 방어전/사냥 모듈 정리
+        if (this._defenseMode) {
+            this._defenseMode.destroy();
+            this._defenseMode = null;
+        }
+        if (this._huntPopup) {
+            this._huntPopup.destroy();
+            this._huntPopup = null;
+        }
+        // 오버레이 씬 정리
+        for (const key of ['EventScene', 'ResultScene', 'SettlementScene']) {
+            if (this.scene.isActive(key)) this.scene.stop(key);
+        }
     }
 
     update(time, delta) {
@@ -256,15 +289,23 @@ class MapScene extends Phaser.Scene {
         sep2.lineStyle(1, C.borderPrimary);
         sep2.lineBetween(290, 6, 290, HUD_H - 6);
 
-        this.goldText = this.add.text(306, HUD_H / 2, '', {
-            fontSize: '13px', fontFamily: FONT_BOLD, color: C.expYellow
+        this.foodText = this.add.text(306, HUD_H / 2, '', {
+            fontSize: '12px', fontFamily: FONT_BOLD, color: '#80d040'
         }).setOrigin(0, 0.5).setDepth(201);
 
-        this.defenseText = this.add.text(420, HUD_H / 2, '', {
+        this.woodText = this.add.text(380, HUD_H / 2, '', {
+            fontSize: '12px', fontFamily: FONT_BOLD, color: '#c89050'
+        }).setOrigin(0, 0.5).setDepth(201);
+
+        this.goldText = this.add.text(454, HUD_H / 2, '', {
+            fontSize: '12px', fontFamily: FONT_BOLD, color: C.expYellow
+        }).setOrigin(0, 0.5).setDepth(201);
+
+        this.defenseText = this.add.text(540, HUD_H / 2, '', {
             fontSize: '11px', fontFamily: FONT, color: C.textSecondary
         }).setOrigin(0, 0.5).setDepth(201);
 
-        this.soldierText = this.add.text(530, HUD_H / 2, '', {
+        this.soldierText = this.add.text(640, HUD_H / 2, '', {
             fontSize: '11px', fontFamily: FONT, color: C.textSecondary
         }).setOrigin(0, 0.5).setDepth(201);
 
@@ -340,9 +381,9 @@ class MapScene extends Phaser.Scene {
                 ground.fillRect(20 + Math.random() * (ZONE_INSIDE_END - 40), 10 + Math.random() * (MAP_WORLD_H - 20), 2, 2);
             }
             ground.fillStyle(0x152015, 0.5);
-            ground.fillRect(ZONE_GATE_END, 0, ZONE_OUTSIDE_END - ZONE_GATE_END, MAP_WORLD_H);
+            ground.fillRect(ZONE_OUTSIDE_START, 0, MAP_WORLD_W - ZONE_OUTSIDE_START, MAP_WORLD_H);
             for (let i = 0; i < 30; i++) {
-                const tx = ZONE_GATE_END + 50 + Math.random() * (ZONE_OUTSIDE_END - ZONE_GATE_END - 100);
+                const tx = ZONE_OUTSIDE_START + 50 + Math.random() * (MAP_WORLD_W - ZONE_OUTSIDE_START - 100);
                 const ty = 30 + Math.random() * (MAP_WORLD_H - 60);
                 ground.fillStyle(0x1a3a1a, 0.6);
                 ground.fillTriangle(tx, ty - 20, tx - 12, ty + 10, tx + 12, ty + 10);
@@ -352,7 +393,7 @@ class MapScene extends Phaser.Scene {
             mc.add(ground);
         }
 
-        // 영내 건물 슬롯 — 5x5 반투명 그리드
+        // 영내 건물 슬롯 — 5x5 반투명 그리드 (초기 3x3 해금, 나머지 잠금)
         const hw = CELL_W / 2;
         const hh = CELL_H / 2;
         this.buildingSlots = [];
@@ -360,9 +401,14 @@ class MapScene extends Phaser.Scene {
             if (i === PLAZA_INDEX) { this._drawPlaza(slot.x, slot.y); return; }
             const slotContainer = this.add.container(slot.x, slot.y);
             const bg = this.add.graphics();
-            this._drawSlotBg(bg, hw, hh, C.emptySlot, 0.35);
+            const isUnlocked = this.baseManager.isCellUnlocked(i);
+            if (isUnlocked) {
+                this._drawSlotBg(bg, hw, hh, C.emptySlot, 0.35);
+            } else {
+                this._drawSlotBg(bg, hw, hh, 0x0a0a0a, 0.6, 0x303030);
+            }
             slotContainer.add(bg);
-            const nameText = this.add.text(0, -8, '+건설', { fontSize: '10px', fontFamily: FONT, color: C.textMuted }).setOrigin(0.5);
+            const nameText = this.add.text(0, -8, isUnlocked ? '+건설' : '🔒', { fontSize: '10px', fontFamily: FONT, color: isUnlocked ? C.textMuted : '#505050' }).setOrigin(0.5);
             slotContainer.add(nameText);
             const statusText = this.add.text(0, 8, '', { fontSize: '8px', fontFamily: FONT, color: C.textSecondary }).setOrigin(0.5);
             slotContainer.add(statusText);
@@ -370,7 +416,7 @@ class MapScene extends Phaser.Scene {
             slotContainer.add(heroText);
             const zone = this.add.zone(0, 0, CELL_W, CELL_H).setInteractive({ useHandCursor: true });
             zone.on('pointerover', () => { this._drawSlotBg(bg, hw, hh, C.buildingHover, 0.5, 0xe03030); });
-            zone.on('pointerout', () => { const built = this._getSlotBuilding(i); this._drawSlotBg(bg, hw, hh, built ? C.building : C.emptySlot, built ? 0.5 : 0.35); });
+            zone.on('pointerout', () => { this._updateSlotAppearance(i); });
             zone.on('pointerdown', () => { this._onSlotClick(i); });
             slotContainer.add(zone);
             mc.add(slotContainer);
@@ -509,6 +555,7 @@ class MapScene extends Phaser.Scene {
         switch (tabId) {
             case 'base': this._renderBaseTab(); break;
             case 'hero': this._renderHeroTab(); break;
+            case 'item': this._renderItemTab(); break;
             case 'expedition': this._renderExpeditionTab(); break;
             case 'policy': this._renderPolicyTab(); break;
         }
@@ -542,7 +589,7 @@ class MapScene extends Phaser.Scene {
         this._actionMode = mode;
         this._actionData = data;
 
-        const popupModes = ['build', 'research', 'facility', 'policy', 'recruit', 'heroSelect', 'heroDetail'];
+        const popupModes = ['build', 'research', 'facility', 'policy', 'recruit', 'heroSelect', 'heroDetail', 'hunt', 'gather', 'lumber', 'pioneer', 'defense', 'buildingInfo'];
         if (popupModes.includes(mode)) {
             this._showPopup(mode, data);
             return;
@@ -552,8 +599,6 @@ class MapScene extends Phaser.Scene {
         switch (mode) {
             case 'expedition': this._renderExpeditionAction(data.stageIndex); break;
             case 'expeditionList': this._renderExpeditionListAction(); break;
-            case 'hunt': this._renderHuntAction(); break;
-            case 'gather': this._renderGatherAction(); break;
             case 'soldierSelect': this._renderSoldierSelectAction(data); break;
         }
     }
@@ -561,29 +606,40 @@ class MapScene extends Phaser.Scene {
     _closePanelAction() {
         this._actionMode = null;
         this._actionData = null;
-        this._closePopup();
+        this._closeAllPopups();
         this._switchTab(this._activeTab);
     }
 
     // ═══════════════════════════════════
-    // 중앙 팝업 시스템
+    // 중앙 팝업 시스템 (스택 기반)
     // ═══════════════════════════════════
+
+    /** 팝업 열기 — 기존 팝업 모두 닫고 새로 열기 */
     _showPopup(mode, data = {}) {
-        this._closePopup();
-        this._popupElements = [];
+        this._closeAllPopups();
+        this._pushPopup(mode, data);
+    }
+
+    /** 팝업 쌓기 — 현재 팝업 위에 새 팝업 추가 */
+    _pushPopup(mode, data = {}) {
+        if (!this._popupStack) this._popupStack = [];
+        const level = this._popupStack.length;
+        const baseDepth = 300 + level * 100;
+        const layer = { elements: [], baseDepth };
+        this._popupStack.push(layer);
 
         const width = 1280, height = 720;
+        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, level > 0 ? 0.5 : 0.6)
+            .setInteractive().setDepth(baseDepth);
+        if (level > 0) overlay.on('pointerdown', () => this._closePopup());
+        layer.elements.push(overlay);
 
-        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.6)
-            .setInteractive().setDepth(300);
-        this._popupElements.push(overlay);
-
-        const PW = 560;
-        const PH = mode === 'heroDetail' ? 680 : 520;
+        const PW = (mode === '_confirm' || mode === 'buildingInfo') ? 400 : 560;
+        const PH = mode === 'heroDetail' ? 680 : (mode === '_confirm' || mode === 'buildingInfo') ? 220 : 520;
         const px = (width - PW) / 2;
         const py = (height - PH) / 2;
 
-        const popBg = this.add.graphics().setDepth(301);
+        const popBg = this.add.graphics().setDepth(baseDepth + 1);
         popBg.fillStyle(C.bgSecondary, 1);
         popBg.fillRoundedRect(px, py, PW, PH, 6);
         popBg.lineStyle(2, C.borderSecondary);
@@ -594,7 +650,9 @@ class MapScene extends Phaser.Scene {
         popBg.lineStyle(1, C.borderDark, 0.5);
         popBg.lineBetween(px + PW - 3, py + 3, px + PW - 3, py + PH - 3);
         popBg.lineBetween(px + 3, py + PH - 3, px + PW - 3, py + PH - 3);
-        this._popupElements.push(popBg);
+        layer.elements.push(popBg);
+
+        // overlay가 팝업 밖 클릭을 차단하므로 별도 blocker 불필요
 
         switch (mode) {
             case 'build': this._popupBuild(px, py, PW, PH); break;
@@ -604,20 +662,41 @@ class MapScene extends Phaser.Scene {
             case 'recruit': this._popupRecruit(px, py, PW, PH); break;
             case 'heroSelect': this._popupHeroSelect(px, py, PW, PH, data); break;
             case 'heroDetail': this._popupHeroDetail(px, py, PW, PH, data.hero); break;
+            case 'hunt': this._popupHunt(px, py, PW, PH); break;
+            case 'gather': this._popupGather(px, py, PW, PH); break;
+            case 'lumber': this._popupLumber(px, py, PW, PH); break;
+            case 'pioneer': this._popupPioneer(px, py, PW, PH, data); break;
+            case 'defense': this._popupDefense(px, py, PW, PH); break;
+            case 'buildingInfo': this._popupBuildingInfo(px, py, PW, PH, data.building); break;
+            case '_confirm': this._popupConfirm(px, py, PW, PH, data); break;
         }
     }
 
+    /** 최상위 팝업 1개만 닫기 */
     _closePopup() {
-        if (this._popupElements) {
-            this._popupElements.forEach(el => el.destroy());
-            this._popupElements = [];
+        if (!this._popupStack || this._popupStack.length === 0) return;
+        const layer = this._popupStack.pop();
+        layer.elements.forEach(el => el.destroy());
+    }
+
+    /** 모든 팝업 닫기 */
+    _closeAllPopups() {
+        if (!this._popupStack) return;
+        while (this._popupStack.length > 0) {
+            const layer = this._popupStack.pop();
+            layer.elements.forEach(el => el.destroy());
         }
     }
 
+    /** 현재 최상위 레이어에 요소 추가 */
     _pp(element) {
-        if (!this._popupElements) this._popupElements = [];
-        element.setDepth(302);
-        this._popupElements.push(element);
+        if (!this._popupStack || this._popupStack.length === 0) {
+            element.setDepth(302);
+            return element;
+        }
+        const layer = this._popupStack[this._popupStack.length - 1];
+        element.setDepth(layer.baseDepth + 2);
+        layer.elements.push(element);
         return element;
     }
 
@@ -625,7 +704,7 @@ class MapScene extends Phaser.Scene {
         const cx = px + pw / 2;
         const y = py + ph - 40;
         this._pp(this._popupButton(cx, y, '닫기', () => {
-            this._closePopup();
+            this._closeAllPopups();
             this._actionMode = null;
             this._actionData = null;
         }));
@@ -634,7 +713,7 @@ class MapScene extends Phaser.Scene {
     _popupButton(cx, cy, label, callback) {
         const bw = 140, bh = 30;
         const x = cx - bw / 2, y = cy - bh / 2;
-        const container = this.add.container(0, 0).setDepth(302);
+        const container = this.add.container(0, 0);
 
         const bg = this.add.graphics();
         bg.fillStyle(C.cardBg, 1); bg.fillRect(x, y, bw, bh);
@@ -657,7 +736,7 @@ class MapScene extends Phaser.Scene {
     _popupSmallBtn(cx, cy, label, callback) {
         const w = 60, h = 26;
         const x = cx - w / 2, y = cy - h / 2;
-        const container = this.add.container(0, 0).setDepth(302);
+        const container = this.add.container(0, 0);
 
         const bg = this.add.graphics();
         bg.fillStyle(0x2a0808, 1); bg.fillRect(x, y, w, h);
@@ -710,7 +789,7 @@ class MapScene extends Phaser.Scene {
                     fontSize: '9px', fontFamily: FONT, color: C.textMuted,
                     wordWrap: { width: iw - 120 }
                 }));
-                this._pp(this.add.text(px + iw - 8, y + 6, `${cost}G / ${f.build_turns}턴`, {
+                this._pp(this.add.text(px + iw - 8, y + 6, `${cost}G / 진행도 ${f.build_cost}`, {
                     fontSize: '11px', fontFamily: FONT, color: canAfford ? C.expYellow : '#f04040'
                 }).setOrigin(1, 0));
 
@@ -767,7 +846,7 @@ class MapScene extends Phaser.Scene {
                     fontSize: '9px', fontFamily: FONT, color: C.textMuted,
                     wordWrap: { width: iw - 120 }
                 }));
-                this._pp(this.add.text(px + iw - 8, y + 6, `${r.cost}G / ${r.turns}턴`, {
+                this._pp(this.add.text(px + iw - 8, y + 6, `${r.cost}G / 진행도 ${r.research_cost}`, {
                     fontSize: '11px', fontFamily: FONT, color: canAfford ? C.expYellow : '#f04040'
                 }).setOrigin(1, 0));
 
@@ -819,25 +898,24 @@ class MapScene extends Phaser.Scene {
                 const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
 
                 const ibg = this._pp(this.add.graphics());
-                ibg.fillStyle(C.bgSecondary, 1); ibg.fillRect(px + 20, y, iw, 56);
-                ibg.lineStyle(1, C.borderSecondary); ibg.strokeRect(px + 20, y, iw, 56);
+                ibg.fillStyle(C.bgSecondary, 1); ibg.fillRoundedRect(px + 20, y, iw, 32, 4);
+                ibg.lineStyle(1, C.borderSecondary); ibg.strokeRoundedRect(px + 20, y, iw, 32, 4);
 
-                this._pp(this.add.text(px + 32, y + 6, hero.name, {
-                    fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
+                this._pp(this.add.text(px + 32, y + 8, `${hero.name}`, {
+                    fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
                 }));
-                this._pp(this.add.text(px + 32, y + 24, `[${hero.sinName}]`, {
+                this._pp(this.add.text(px + 200, y + 9, `[${hero.sinName}]`, {
                     fontSize: '9px', fontFamily: FONT, color: sinColor
                 }));
-                this._pp(this.add.text(px + 200, y + 24, `적합도: ${stars}`, {
+                this._pp(this.add.text(px + 290, y + 9, `${statConfig.label}력 ${stars}`, {
                     fontSize: '9px', fontFamily: FONT, color: C.expYellow
                 }));
 
-                const s = hero.stats;
-                this._pp(this.add.text(px + 32, y + 40, `힘${s.strength} 민${s.agility} 지${s.intellect} 체${s.vitality} 감${s.perception} 솔${s.leadership} 매${s.charisma}`, {
-                    fontSize: '9px', fontFamily: FONT, color: C.textMuted
+                const heroRef = hero;
+                this._pp(this._popupSmallBtn(px + iw - 70, y + 16, '정보', () => {
+                    this._pushPopup('heroDetail', { hero: heroRef });
                 }));
-
-                this._pp(this._popupSmallBtn(px + iw - 10, y + 20, '투입', () => {
+                this._pp(this._popupSmallBtn(px + iw - 10, y + 16, '투입', () => {
                     let result;
                     if (actionType === 'build') {
                         result = this.baseManager.startBuilding(target.id, hero.id);
@@ -850,7 +928,7 @@ class MapScene extends Phaser.Scene {
                     this._closePanelAction();
                 }));
 
-                y += 62;
+                y += 38;
             }
         }
 
@@ -858,7 +936,7 @@ class MapScene extends Phaser.Scene {
             this._showPopup(actionType === 'build' ? 'build' : 'research');
         }));
         this._pp(this._popupButton(cx + 80, py + ph - 40, '닫기', () => {
-            this._closePopup(); this._actionMode = null; this._actionData = null;
+            this._closeAllPopups(); this._actionMode = null; this._actionData = null;
         }));
     }
 
@@ -1031,7 +1109,7 @@ class MapScene extends Phaser.Scene {
         this._pp(this.add.text(infoX + nameObj.width + 10, ty + 4, `[${hero.sinName}]`, {
             fontSize: '16px', fontFamily: FONT_BOLD, color: sinColorHex
         }));
-        this._pp(this.add.text(infoX + nameObj.width + 10, ty + 22, `비용 ${hero.foodCost ?? '?'}/턴`, {
+        this._pp(this.add.text(infoX + nameObj.width + 10, ty + 22, `🌾${hero.foodCost ?? '?'}/턴`, {
             fontSize: '11px', fontFamily: FONT, color: '#a08040'
         }));
         ty += 30;
@@ -1043,7 +1121,7 @@ class MapScene extends Phaser.Scene {
             wordWrap: { width: cardW - portSize - 46 }
         }));
 
-        const statusMap = { expedition: '원정', injured: '부상', construction: '건설', research: '연구', idle: '대기', hunt: '사냥', gather: '채집' };
+        const statusMap = { expedition: '원정', injured: '부상', construction: '건설', research: '연구', idle: '대기', hunt: '사냥', gather: '채집', lumber: '벌목' };
         this._pp(this.add.text(cardX + cardW - 12, y + 10, statusMap[hero.status] || '대기', {
             fontSize: '11px', fontFamily: FONT, color: C.textMuted
         }).setOrigin(1, 0));
@@ -1171,7 +1249,7 @@ class MapScene extends Phaser.Scene {
 
         this._pp(this._popupButton(cx - 80, py + ph - 40, '해고', () => {
             this.heroManager.dismissHero(hero.id);
-            this._closePopup();
+            this._closeAllPopups();
             this._refreshActiveTab();
         }));
         this._pp(this._popupButton(cx + 80, py + ph - 40, '닫기', () => {
@@ -1208,7 +1286,7 @@ class MapScene extends Phaser.Scene {
         const currentCount = this.heroManager.getHeroes().length;
         const gold = store.getState('gold') || 0;
 
-        this._pp(this.add.text(cx, y, `${currentCount}/7명 | 고용비: 100G | 보유: ${gold}G`, {
+        this._pp(this.add.text(cx, y, `${currentCount}/7명 | 고용비: 💰100 | 보유: 💰${gold}`, {
             fontSize: '11px', fontFamily: FONT, color: C.textSecondary
         }).setOrigin(0.5));
         y += 24;
@@ -1219,7 +1297,7 @@ class MapScene extends Phaser.Scene {
                 fontSize: '11px', fontFamily: FONT, color: C.textMuted
             }).setOrigin(0.5));
         } else if (gold < 100) {
-            this._pp(this.add.text(cx, y + 40, '골드가 부족합니다.', {
+            this._pp(this.add.text(cx, y + 40, '돈이 부족합니다.', {
                 fontSize: '11px', fontFamily: FONT, color: C.textMuted
             }).setOrigin(0.5));
         } else {
@@ -1313,52 +1391,338 @@ class MapScene extends Phaser.Scene {
         this._p(this._panelButton(px + pw / 2, y, '← 돌아가기', () => this._closePanelAction()));
     }
 
-    _renderGatherAction() {
-        const px = 16;
-        const pw = 600;
-        let y = PANEL_CONTENT_Y + 8;
+    _popupGather(px, py, pw, ph) {
+        const cx = px + pw / 2;
+        let y = py + 16;
 
-        this._p(this._sectionTitle(px, y, '채집 — 영웅 선택'));
-        y += 22;
+        this._pp(this.add.text(cx, y, '🌿 채집 — 영웅 선택', {
+            fontSize: '14px', fontFamily: FONT_BOLD, color: '#30b050'
+        }).setOrigin(0.5));
+        y += 24;
 
-        this._p(this.add.text(px + 8, y, '영웅 1명을 채집에 보냅니다. 자원과 소량의 골드를 획득합니다', {
-            fontSize: '9px', fontFamily: FONT, color: C.textSecondary
-        }));
-        y += 20;
+        this._pp(this.add.text(cx, y, '영웅 1명을 채집에 보냅니다. 식량을 획득합니다', {
+            fontSize: '10px', fontFamily: FONT, color: C.textSecondary
+        }).setOrigin(0.5));
+        y += 24;
 
         const heroes = this.heroManager.getBaseHeroes().filter(h => h.status === 'idle');
+        const listX = px + 16;
+        const listW = pw - 32;
 
         if (heroes.length === 0) {
-            this._p(this.add.text(px + 8, y, '파견 가능한 영웅 없음', { fontSize: '11px', fontFamily: FONT, color: C.textMuted }));
+            this._pp(this.add.text(cx, y + 30, '파견 가능한 영웅 없음', {
+                fontSize: '11px', fontFamily: FONT, color: C.textMuted
+            }).setOrigin(0.5));
         } else {
             for (const hero of heroes) {
                 const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
 
-                this._p(this._outsetPanel(px, y, pw, 36));
-                this._p(this.add.text(px + 8, y + 8, hero.name, { fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary }));
-                this._p(this.add.text(px + 120, y + 8, `[${hero.sinName}]`, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
-                this._p(this._smallPanelBtn(px + pw - 50, y + 10, '파견', () => this._doGather(hero)));
-                y += 42;
+                const rowBg = this.add.graphics();
+                rowBg.fillStyle(C.cardBg, 1);
+                rowBg.fillRoundedRect(listX, y, listW, 32, 4);
+                rowBg.lineStyle(1, C.borderPrimary);
+                rowBg.strokeRoundedRect(listX, y, listW, 32, 4);
+                this._pp(rowBg);
+
+                this._pp(this.add.text(listX + 12, y + 8, hero.name, {
+                    fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
+                }));
+                this._pp(this.add.text(listX + 180, y + 9, `[${hero.sinName}]`, {
+                    fontSize: '9px', fontFamily: FONT, color: sinColor
+                }));
+
+                const heroRef = hero;
+                this._pp(this._popupSmallBtn(listX + listW - 70, y + 16, '정보', () => {
+                    this._pushPopup('heroDetail', { hero: heroRef });
+                }));
+                this._pp(this._popupSmallBtn(listX + listW - 10, y + 16, '파견', () => {
+                    this._closeAllPopups();
+                    this._doGather(hero);
+                }));
+                y += 38;
             }
         }
 
-        y += 10;
-        this._p(this._panelButton(px + pw / 2, y, '← 돌아가기', () => this._closePanelAction()));
+        this._popupCloseBtn(px, py, pw, ph);
     }
 
     _doGather(hero) {
         const turn = store.getState('turn');
         const day = (turn && turn.day) || 1;
         const b = this.balance;
-        const goldReward = (b.gather_base_gold ?? 10) + Math.floor(Math.random() * day * 2);
+        const foodReward = (b.gather_base_food ?? 8) + Math.floor(Math.random() * day);
 
-        const gold = store.getState('gold') || 0;
-        store.setState('gold', gold + goldReward);
+        hero.status = 'gather';
+        store.setState('heroes', [...this.heroManager.getHeroes()]);
+
+        const food = store.getState('food') || 0;
+        store.setState('food', food + foodReward);
         this.heroManager.updateMorale(hero.id, b.gather_morale ?? 2);
 
-        this._updateGold();
+        this._actionMode = null;
+        this._actionData = null;
+        this._updateResources();
         this._refreshActiveTab();
-        this._closePanelAction();
+    }
+
+    // ═══════════════════════════════════
+    // 팝업: 벌목
+    // ═══════════════════════════════════
+    _popupLumber(px, py, pw, ph) {
+        const cx = px + pw / 2;
+        let y = py + 16;
+
+        this._pp(this.add.text(cx, y, '🪓 벌목 — 영웅 선택', {
+            fontSize: '14px', fontFamily: FONT_BOLD, color: '#8a6a3a'
+        }).setOrigin(0.5));
+        y += 24;
+
+        this._pp(this.add.text(cx, y, '영웅 1명을 벌목에 보냅니다. 나무를 획득합니다', {
+            fontSize: '10px', fontFamily: FONT, color: C.textSecondary
+        }).setOrigin(0.5));
+        y += 24;
+
+        const heroes = this.heroManager.getBaseHeroes().filter(h => h.status === 'idle');
+        const listX = px + 16;
+        const listW = pw - 32;
+
+        if (heroes.length === 0) {
+            this._pp(this.add.text(cx, y + 30, '파견 가능한 영웅 없음', {
+                fontSize: '11px', fontFamily: FONT, color: C.textMuted
+            }).setOrigin(0.5));
+        } else {
+            for (const hero of heroes) {
+                const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+
+                const rowBg = this.add.graphics();
+                rowBg.fillStyle(C.cardBg, 1);
+                rowBg.fillRoundedRect(listX, y, listW, 32, 4);
+                rowBg.lineStyle(1, C.borderPrimary);
+                rowBg.strokeRoundedRect(listX, y, listW, 32, 4);
+                this._pp(rowBg);
+
+                this._pp(this.add.text(listX + 12, y + 8, hero.name, {
+                    fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
+                }));
+                this._pp(this.add.text(listX + 180, y + 9, `[${hero.sinName}]`, {
+                    fontSize: '9px', fontFamily: FONT, color: sinColor
+                }));
+
+                const heroRef = hero;
+                this._pp(this._popupSmallBtn(listX + listW - 70, y + 16, '정보', () => {
+                    this._pushPopup('heroDetail', { hero: heroRef });
+                }));
+                this._pp(this._popupSmallBtn(listX + listW - 10, y + 16, '파견', () => {
+                    this._closeAllPopups();
+                    this._doLumber(hero);
+                }));
+                y += 38;
+            }
+        }
+
+        this._popupCloseBtn(px, py, pw, ph);
+    }
+
+    _doLumber(hero) {
+        const turn = store.getState('turn');
+        const day = (turn && turn.day) || 1;
+        const b = this.balance;
+        const woodReward = (b.lumber_base_wood ?? 6) + Math.floor(Math.random() * day);
+
+        hero.status = 'lumber';
+        store.setState('heroes', [...this.heroManager.getHeroes()]);
+
+        const wood = store.getState('wood') || 0;
+        store.setState('wood', wood + woodReward);
+        this.heroManager.updateMorale(hero.id, b.lumber_morale ?? 1);
+
+        this._actionMode = null;
+        this._actionData = null;
+        this._updateResources();
+        this._refreshActiveTab();
+    }
+
+    // ─── 개척 팝업 ───
+    _popupPioneer(px, py, pw, ph, data) {
+        const cx = px + pw / 2;
+        let y = py + 16;
+        const cellIndex = data.cellIndex;
+        const cost = this.balance.pioneer_cost_wood ?? 30;
+        const wood = store.getState('wood') || 0;
+        const available = this.baseManager.getAvailablePioneerCells();
+        const canPioneer = available.includes(cellIndex);
+        const pioneering = this.baseManager.getCurrentPioneering();
+
+        this._pp(this.add.text(cx, y, '🪓 개척 — 거점 확장', {
+            fontSize: '14px', fontFamily: FONT_BOLD, color: '#c89050'
+        }).setOrigin(0.5));
+        y += 24;
+
+        const row = Math.floor(cellIndex / 5);
+        const col = cellIndex % 5;
+        this._pp(this.add.text(cx, y, `셀 [${row},${col}] 개척 | 비용: 나무 ${cost}`, {
+            fontSize: '10px', fontFamily: FONT, color: C.textSecondary
+        }).setOrigin(0.5));
+        y += 24;
+
+        if (pioneering) {
+            this._pp(this.add.text(cx, y + 30, '이미 개척 진행 중', {
+                fontSize: '11px', fontFamily: FONT, color: '#f8b830'
+            }).setOrigin(0.5));
+        } else if (!canPioneer) {
+            this._pp(this.add.text(cx, y + 30, '인접한 해금 셀이 없어 개척 불가', {
+                fontSize: '11px', fontFamily: FONT, color: '#f04040'
+            }).setOrigin(0.5));
+        } else if (wood < cost) {
+            this._pp(this.add.text(cx, y + 30, `나무 부족 (보유: ${wood} / 필요: ${cost})`, {
+                fontSize: '11px', fontFamily: FONT, color: '#f04040'
+            }).setOrigin(0.5));
+        } else {
+            const heroes = this.heroManager.getBaseHeroes().filter(h => h.status === 'idle');
+            const listX = px + 16;
+            const listW = pw - 32;
+            if (heroes.length === 0) {
+                this._pp(this.add.text(cx, y + 30, '투입 가능한 영웅 없음', {
+                    fontSize: '11px', fontFamily: FONT, color: C.textMuted
+                }).setOrigin(0.5));
+            } else {
+                this._pp(this.add.text(px + 16, y, '영웅 선택 (힘+체력)', {
+                    fontSize: '10px', fontFamily: FONT, color: C.textSecondary
+                }));
+                y += 20;
+                for (const hero of heroes) {
+                    const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+                    const rowBg = this.add.graphics();
+                    rowBg.fillStyle(C.cardBg, 1);
+                    rowBg.fillRoundedRect(listX, y, listW, 36, 4);
+                    rowBg.lineStyle(1, C.borderPrimary);
+                    rowBg.strokeRoundedRect(listX, y, listW, 36, 4);
+                    this._pp(rowBg);
+                    this._pp(this.add.text(listX + 12, y + 10, hero.name, {
+                        fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
+                    }));
+                    this._pp(this.add.text(listX + 120, y + 10, `[${hero.sinName}]`, {
+                        fontSize: '9px', fontFamily: FONT, color: sinColor
+                    }));
+                    const eff = Math.round((hero.stats.strength + hero.stats.vitality) / 2);
+                    this._pp(this.add.text(listX + 200, y + 10, `효율: ${eff}`, {
+                        fontSize: '9px', fontFamily: FONT, color: C.infoCyan
+                    }));
+                    this._pp(this._popupButton(listX + listW - 40, y + 18, '투입', () => {
+                        this._closeAllPopups();
+                        const result = this.baseManager.startPioneering(cellIndex, hero.id);
+                        if (result.success) {
+                            hero.status = 'pioneer';
+                            store.setState('heroes', [...this.heroManager.getHeroes()]);
+                        }
+                        this._updateBuildings();
+                        this._refreshActiveTab();
+                        this._updateResources();
+                    }));
+                    y += 42;
+                }
+            }
+        }
+        this._popupCloseBtn(px, py, pw, ph);
+    }
+
+    // ─── 방어 배치 팝업 ───
+    _popupDefense(px, py, pw, ph) {
+        const cx = px + pw / 2;
+        let y = py + 16;
+
+        this._pp(this.add.text(cx, y, '🛡️ 방어 배치', {
+            fontSize: '14px', fontFamily: FONT_BOLD, color: '#4080e0'
+        }).setOrigin(0.5));
+        y += 24;
+
+        this._pp(this.add.text(cx, y, '밤 습격에 참전할 영웅을 배치합니다', {
+            fontSize: '10px', fontFamily: FONT, color: C.textSecondary
+        }).setOrigin(0.5));
+        y += 24;
+
+        const heroes = this.heroManager.getBaseHeroes().filter(h => h.status !== 'injured');
+        const defenseIds = this.baseManager.getDefenseHeroIds();
+        const listX = px + 16;
+        const listW = pw - 32;
+
+        if (heroes.length === 0) {
+            this._pp(this.add.text(cx, y + 30, '배치 가능한 영웅 없음', {
+                fontSize: '11px', fontFamily: FONT, color: C.textMuted
+            }).setOrigin(0.5));
+        } else {
+            for (const hero of heroes) {
+                const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+                const isAssigned = defenseIds.includes(hero.id);
+
+                const rowBg = this.add.graphics();
+                rowBg.fillStyle(isAssigned ? 0x1a2040 : C.cardBg, 1);
+                rowBg.fillRoundedRect(listX, y, listW, 36, 4);
+                rowBg.lineStyle(1, isAssigned ? 0x4080e0 : C.borderPrimary);
+                rowBg.strokeRoundedRect(listX, y, listW, 36, 4);
+                this._pp(rowBg);
+
+                this._pp(this.add.text(listX + 12, y + 10, hero.name, {
+                    fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
+                }));
+                this._pp(this.add.text(listX + 120, y + 10, `[${hero.sinName}]`, {
+                    fontSize: '9px', fontFamily: FONT, color: sinColor
+                }));
+
+                const statusLabel = isAssigned ? '🛡️ 배치됨' : hero.status === 'idle' ? '대기' : hero.status;
+                this._pp(this.add.text(listX + 200, y + 10, statusLabel, {
+                    fontSize: '9px', fontFamily: FONT, color: isAssigned ? '#4080e0' : C.textMuted
+                }));
+
+                if (isAssigned) {
+                    this._pp(this._popupButton(listX + listW - 40, y + 18, '해제', () => {
+                        this.baseManager.unassignDefense(hero.id);
+                        this._closeAllPopups();
+                        this._showPopup('defense', {});
+                        this._refreshActiveTab();
+                    }));
+                } else if (hero.status === 'idle') {
+                    this._pp(this._popupButton(listX + listW - 40, y + 18, '배치', () => {
+                        this.baseManager.assignDefense(hero.id);
+                        hero.status = 'defense';
+                        store.setState('heroes', [...this.heroManager.getHeroes()]);
+                        this._closeAllPopups();
+                        this._showPopup('defense', {});
+                        this._refreshActiveTab();
+                    }));
+                }
+                y += 42;
+            }
+        }
+
+        const defCount = defenseIds.length;
+        this._pp(this.add.text(cx, py + ph - 60, `현재 방어 배치: ${defCount}명`, {
+            fontSize: '12px', fontFamily: FONT_BOLD, color: defCount > 0 ? '#4080e0' : '#f04040'
+        }).setOrigin(0.5));
+
+        this._popupCloseBtn(px, py, pw, ph);
+    }
+
+    _popupBuildingInfo(px, py, pw, ph, building) {
+        const cx = px + pw / 2;
+        const pct = Math.floor((building.progress / building.buildCost) * 100);
+        const heroes = this.heroManager.getHeroes();
+        const hero = heroes.find(h => h.id === building.assignedHeroId);
+        const heroName = hero ? hero.name : '없음';
+
+        this._pp(this.add.text(cx, py + 20, `🔨 ${building.name}`, {
+            fontSize: '14px', fontFamily: FONT_BOLD, color: C.infoCyan
+        }).setOrigin(0.5));
+
+        this._pp(this.add.text(cx, py + 50, `건설 진행: ${pct}% (${building.progress}/${building.buildCost})`, {
+            fontSize: '11px', fontFamily: FONT, color: C.textPrimary
+        }).setOrigin(0.5));
+
+        this._pp(this.add.text(cx, py + 72, `담당: ${heroName}`, {
+            fontSize: '11px', fontFamily: FONT, color: C.textSecondary
+        }).setOrigin(0.5));
+
+        this._popupCloseBtn(px, py, pw, ph);
     }
 
     _renderExpeditionAction(stageIndex) {
@@ -1448,45 +1812,63 @@ class MapScene extends Phaser.Scene {
         }));
     }
 
-    _renderHuntAction() {
-        const px = 16;
-        const pw = 600;
-        let y = PANEL_CONTENT_Y + 8;
+    _popupHunt(px, py, pw, ph) {
+        const cx = px + pw / 2;
+        let y = py + 16;
 
-        this._p(this._sectionTitle(px, y, '사냥 — 영웅 선택'));
-        y += 22;
+        this._pp(this.add.text(cx, y, '🏹 사냥 — 영웅 선택', {
+            fontSize: '14px', fontFamily: FONT_BOLD, color: '#d0a020'
+        }).setOrigin(0.5));
+        y += 24;
 
-        this._p(this.add.text(px + 8, y, '영웅 1명을 사냥에 보냅니다', {
-            fontSize: '9px', fontFamily: FONT, color: C.textSecondary
-        }));
-        y += 18;
+        this._pp(this.add.text(cx, y, '영웅 1명을 사냥에 보냅니다', {
+            fontSize: '10px', fontFamily: FONT, color: C.textSecondary
+        }).setOrigin(0.5));
+        y += 24;
 
         const heroes = this.heroManager.getBaseHeroes().filter(h => h.status === 'idle');
+        const listX = px + 16;
+        const listW = pw - 32;
 
         if (heroes.length === 0) {
-            this._p(this.add.text(px + 8, y, '파견 가능한 영웅 없음', { fontSize: '11px', fontFamily: FONT, color: C.textMuted }));
+            this._pp(this.add.text(cx, y + 30, '파견 가능한 영웅 없음', {
+                fontSize: '11px', fontFamily: FONT, color: C.textMuted
+            }).setOrigin(0.5));
         } else {
             for (const hero of heroes) {
                 const stars = this._calcFitness(hero, ACTION_STATS.hunt.primary);
                 const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
 
-                this._p(this._outsetPanel(px, y, pw, 42));
-                this._p(this.add.text(px + 8, y + 6, hero.name, { fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary }));
-                this._p(this.add.text(px + 120, y + 6, `[${hero.sinName}]`, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
-                this._p(this.add.text(px + 240, y + 6, `적합도: ${stars}`, { fontSize: '9px', fontFamily: FONT, color: C.expYellow }));
+                const rowBg = this.add.graphics();
+                rowBg.fillStyle(C.cardBg, 1);
+                rowBg.fillRoundedRect(listX, y, listW, 32, 4);
+                rowBg.lineStyle(1, C.borderPrimary);
+                rowBg.strokeRoundedRect(listX, y, listW, 32, 4);
+                this._pp(rowBg);
 
-                const s = hero.stats;
-                this._p(this.add.text(px + 8, y + 24, `힘${s.strength} 민${s.agility} 지${s.intellect} 체${s.vitality}`, {
-                    fontSize: '9px', fontFamily: FONT, color: C.textMuted
+                this._pp(this.add.text(listX + 12, y + 8, hero.name, {
+                    fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
+                }));
+                this._pp(this.add.text(listX + 180, y + 9, `[${hero.sinName}]`, {
+                    fontSize: '9px', fontFamily: FONT, color: sinColor
+                }));
+                this._pp(this.add.text(listX + 270, y + 9, `사냥력 ${stars}`, {
+                    fontSize: '9px', fontFamily: FONT, color: C.expYellow
                 }));
 
-                this._p(this._smallPanelBtn(px + pw - 50, y + 12, '파견', () => this._launchHunt(hero)));
-                y += 48;
+                const heroRef = hero;
+                this._pp(this._popupSmallBtn(listX + listW - 70, y + 16, '정보', () => {
+                    this._pushPopup('heroDetail', { hero: heroRef });
+                }));
+                this._pp(this._popupSmallBtn(listX + listW - 10, y + 16, '파견', () => {
+                    this._closeAllPopups();
+                    this._launchHunt(hero);
+                }));
+                y += 38;
             }
         }
 
-        y += 10;
-        this._p(this._panelButton(px + pw / 2, y, '← 돌아가기', () => this._closePanelAction()));
+        this._popupCloseBtn(px, py, pw, ph);
     }
 
     _launchHunt(hero) {
@@ -1497,6 +1879,10 @@ class MapScene extends Phaser.Scene {
         const huntEnemies = this.registry.get('huntEnemies') || [];
         const template = huntEnemies[Math.floor(Math.random() * huntEnemies.length)];
         if (!template) return;
+
+        // 사냥 출발 시 영웅 상태 변경 → 이번 턴 다른 행동 불가
+        hero.status = 'hunt';
+        store.setState('heroes', [...this.heroManager.getHeroes()]);
 
         const scale = 1 + (day - 1) * 0.1;
         const enemy = {
@@ -1516,16 +1902,17 @@ class MapScene extends Phaser.Scene {
             onComplete: (result) => {
                 this._huntPopup = null;
                 if (result.victory) {
+                    hero.status = 'hunt';
                     const gold = store.getState('gold') || 0;
                     store.setState('gold', gold + goldReward);
                     this.heroManager.updateMorale(hero.id, b.hunt_win_morale ?? 3);
                 } else {
                     hero.status = 'injured';
-                    store.setState('heroes', [...this.heroManager.getHeroes()]);
                     this.heroManager.updateMorale(hero.id, b.hunt_lose_morale ?? -5);
                 }
+                store.setState('heroes', [...this.heroManager.getHeroes()]);
                 this._refreshActiveTab();
-                this._updateGold();
+                this._updateResources();
             }
         });
         this._huntPopup.start();
@@ -1547,11 +1934,11 @@ class MapScene extends Phaser.Scene {
             if (hero.sinType === 'gluttony' || hero.sinType === 'lust') delta = b.feast_morale_gluttony_lust ?? 25;
             this.heroManager.updateMorale(hero.id, delta);
         }
-        this._closePopup();
+        this._closeAllPopups();
         this._actionMode = null;
         this._actionData = null;
         this._refreshActiveTab();
-        this._updateGold();
+        this._updateResources();
     }
 
     _doStabilize() {
@@ -1564,7 +1951,7 @@ class MapScene extends Phaser.Scene {
                 this.heroManager.updateMorale(hero.id, delta);
             }
         }
-        this._closePopup();
+        this._closeAllPopups();
         this._actionMode = null;
         this._actionData = null;
         this._refreshActiveTab();
@@ -1648,8 +2035,9 @@ class MapScene extends Phaser.Scene {
             this._p(this._smallPanelBtn(cx + 40, y + 40, '고용', () => this._showPanelAction('recruit')));
         }
 
-        const baseHeroes = this.heroManager.getBaseHeroes().filter(h => h.status !== 'injured');
-        this.defenseText.setText(`방어:${baseHeroes.length}명`);
+        const defenseCount = this.baseManager.getDefenseHeroIds().length;
+        this.defenseText.setText(`방어:${defenseCount}명`);
+        this.defenseText.setColor(defenseCount === 0 ? '#f04040' : C.textSecondary);
     }
 
     // ═══════════════════════════════════
@@ -1664,10 +2052,10 @@ class MapScene extends Phaser.Scene {
         y += 22;
 
         const built = this.baseManager.getBuiltFacilities();
-        const building = this.baseManager.getCurrentBuilding();
+        const buildings = this.baseManager.getCurrentBuildings();
         const researching = this.baseManager.getCurrentResearch();
 
-        if (built.length === 0 && !building) {
+        if (built.length === 0 && buildings.length === 0) {
             this._p(this.add.text(px + 8, y, '건설된 시설 없음', { fontSize: '11px', fontFamily: FONT, color: C.textMuted }));
             y += 20;
         } else {
@@ -1678,21 +2066,23 @@ class MapScene extends Phaser.Scene {
             }
         }
 
-        if (building) {
+        for (const building of buildings) {
             this._p(this._insetPanel(px, y, pw, 24));
-            this._p(this.add.text(px + 8, y + 5, `🔨 ${building.name} (${building.turnsLeft}턴)`, { fontSize: '11px', fontFamily: FONT, color: C.infoCyan }));
+            const bPct = Math.floor((building.progress / building.buildCost) * 100);
+            this._p(this.add.text(px + 8, y + 5, `🔨 ${building.name} (${bPct}% — ${building.progress}/${building.buildCost})`, { fontSize: '11px', fontFamily: FONT, color: C.infoCyan }));
             y += 30;
         }
 
         if (researching) {
             this._p(this._insetPanel(px, y, pw, 24));
-            this._p(this.add.text(px + 8, y + 5, `📖 ${researching.name} (${researching.turnsLeft}턴)`, { fontSize: '11px', fontFamily: FONT, color: C.infoCyan }));
+            const rPct = Math.floor((researching.progress / researching.researchCost) * 100);
+            this._p(this.add.text(px + 8, y + 5, `📖 ${researching.name} (${rPct}% — ${researching.progress}/${researching.researchCost})`, { fontSize: '11px', fontFamily: FONT, color: C.infoCyan }));
             y += 30;
         }
 
         y += 10;
         const income = this.baseManager.getPassiveIncomeWithBonus();
-        this._p(this.add.text(px + 8, y, `턴당 수입: ${income}G`, { fontSize: '11px', fontFamily: FONT, color: C.expYellow }));
+        this._p(this.add.text(px + 8, y, `턴당 수입: 💰${income}`, { fontSize: '11px', fontFamily: FONT, color: C.expYellow }));
         y += 20;
 
         const policyEffect = this.baseManager.getPolicyMoraleEffect();
@@ -1700,12 +2090,23 @@ class MapScene extends Phaser.Scene {
         this._p(this.add.text(px + 8, y, `포고령 효과: 사기 ${policyEffect >= 0 ? '+' : ''}${policyEffect}/턴`, { fontSize: '11px', fontFamily: FONT, color: pColor }));
         y += 30;
 
-        if (!building) {
-            this._p(this._panelButton(px + 100, y, '건 설', () => this._showPanelAction('build')));
-        }
+        this._p(this._panelButton(px + 100, y, '건 설', () => this._showPanelAction('build')));
         if (!researching) {
             this._p(this._panelButton(px + 280, y, '연 구', () => this._showPanelAction('research')));
         }
+    }
+
+    // ═══════════════════════════════════
+    // 탭: 아이템
+    // ═══════════════════════════════════
+    _renderItemTab() {
+        const y = PANEL_CONTENT_Y + 60;
+        this._p(this.add.text(640, y, '🎒 아이템 — 준비 중', {
+            fontSize: '16px', fontFamily: FONT, color: C.textMuted
+        }).setOrigin(0.5).setDepth(301));
+        this._p(this.add.text(640, y + 30, '장비 시스템은 추후 업데이트됩니다.', {
+            fontSize: '12px', fontFamily: FONT, color: C.textMuted
+        }).setOrigin(0.5).setDepth(301));
     }
 
     // ═══════════════════════════════════
@@ -1833,12 +2234,7 @@ class MapScene extends Phaser.Scene {
     _calcFitness(hero, primaryStats) {
         let total = 0;
         for (const stat of primaryStats) total += hero.stats[stat] || 0;
-        const avg = total / primaryStats.length;
-        if (avg >= 16) return '★★★★★';
-        if (avg >= 13) return '★★★★☆';
-        if (avg >= 10) return '★★★☆☆';
-        if (avg >= 7) return '★★☆☆☆';
-        return '★☆☆☆☆';
+        return Math.floor(total / primaryStats.length);
     }
 
     // ═══════════════════════════════════
@@ -1922,18 +2318,35 @@ class MapScene extends Phaser.Scene {
         if (!this.buildingSlots) return;
         const hw = CELL_W / 2, hh = CELL_H / 2;
         const builtFacilities = this.baseManager.getBuiltFacilities();
-        const building = this.baseManager.getCurrentBuilding();
+        const buildings = this.baseManager.getCurrentBuildings();
+        const pioneering = this.baseManager.getCurrentPioneering();
+        // 건설 중인 시설을 슬롯에 매핑 (built 다음 순서로 배치)
+        const buildingBySlot = {};
+        buildings.forEach((b, idx) => { buildingBySlot[builtFacilities.length + idx] = b; });
+
         this.buildingSlots.forEach((slot, i) => {
             const builtItem = builtFacilities[i] || null;
-            const isBuilding = building && !builtItem && i === builtFacilities.length;
+            const buildingItem = buildingBySlot[i] || null;
+            const isPioneering = pioneering && pioneering.cellIndex === slot.slotIndex;
+            const isUnlocked = this.baseManager.isCellUnlocked(slot.slotIndex);
+
             if (builtItem) {
                 slot.nameText.setText(builtItem.name_ko).setColor(C.textPrimary);
                 slot.statusText.setText('');
                 this._drawSlotBg(slot.bg, hw, hh, C.building, 0.5);
-            } else if (isBuilding) {
-                slot.nameText.setText(building.name).setColor(C.infoCyan);
-                slot.statusText.setText(`건설 중 (${building.turnsLeft}턴)`);
+            } else if (buildingItem) {
+                slot.nameText.setText(buildingItem.name).setColor(C.infoCyan);
+                const bPct2 = Math.floor((buildingItem.progress / buildingItem.buildCost) * 100);
+                slot.statusText.setText(`건설 ${bPct2}%`);
                 this._drawSlotBg(slot.bg, hw, hh, 0x1e2e1e, 0.6, 0x40a060);
+            } else if (isPioneering) {
+                slot.nameText.setText('개척 중').setColor('#c89050');
+                slot.statusText.setText('');
+                this._drawSlotBg(slot.bg, hw, hh, 0x2a2010, 0.6, 0xc89050);
+            } else if (!isUnlocked) {
+                slot.nameText.setText('🔒').setColor('#505050');
+                slot.statusText.setText(''); slot.heroText.setText('');
+                this._drawSlotBg(slot.bg, hw, hh, 0x0a0a0a, 0.6, 0x303030);
             } else {
                 slot.nameText.setText('+건설').setColor(C.textMuted); slot.statusText.setText(''); slot.heroText.setText('');
                 this._drawSlotBg(slot.bg, hw, hh, C.emptySlot, 0.35);
@@ -1941,7 +2354,27 @@ class MapScene extends Phaser.Scene {
         });
     }
 
-    _updateGold() { this.goldText.setText(`${store.getState('gold') || 0}G`); }
+    /** 슬롯 외형 복원 (pointerout용) */
+    _updateSlotAppearance(i) {
+        const slot = this.buildingSlots.find(s => s.slotIndex === i);
+        if (!slot) return;
+        const hw = CELL_W / 2, hh = CELL_H / 2;
+        const built = this._getSlotBuilding(i);
+        const isUnlocked = this.baseManager.isCellUnlocked(i);
+        if (built) {
+            this._drawSlotBg(slot.bg, hw, hh, C.building, 0.5);
+        } else if (!isUnlocked) {
+            this._drawSlotBg(slot.bg, hw, hh, 0x0a0a0a, 0.6, 0x303030);
+        } else {
+            this._drawSlotBg(slot.bg, hw, hh, C.emptySlot, 0.35);
+        }
+    }
+
+    _updateResources() {
+        this.foodText.setText(`🌾${store.getState('food') || 0}`);
+        this.woodText.setText(`🪵${store.getState('wood') || 0}`);
+        this.goldText.setText(`💰${store.getState('gold') || 0}`);
+    }
     _updateSoldiers() { this.soldierText.setText(`병사:${store.getState('soldiers') || 0}명`); }
     _updatePhaseDisplay() {
         const turn = this.turnManager.getCurrentTurn();
@@ -1952,8 +2385,25 @@ class MapScene extends Phaser.Scene {
     _getSlotBuilding(i) { return this.baseManager.getBuiltFacilities()[i] || null; }
     _onSlotClick(i) {
         if (this.turnManager.getCurrentTurn().phase !== 'day') return;
+        const isUnlocked = this.baseManager.isCellUnlocked(i);
+        if (!isUnlocked) {
+            this._showPanelAction('pioneer', { cellIndex: i });
+            return;
+        }
         const built = this._getSlotBuilding(i);
-        built ? this._showPanelAction('facility', { facility: built }) : this._showPanelAction('build');
+        if (built) {
+            this._showPanelAction('facility', { facility: built });
+            return;
+        }
+        // 건설 중인 시설 확인
+        const builtCount = this.baseManager.getBuiltFacilities().length;
+        const buildings = this.baseManager.getCurrentBuildings();
+        const buildingItem = buildings[i - builtCount];
+        if (buildingItem) {
+            this._showPanelAction('buildingInfo', { building: buildingItem });
+            return;
+        }
+        this._showPanelAction('build');
     }
 
     // ═══════════════════════════════════
@@ -1972,25 +2422,79 @@ class MapScene extends Phaser.Scene {
         const evt = this._eventQueue.shift();
         this.scene.launch('EventScene', {
             event: evt, eventSystem: this.eventSystem,
-            onComplete: () => { this._refreshActiveTab(); this._updateGold(); this.time.delayedCall(300, () => this._showNextEvent()); }
+            onComplete: () => { this._refreshActiveTab(); this._updateResources(); this.time.delayedCall(300, () => this._showNextEvent()); }
         });
     }
 
     _onEndTurn() {
         if (this.turnManager.getCurrentTurn().phase !== 'day') return;
+
+        // 방어 배치 0명 경고
+        const defenseCount = this.baseManager.getDefenseHeroIds().length;
+        if (defenseCount === 0) {
+            this._showConfirmPopup(
+                '⚠️ 방어 인원 없음',
+                '방어에 배치된 영웅이 없습니다.\n습격 시 무방비 상태로 패배합니다.\n\n그래도 턴을 종료하시겠습니까?',
+                () => this._doEndTurn()
+            );
+            return;
+        }
+        this._doEndTurn();
+    }
+
+    _doEndTurn() {
         this._processDayPhase();
-        SaveManager.save(store);  // 낮→저녁 전환 자동 저장
+        SaveManager.save(store);
         this.turnManager.advancePhase();
         this._updatePhaseDisplay();
         this._processEveningPhase();
     }
 
+    _showConfirmPopup(title, message, onConfirm) {
+        this._closeAllPopups();
+        this._pushPopup('_confirm', { title, message, onConfirm });
+    }
+
+    _popupConfirm(px, py, pw, ph, data) {
+        const cx = px + pw / 2;
+        this._pp(this.add.text(cx, py + 20, data.title, {
+            fontSize: '14px', fontFamily: FONT_BOLD, color: '#f04040'
+        }).setOrigin(0.5));
+
+        this._pp(this.add.text(cx, py + 70, data.message, {
+            fontSize: '11px', fontFamily: FONT, color: '#e8e8f0', align: 'center',
+            wordWrap: { width: pw - 40 }
+        }).setOrigin(0.5));
+
+        const btnY = py + ph - 45;
+        this._pp(this._popupButton(cx - 80, btnY, '취소', () => this._closeAllPopups()));
+        this._pp(this._popupButton(cx + 80, btnY, '강행', () => {
+            this._closeAllPopups();
+            data.onConfirm();
+        }));
+    }
+
     _processDayPhase() {
         this.baseManager.processBuildTurn();
         this.baseManager.processResearchTurn();
+        this.baseManager.processPioneerTurn();
         const income = this.baseManager.getPassiveIncomeWithBonus();
         if (income > 0) store.setState('gold', (store.getState('gold') || 0) + income);
+        // 농장/벌목장 턴당 자원 생산
+        if (this.baseManager.hasFacility('farm')) {
+            const farmFood = this.balance.farm_food_per_turn ?? 5;
+            store.setState('food', (store.getState('food') || 0) + farmFood);
+        }
+        if (this.baseManager.hasFacility('lumber_mill')) {
+            const millWood = this.balance.lumber_mill_wood_per_turn ?? 4;
+            store.setState('wood', (store.getState('wood') || 0) + millWood);
+        }
         const heroes = this.heroManager.getHeroes();
+        // 사냥/채집 상태 → idle 복원 (턴 종료 시)
+        for (const h of heroes) {
+            if (h.status === 'hunt' || h.status === 'gather' || h.status === 'lumber') h.status = 'idle';
+        }
+        store.setState('heroes', [...heroes]);
         if (this.baseManager.processHeroRecovery(heroes).length > 0) store.setState('heroes', [...heroes]);
         this._updateBuildings();
     }
@@ -2001,7 +2505,7 @@ class MapScene extends Phaser.Scene {
             this.scene.launch('ResultScene', {
                 expeditionResult: expResult, turn: this.turnManager.getCurrentTurn(), baseManager: this.baseManager,
                 onComplete: () => {
-                    this._refreshActiveTab(); this._updateGold();
+                    this._refreshActiveTab(); this._updateResources();
                     if (expResult.isBoss && expResult.victory) {
                         this.scene.start('GameOverScene', { reason: 'victory', day: this.turnManager.getCurrentTurn().day });
                         return;
@@ -2026,20 +2530,25 @@ class MapScene extends Phaser.Scene {
             return;
         }
 
-        // 방어전 시뮬레이션용 엔진 생성
-        const baseHeroes = this.heroManager.getBaseHeroes().filter(h => h.status !== 'injured');
+        // 방어 배치된 영웅만 참전
+        const defenseHeroIds = this.baseManager.getDefenseHeroIds();
+        const allHeroes = this.heroManager.getHeroes();
+        const baseHeroes = allHeroes.filter(h =>
+            defenseHeroIds.includes(h.id) && h.status !== 'injured'
+        );
         const soldiers = store.getState('soldiers') || 0;
         const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, sinType: h.sinType, appearance: h.appearance || null }));
 
         if (baseHeroes.length === 0 && soldiers === 0) {
-            // 방어 불가
+            // 방어 불가 (방어 배치 0명)
             this._finishNightPhase(turn, { victory: false, reason: 'no_defenders', log: [], soldiersLost: 0 });
             return;
         }
 
         // 적 생성 (balance 기반 스케일링)
         const b = this.balance;
-        const scale = Math.floor(turn.day / 3) + 1;
+        const raidDivisor = b.raid_scale_divisor ?? 3;
+        const scale = Math.floor(turn.day / raidDivisor) + 1;
         const enemies = [];
         for (let i = 0; i < scale + 1; i++) {
             enemies.push({
@@ -2095,6 +2604,17 @@ class MapScene extends Phaser.Scene {
 
     /** 밤 페이즈 종료 처리 (방어전 결과 반영 + 결산) */
     _finishNightPhase(turn, defenseResult) {
+        // 밤 종료 시 방어 배치 초기화 + 영웅 status 복원
+        const defHeroIds = this.baseManager.getDefenseHeroIds();
+        const heroes = this.heroManager.getHeroes();
+        for (const hero of heroes) {
+            if (hero.status === 'defense' || defHeroIds.includes(hero.id)) {
+                hero.status = 'idle';
+            }
+        }
+        store.setState('heroes', [...heroes]);
+        this.baseManager.clearDefenseAssignments();
+
         const b = this.balance;
         if (defenseResult) {
             if (defenseResult.victory) {
@@ -2111,7 +2631,7 @@ class MapScene extends Phaser.Scene {
             defenseResult: defenseResult || { victory: true, noRaid: true },
             extremeResults, turn, heroes: this.heroManager.getHeroes(),
             onComplete: () => {
-                this._refreshActiveTab(); this._updateGold(); this._updateSoldiers(); this._updateBuildings();
+                this._refreshActiveTab(); this._updateResources(); this._updateSoldiers(); this._updateBuildings();
                 if (this.heroManager.getHeroes().length === 0) {
                     this.scene.start('GameOverScene', { reason: 'defeat', day: turn.day, details: '모든 영웅이 떠났습니다.' });
                     return;

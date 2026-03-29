@@ -50,12 +50,13 @@ src/
 │   ├── IntroScene.js         # 인트로 연출
 │   ├── HeroSelectScene.js    # 영웅 선택 화면 (LPC 합성)
 │   ├── MapScene.js           # 단일 맵 뷰 (모든 페이즈 처리)
-│   ├── MapDefenseMode.js     # 방어전 오버레이 (MapScene 위)
+│   ├── MapDefenseMode.js     # 방어전 오버레이 (영외 전투)
 │   ├── MapHuntPopup.js       # 사냥 1:1 팝업 (MapScene 위)
 │   ├── EventScene.js         # 이벤트/선택지 (오버레이)
 │   ├── BattleSceneA.js       # X축 오토배틀 (원정 리플레이용)
 │   ├── BattleSceneB.js       # 태그매치 (프로토 보관)
 │   ├── DuelBattleScene.js    # 1:1 전투 (레거시)
+│   ├── SpriteConstants.js    # 스프라이트 공유 상수/유틸
 │   ├── SpriteRenderer.js     # LPC 스프라이트 런타임 합성
 │   ├── ResultScene.js        # 원정 결과 (오버레이)
 │   ├── SettlementScene.js    # 결산 (오버레이)
@@ -69,7 +70,7 @@ src/
 │   └── SaveManager.js
 └── data/                     # 게임 데이터 (CSV, 21개 파일)
     ├── CsvLoader.js           # CSV 파서 + 전체 로더 + 데이터 조립
-    ├── balance.csv            # 밸런스 상수 70+개
+    ├── balance.csv            # 밸런스 상수 108개
     ├── hero_names.csv         # 영웅 이름 풀
     ├── sin_types.csv          # 7죄종 정의
     ├── sin_relations.csv      # 죄종 관계 매트릭스
@@ -123,24 +124,55 @@ src/
 | 23 | 방어전 MapDefenseMode (맵 위 오버레이) | [x] |
 | 24 | 사냥 MapHuntPopup (맵 위 팝업) | [x] |
 | 25 | 기획서 전면 업데이트 (3자원, HP 모델, 습격 빈도) | [x] |
+| 26 | 탭 순서 변경 (시설→영웅→아이템→원정→정책) + 3자원 HUD | [x] |
+| 27 | 방어 배치 시스템 (명시적 배치 필수, 자동 참여 제거) | [x] |
+| 28 | 개척 시스템 (3×3 초기 해금, 5×5 확장) | [x] |
+| 29 | 건설/연구/개척 진행도 바 시스템 (영웅 스탯 기반) | [x] |
+| 30 | 스택 기반 팝업 시스템 리팩토링 (_pushPopup/_closePopup) | [x] |
+| 31 | 건설 다중 동시 가능 (building→buildings 배열) | [x] |
+| 32 | 사냥/채집/벌목 행동 1회 제한 (status 잠금) | [x] |
+| 33 | 채집→식량, 벌목→나무 자원 분리 + 농장/벌목장 시설 | [x] |
+| 34 | 팝업 버튼 depth 하드코딩 제거 + 전체 depth 정리 | [x] |
+| 35 | MapDefenseMode/MapHuntPopup destroy() 메모리 누수 수정 | [x] |
+| 36 | HeroManager 사기 임계값 balance.csv 연동 | [x] |
+| 37 | 방어 배치 후 영웅 status 복원 버그 수정 | [x] |
+| 38 | 턴종료 확인 팝업 스택 시스템 전환 | [x] |
+| 39 | 스프라이트 walk 액션 preload 누락 수정 | [x] |
+| 40 | 방어전 영외 전투 (영내/영외 공간 분리) | [x] |
+| 41 | 하드코딩 수치 → balance.csv 이관 (108개 키) | [x] |
+| 42 | 스프라이트 상수 공유 모듈 추출 (SpriteConstants.js) | [x] |
+| 43 | shutdown 핸들러 추가 (MapScene, BattleSceneA/B) | [x] |
+| 44 | 불필요 파일 삭제 (BattleScene.js, MainScene.js) | [x] |
+| 45 | 합성 텍스처 lifecycle 관리 (destroy 시 textures.remove) | [x] |
+| 46 | 밸런스 설계서 작성 (balance_design.md) | [x] |
 
 ---
 
 ## 다음 작업 (미완료)
 
-기획서 대비 코드 점검 결과 아래 항목이 미반영 또는 불일치:
-
 | # | 항목 | 상태 | 상세 |
 |---|------|------|------|
 | 1 | **장비 시스템** | Phase 2 | equipment_design.md "재설계 예정" |
 | 2 | **챕터 2~7 콘텐츠** | Phase 2 | chapters.csv에 7챕터 정의 완료, stages.csv는 챕터1만 |
-| 3 | **3자원 체계 구현** | 미구현 | 기획 확정 (식량/나무/골드). Store+HUD+채집/벌목 행동 구현 필요 |
-| 4 | **원정 실시간 전투** | 미구현 | 결과형→실시간 오토배틀+카드로 전환 예정 |
-| 5 | **챕터별 환경 변조 적용** | 미확인 | chapters.csv에 morale_modifier 있으나 적용 여부 확인 필요 |
-| 6 | **방어전 테스트** | 필요 | MapDefenseMode 구현 완료, 실제 플레이 테스트 필요 |
-| 7 | **사냥 테스트** | 필요 | MapHuntPopup 구현 완료, 실제 플레이 테스트 필요 |
-| 8 | **밸런싱** | 미착수 | 사기 변동량, 전투 계수, 습격 스케일링, 죄종 만족조건 |
+| 3 | **원정 실시간 전투** | 미구현 | 결과형→실시간 오토배틀+카드로 전환 예정 |
+| 4 | **챕터별 환경 변조 적용** | 미구현 | CSV 로드+registry 등록까지 완료, 게임플레이 적용 코드 없음 |
+| 5 | **밸런싱 수치 적용** | 초안 완료 | balance_design.md 작성 완료. 수치 적용 미착수 |
+| 6 | **MapScene 분리** | 미착수 | 2543줄 → 팝업/탭/HUD/턴로직 모듈 분리 필요 |
 
 ---
 
-*마지막 업데이트: 2026-03-27 (MapDefenseMode/MapHuntPopup 구현, 기획서 전면 정합성 업데이트, HP 모델 확정, 3자원 확정)*
+## 완료된 리팩토링 (2026-03-30)
+
+| 항목 | 내용 |
+|------|------|
+| **shutdown 핸들러** | MapScene, BattleSceneA/B에 _cleanup() + shutdown 이벤트 등록. store.subscribe 해제, 오버레이 씬 정리 |
+| **스프라이트 상수 통합** | SpriteConstants.js 신규 생성. 4개 파일에서 ~800줄 중복 제거 |
+| **불필요 파일 삭제** | BattleScene.js, MainScene.js (~2580줄 제거) |
+| **미정의 상수 수정** | ZONE_GATE_END/ZONE_OUTSIDE_END → ZONE_OUTSIDE_START/MAP_WORLD_W |
+| **depth 충돌 해소** | MapDefenseMode 유닛 depth 3000+fy → fy (카드 UI 3001 아래로) |
+| **합성 텍스처 정리** | MapDefenseMode, MapHuntPopup, BattleSceneA에서 textures.remove() 추가 |
+| **하드코딩 이관** | SP, 일기토 확률, 스탯 범위 등 25개 키를 balance.csv로 이관 (총 108개) |
+
+---
+
+*마지막 업데이트: 2026-03-30 (Phaser.js 리팩토링 6단계 + 밸런스 설계서 + 하드코딩 이관)*

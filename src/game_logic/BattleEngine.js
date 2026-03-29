@@ -59,9 +59,9 @@ class BattleEngine {
 
         // SP/카드 시스템
         this._sp = 0;
-        this._spMax = 100;
-        this._spPerTick = 2;
-        this._spPerKill = 10;
+        this._spMax = this.balance.sp_max ?? 100;
+        this._spPerTick = this.balance.sp_per_tick ?? 2;
+        this._spPerKill = this.balance.sp_per_kill ?? 10;
         this._activeBuffs = []; // { target, effect_type, value, turnsLeft, id }
     }
 
@@ -191,21 +191,22 @@ class BattleEngine {
     // ═══════════════════════════════════
 
     _checkDuelRequest() {
-        if (this._round <= 1) return null; // 첫 라운드는 스킵
+        if (this._round <= (this.balance.duel_skip_rounds ?? 1)) return null;
 
         const aliveHeroes = this._heroUnits.filter(u => u.alive && !u.isSoldier);
         const aliveEnemies = this._enemyUnits.filter(u => u.alive);
         if (aliveHeroes.length === 0 || aliveEnemies.length === 0) return null;
 
-        // 죄종별 일기토 성향
+        // 죄종별 일기토 성향 (balance.csv에서 로드)
+        const b = this.balance;
         const duelChances = {
-            wrath: 0.5,    // 분노: 높음
-            pride: 0.35,   // 교만: 강한 적에게
-            envy: 0.25,    // 시기: 다른 영웅 활약 시
-            greed: 0.2,    // 탐욕: 가끔
-            gluttony: 0.15,// 폭식: 약한 적에게
-            sloth: 0.05,   // 나태: 거의 안 함
-            lust: 0.05     // 색욕: 거의 안 함
+            wrath: b.duel_chance_wrath ?? 0.5,
+            pride: b.duel_chance_pride ?? 0.35,
+            envy: b.duel_chance_envy ?? 0.25,
+            greed: b.duel_chance_greed ?? 0.2,
+            gluttony: b.duel_chance_gluttony ?? 0.15,
+            sloth: b.duel_chance_sloth ?? 0.05,
+            lust: b.duel_chance_lust ?? 0.05
         };
 
         for (const hero of aliveHeroes) {
@@ -258,8 +259,8 @@ class BattleEngine {
         }
 
         // 속도 비교 → 선제
-        const heroSpd = hero.spd || hero.stats?.agility || 10;
-        const enemySpd = enemy.spd || 5;
+        const heroSpd = hero.spd || hero.stats?.agility || (this.balance.duel_hero_default_spd ?? 10);
+        const enemySpd = enemy.spd || (this.balance.duel_enemy_default_spd ?? 5);
 
         let attacker, defender;
         if (heroSpd >= enemySpd) {
@@ -365,8 +366,8 @@ class BattleEngine {
         const enemy = this._tagCurrentEnemy;
 
         // 속도 비교
-        const heroSpd = hero.spd || hero.stats?.agility || 10;
-        const enemySpd = enemy.spd || 5;
+        const heroSpd = hero.spd || hero.stats?.agility || (this.balance.duel_hero_default_spd ?? 10);
+        const enemySpd = enemy.spd || (this.balance.duel_enemy_default_spd ?? 5);
 
         let first, second;
         if (heroSpd >= enemySpd) {
@@ -660,11 +661,11 @@ class BattleEngine {
                     id: card.id, target: card.target, effect_type: card.effect_type,
                     value, turnsLeft: card.duration
                 });
-                // 교만 보너스: 첫타 2배 (간단히 ATK 버프 1턴 추가)
+                // 교만 보너스: 첫타 N배 (간단히 ATK 버프 1턴 추가)
                 if (hasSinBonus && card.sin_bonus_type === 'pride') {
                     this._activeBuffs.push({
                         id: card.id + '_pride', target: 'ally_all', effect_type: 'atk_mult',
-                        value: 2.0, turnsLeft: 1
+                        value: this.balance.pride_first_strike_mult ?? 2.0, turnsLeft: 1
                     });
                 }
                 events.push({

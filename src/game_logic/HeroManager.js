@@ -34,6 +34,8 @@ class HeroManager {
         this.STAT_ROLL_DICE = balance.stat_roll_dice ?? 3;
         this.STAT_ROLL_SIDES = balance.stat_roll_sides ?? 8;
         this.STAT_ROLL_BONUS = balance.stat_roll_bonus ?? 3;
+        this.FRUSTRATED_THRESHOLD = balance.frustrated_threshold ?? 30;
+        this.ELEVATED_THRESHOLD = balance.elevated_threshold ?? 71;
     }
 
     /** SpriteComposer 주입 (런타임 외형 생성용) */
@@ -154,8 +156,8 @@ class HeroManager {
         const totalMin = this.balance.stat_total_min ?? 60;
         const totalMax = this.balance.stat_total_max ?? 80;
         const TOTAL = totalMin + Math.floor(Math.random() * (totalMax - totalMin + 1));
-        const MIN = 2;
-        const MAX = 18;
+        const MIN = this.balance.stat_main_min ?? 2;
+        const MAX = this.balance.stat_main_max ?? 18;
         const count = STAT_KEYS.length; // 7
 
         // 랜덤 분배: 총합 고정 + 범위 제한
@@ -231,7 +233,7 @@ class HeroManager {
         return {
             commandPower: hero.stats.leadership,
             charm: hero.stats.charisma,
-            susceptibility: hero.subStats ? (hero.subStats.sensitivity ?? 10) : 10
+            susceptibility: hero.subStats ? (hero.subStats.sensitivity ?? (this.balance.sensitivity_default ?? 10)) : (this.balance.sensitivity_default ?? 10)
         };
     }
 
@@ -256,10 +258,10 @@ class HeroManager {
 
     /** 사기 상태 판정 */
     getMoraleState(morale) {
-        if (morale <= 0) return MORALE_STATE.DESERTION;
-        if (morale <= 30) return MORALE_STATE.UNHAPPY;
-        if (morale <= 70) return MORALE_STATE.STABLE;
-        if (morale <= 99) return MORALE_STATE.ELEVATED;
+        if (morale <= this.MORALE_MIN) return MORALE_STATE.DESERTION;
+        if (morale <= this.FRUSTRATED_THRESHOLD) return MORALE_STATE.UNHAPPY;
+        if (morale < this.ELEVATED_THRESHOLD) return MORALE_STATE.STABLE;
+        if (morale < this.MORALE_MAX) return MORALE_STATE.ELEVATED;
         return MORALE_STATE.RAMPAGE;
     }
 

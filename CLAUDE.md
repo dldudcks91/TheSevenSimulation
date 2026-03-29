@@ -34,7 +34,8 @@ TheSevenSimulation/
 │   │   ├── expedition_design.md # 원정 시스템 설계
 │   │   ├── base_design.md     # 거점 시설 설계
 │   │   ├── equipment_design.md # 장비 시스템 설계 (재설계 예정)
-│   │   └── chapter_scenario.md # 챕터 시나리오
+│   │   ├── chapter_scenario.md # 챕터 시나리오
+│   │   └── balance_design.md  # 밸런스 설계서 (전투/경제/사기)
 │   ├── story/                 # 스토리 (TheSevenTactics 계승)
 │   │   ├── story_guide.md
 │   │   ├── story_line.md
@@ -57,12 +58,13 @@ TheSevenSimulation/
     │   └── ...
     ├── scenes/                # Phaser 씬 (Godot 이식 시 대체)
     │   ├── MapScene.js        # 단일 맵 뷰 (모든 페이즈, 영내+영외)
-    │   ├── MapDefenseMode.js  # 방어전 오버레이 (MapScene 위, 3~5일 간격)
+    │   ├── MapDefenseMode.js  # 방어전 오버레이 (영외 전투)
     │   ├── MapHuntPopup.js    # 사냥 1:1 팝업 (MapScene 위)
+    │   ├── SpriteConstants.js # 스프라이트 공유 상수/유틸
     │   ├── SpriteRenderer.js  # LPC 스프라이트 런타임 합성 (RenderTexture)
     │   └── ...
     ├── ui/                    # UI 컴포넌트
-    └── data/                  # 게임 데이터 CSV (21개+) + CsvLoader.js
+    └── data/                  # 게임 데이터 CSV (22개) + CsvLoader.js
 ```
 
 ## 기획 문서 위치

@@ -13,11 +13,14 @@
 import BattleEngine, { BATTLE_MODES } from '../game_logic/BattleEngine.js';
 import SpriteRenderer from './SpriteRenderer.js';
 import { FONT } from '../constants.js';
+import {
+    FRAME_SIZE, ANIM_FPS, SHEET_CONFIG, DIR_EAST, DIR_WEST,
+    DEFAULT_SPRITE, MONSTER_SPRITES, BOSS_SPRITES,
+    pickEnemySprite, SIN_SPRITE_MAP, HERO_SPRITE_TYPES, UNIT_STATE
+} from './SpriteConstants.js';
 
-const FRAME_SIZE = 64;
 const SPRITE_SCALE = 1.5;
 const DISPLAY_SIZE = FRAME_SIZE * SPRITE_SCALE;
-const ANIM_FPS = 8;
 const TICK_MS = 400;
 
 // 맵 영역 기준 전장 좌표
@@ -25,64 +28,17 @@ const MAP_TOP = 32;       // HUD 아래
 const MAP_H = 440;        // 맵 영역 높이
 const GROUND_Y = MAP_TOP + MAP_H * 0.65; // 맵 영역 65% 지점
 
-const FIELD_LEFT = 80;
-const FIELD_RIGHT = 1200;
-const HERO_START_X = 200;
-const ENEMY_START_X = 1050;
+// 영외 영역(680~1280)에서만 전투 — 영내 건물과 분리
+const ZONE_GATE_X = 680;  // 영내/영외 경계
+const FIELD_LEFT = 700;
+const FIELD_RIGHT = 1260;
+const HERO_START_X = 730;
+const ENEMY_START_X = 1200;
 
-const Y_OFFSETS = [0, -35, 35, -70, 70];
+const Y_OFFSETS = [0, -30, 30, -60, 60];
 const MOVE_SPEED = 1.5;
-const ENGAGE_RANGE_MELEE = 50;
-const ENGAGE_RANGE_RANGED = 220;
-
-// 방향
-const DIR_EAST = 3;
-const DIR_WEST = 1;
-
-// 스프라이트 설정
-const SHEET_CONFIG = {
-    idle:  { frames: 2, rows: 4 },
-    walk:  { frames: 9, rows: 4 },
-    slash: { frames: 6, rows: 4 },
-    hurt:  { frames: 6, rows: 1 }
-};
-
-const DEFAULT_SPRITE = 'warrior_male';
-
-const MONSTER_SPRITES = [
-    'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
-    'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
-];
-const BOSS_SPRITES = ['boss_demon', 'boss_shadow'];
-
-const ENEMY_NAME_SPRITE_MAP = {
-    '박쥐': 'monster_bat', '사냥개': 'monster_worm', '졸개': 'monster_slime',
-    '전사': 'monster_ghost', '마법사': 'monster_eyeball', '근위병': 'monster_pumpking',
-    '정예': 'monster_snake', '꽃': 'monster_bee', '늑대': 'monster_worm',
-    '멧돼지': 'monster_slime', '거미': 'monster_bee', '곰': 'monster_pumpking',
-    '벌레': 'monster_worm', '유령': 'monster_ghost', '슬라임': 'monster_slime',
-    '뱀': 'monster_snake', '눈알': 'monster_eyeball', '호박': 'monster_pumpking',
-};
-
-function pickEnemySprite(name, index = 0) {
-    if (name.includes('—') || name.includes('화신')) {
-        return BOSS_SPRITES[index % BOSS_SPRITES.length];
-    }
-    for (const [keyword, sprite] of Object.entries(ENEMY_NAME_SPRITE_MAP)) {
-        if (name.includes(keyword)) return sprite;
-    }
-    return MONSTER_SPRITES[index % MONSTER_SPRITES.length];
-}
-
-const ENEMY_SPRITES = MONSTER_SPRITES;
-
-const SIN_SPRITE_MAP = {
-    wrath: 'hero_wrath', envy: 'hero_envy', greed: 'hero_greed',
-    sloth: 'hero_sloth', gluttony: 'hero_gluttony', lust: 'hero_lust', pride: 'hero_pride',
-};
-const HERO_SPRITE_TYPES = Object.values(SIN_SPRITE_MAP);
-
-const UNIT_STATE = { IDLE: 'idle', WALKING: 'walking', ATTACKING: 'attacking', HURT: 'hurt', DEAD: 'dead' };
+const ENGAGE_RANGE_MELEE = 40;
+const ENGAGE_RANGE_RANGED = 160;
 
 class MapDefenseMode {
     /**
@@ -108,6 +64,7 @@ class MapDefenseMode {
         this.paused = false;
         this.speed = 1;
         this.units = {};
+        this._activeTimers = [];
 
         this._tickAccumulator = 0;
         this._resultShown = false;
@@ -133,10 +90,24 @@ class MapDefenseMode {
         this.active = true;
         this._container = this.scene.add.container(0, 0).setDepth(3000);
 
-        // 맵 어둡게
         const { width, height } = this.scene.scale;
-        this._dimBg = this.scene.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
+
+        // 영내(좌측)만 어둡게 — 영외는 전투 필드로 밝게 유지
+        this._dimBg = this.scene.add.rectangle(
+            ZONE_GATE_X / 2, height / 2,
+            ZONE_GATE_X, height,
+            0x000000, 0.55
+        );
         this._container.add(this._dimBg);
+
+        // 영외 전투 필드 배경 (약간 어두운 톤)
+        this._fieldBg = this.scene.add.rectangle(
+            ZONE_GATE_X + (width - ZONE_GATE_X) / 2,
+            MAP_TOP + MAP_H / 2,
+            width - ZONE_GATE_X, MAP_H,
+            0x000000, 0.25
+        );
+        this._container.add(this._fieldBg);
 
         // 런타임 합성
         this._spriteRenderer = new SpriteRenderer(this.scene);
@@ -160,6 +131,26 @@ class MapDefenseMode {
 
     destroy() {
         this.active = false;
+        // 진행 중인 tweens/timers 정리
+        for (const u of Object.values(this.units)) {
+            if (u.sprite) {
+                u.sprite.stop();
+                this.scene.tweens.killTweensOf(u.sprite);
+            }
+            if (u.container) this.scene.tweens.killTweensOf(u.container);
+        }
+        for (const t of this._activeTimers) {
+            if (t && t.remove) t.remove(false);
+        }
+        this._activeTimers = [];
+        if (this._duelOverlay) {
+            this._duelOverlay.destroy();
+            this._duelOverlay = null;
+        }
+        if (this._reinforcePanel) {
+            this._reinforcePanel.destroy();
+            this._reinforcePanel = null;
+        }
         if (this._container) {
             this._container.destroy();
             this._container = null;
@@ -167,6 +158,15 @@ class MapDefenseMode {
         this.units = {};
         this._cardButtons = [];
         this._logLines = [];
+        // 합성 텍스처 정리
+        if (this._composedHeroes) {
+            for (const composed of Object.values(this._composedHeroes)) {
+                for (const texKey of Object.values(composed)) {
+                    if (this.scene.textures.exists(texKey)) this.scene.textures.remove(texKey);
+                }
+            }
+            this._composedHeroes = {};
+        }
     }
 
     // ═══════════════════════════════════
@@ -373,26 +373,28 @@ class MapDefenseMode {
     // ═══════════════════════════════════
 
     _drawHeader(width) {
-        // 헤더 바
-        const headerBg = this.scene.add.rectangle(width / 2, MAP_TOP + 18, width - 40, 30, 0x0a0a12, 0.85);
+        // 헤더 바 — 영외 영역 상단에 배치
+        const fieldCenterX = ZONE_GATE_X + (width - ZONE_GATE_X) / 2;
+        const fieldW = width - ZONE_GATE_X - 20;
+        const headerBg = this.scene.add.rectangle(fieldCenterX, MAP_TOP + 18, fieldW, 30, 0x0a0a12, 0.85);
         headerBg.setStrokeStyle(1, 0x303048);
         this._container.add(headerBg);
 
-        this._headerText = this.scene.add.text(width / 2, MAP_TOP + 18, this.stageName, {
+        this._headerText = this.scene.add.text(fieldCenterX, MAP_TOP + 18, this.stageName, {
             fontSize: '13px', fontFamily: FONT, color: '#e03030',
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5);
         this._container.add(this._headerText);
 
         // 병사 카운터
-        this._soldierText = this.scene.add.text(width / 2 + 200, MAP_TOP + 18, '', {
+        this._soldierText = this.scene.add.text(fieldCenterX + 180, MAP_TOP + 18, '', {
             fontSize: '11px', fontFamily: FONT, color: '#a0a0c0'
         }).setOrigin(0.5);
         this._container.add(this._soldierText);
     }
 
     _drawSPBar(width) {
-        const spX = 40;
+        const spX = ZONE_GATE_X + 20;
         const spY = MAP_TOP + 42;
         const spW = 180;
         const spH = 8;
@@ -429,11 +431,12 @@ class MapDefenseMode {
         if (this.cards.length === 0) return;
 
         const panelY = 472; // PANEL_Y 위치
-        const cardW = 120;
+        const cardW = 110;
         const cardH = 55;
-        const gap = 8;
+        const gap = 6;
         const totalW = this.cards.length * (cardW + gap) - gap;
-        const startX = (width - totalW) / 2;
+        const fieldCenterX = ZONE_GATE_X + (width - ZONE_GATE_X) / 2;
+        const startX = fieldCenterX - totalW / 2;
 
         // 카드 핸드 배경
         const handBg = this.scene.add.graphics();
@@ -525,27 +528,30 @@ class MapDefenseMode {
     _drawLog(width, height) {
         const logY = 540;
         const logH = 70;
+        const logX = ZONE_GATE_X + 10;
+        const logW = width - ZONE_GATE_X - 20;
 
         const logBg = this.scene.add.graphics();
         logBg.fillStyle(0x0e0e1a, 0.9);
-        logBg.fillRect(20, logY, width - 40, logH);
+        logBg.fillRect(logX, logY, logW, logH);
         logBg.lineStyle(1, 0x303048);
-        logBg.strokeRect(20, logY, width - 40, logH);
+        logBg.strokeRect(logX, logY, logW, logH);
         this._container.add(logBg);
 
-        this._logText = this.scene.add.text(30, logY + 5, '', {
+        this._logText = this.scene.add.text(logX + 10, logY + 5, '', {
             fontSize: '8px', fontFamily: FONT, color: '#a0a0c0',
-            lineSpacing: 2, wordWrap: { width: width - 80 }
+            lineSpacing: 2, wordWrap: { width: logW - 20 }
         });
         this._container.add(this._logText);
     }
 
     _drawControls(width, height) {
         const btnY = 625;
+        const fieldLeft = ZONE_GATE_X + 20;
 
         // 증원
         if (this.reserveHeroes.length > 0) {
-            this._reinforceBtn = this.scene.add.text(80, btnY, `[증원 ${this.reserveHeroes.length}명]`, {
+            this._reinforceBtn = this.scene.add.text(fieldLeft + 40, btnY, `[증원 ${this.reserveHeroes.length}명]`, {
                 fontSize: '10px', fontFamily: FONT, color: '#f8c830'
             }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(3001);
             this._reinforceBtn.on('pointerdown', () => this._showReinforcementPanel());
@@ -626,8 +632,8 @@ class MapDefenseMode {
 
         // 피격
         const hitDelay = Math.max(50, 150 / this.speed);
-        this.scene.time.delayedCall(hitDelay, () => {
-            if (!defender.alive) return;
+        const timer = this.scene.time.delayedCall(hitDelay, () => {
+            if (!this.active || !defender.alive) return;
 
             defender.state = UNIT_STATE.HURT;
             const hurtAnim = defender.useComposed
@@ -670,6 +676,7 @@ class MapDefenseMode {
                 onComplete: () => dmgText.destroy()
             });
         });
+        this._activeTimers.push(timer);
     }
 
     _animateDefeat(entry) {
@@ -697,7 +704,8 @@ class MapDefenseMode {
 
     _flashCardEffect(evt) {
         const { width } = this.scene.scale;
-        const flashText = this.scene.add.text(width / 2, GROUND_Y - 80, evt.name, {
+        const fieldCenterX = ZONE_GATE_X + (width - ZONE_GATE_X) / 2;
+        const flashText = this.scene.add.text(fieldCenterX, GROUND_Y - 80, evt.name, {
             fontSize: '18px', fontFamily: FONT,
             color: evt.sinBonus ? '#f8c830' : '#e8e8f0',
             shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
@@ -719,6 +727,7 @@ class MapDefenseMode {
     _startDuelVisual(evt) {
         this._duelActive = true;
         const { width, height } = this.scene.scale;
+        const fieldCenterX = ZONE_GATE_X + (width - ZONE_GATE_X) / 2;
 
         this._duelOverlay = this.scene.add.container(0, 0).setDepth(5000);
         this._container.add(this._duelOverlay);
@@ -726,7 +735,7 @@ class MapDefenseMode {
         const bg = this.scene.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7);
         this._duelOverlay.add(bg);
 
-        const vsText = this.scene.add.text(width / 2, GROUND_Y - 60, '⚔ 일기토 ⚔', {
+        const vsText = this.scene.add.text(fieldCenterX, GROUND_Y - 60, '⚔ 일기토 ⚔', {
             fontSize: '18px', fontFamily: FONT, color: '#f8c830',
             shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5);
@@ -747,10 +756,10 @@ class MapDefenseMode {
             heroUnit._savedY = heroUnit.fieldY;
             this.scene.tweens.add({
                 targets: heroUnit.container,
-                x: width / 2 - 120, y: GROUND_Y,
+                x: fieldCenterX - 80, y: GROUND_Y,
                 duration: 400, ease: 'Power2'
             });
-            heroUnit.fieldX = width / 2 - 120;
+            heroUnit.fieldX = fieldCenterX - 80;
             heroUnit.container.setDepth(5001);
         }
         if (enemyUnit) {
@@ -758,10 +767,10 @@ class MapDefenseMode {
             enemyUnit._savedY = enemyUnit.fieldY;
             this.scene.tweens.add({
                 targets: enemyUnit.container,
-                x: width / 2 + 120, y: GROUND_Y,
+                x: fieldCenterX + 80, y: GROUND_Y,
                 duration: 400, ease: 'Power2'
             });
-            enemyUnit.fieldX = width / 2 + 120;
+            enemyUnit.fieldX = fieldCenterX + 80;
             enemyUnit.container.setDepth(5001);
         }
     }
@@ -824,7 +833,7 @@ class MapDefenseMode {
         }).setOrigin(0.5);
         container.add(nameText);
 
-        container.setDepth(3000 + Math.floor(fy));
+        container.setDepth(Math.floor(fy));
         this._container.add(container);
 
         this.units[name] = {
@@ -861,9 +870,10 @@ class MapDefenseMode {
         if (this._reinforcePanel) return;
 
         const { width, height } = this.scene.scale;
+        const fieldCenterX = ZONE_GATE_X + (width - ZONE_GATE_X) / 2;
         const panelW = 200;
         const panelH = 30 + this.reserveHeroes.length * 30;
-        const px = width / 2 - panelW / 2;
+        const px = fieldCenterX - panelW / 2;
         const py = height / 2 - panelH / 2;
 
         this._reinforcePanel = this.scene.add.container(0, 0).setDepth(10000);
@@ -927,16 +937,17 @@ class MapDefenseMode {
         this.paused = true;
 
         const { width } = this.scene.scale;
+        const fieldCenterX = ZONE_GATE_X + (width - ZONE_GATE_X) / 2;
         const resultY = GROUND_Y - 30;
 
-        const overlay = this.scene.add.rectangle(width / 2, resultY, 280, 70, 0x0a0a12, 0.9);
+        const overlay = this.scene.add.rectangle(fieldCenterX, resultY, 280, 70, 0x0a0a12, 0.9);
         overlay.setStrokeStyle(2, victory ? 0x40d870 : 0xe03030);
         this._container.add(overlay);
 
         const resultText = victory ? '방 어 성 공' : '방 어 실 패';
         const resultColor = victory ? '#40d870' : '#e03030';
 
-        const text = this.scene.add.text(width / 2, resultY - 10, resultText, {
+        const text = this.scene.add.text(fieldCenterX, resultY - 10, resultText, {
             fontSize: '24px', fontFamily: FONT, color: resultColor,
             shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5);
@@ -947,17 +958,17 @@ class MapDefenseMode {
         const btnH = 26;
         const btnBg = this.scene.add.graphics();
         btnBg.fillStyle(0x2a0808, 1);
-        btnBg.fillRect(width / 2 - btnW / 2, resultY + 10, btnW, btnH);
+        btnBg.fillRect(fieldCenterX - btnW / 2, resultY + 10, btnW, btnH);
         btnBg.lineStyle(1, 0xe03030);
-        btnBg.strokeRect(width / 2 - btnW / 2, resultY + 10, btnW, btnH);
+        btnBg.strokeRect(fieldCenterX - btnW / 2, resultY + 10, btnW, btnH);
         this._container.add(btnBg);
 
-        const btnText = this.scene.add.text(width / 2, resultY + 23, '계 속', {
+        const btnText = this.scene.add.text(fieldCenterX, resultY + 23, '계 속', {
             fontSize: '10px', fontFamily: FONT, color: '#e8e8f0'
         }).setOrigin(0.5);
         this._container.add(btnText);
 
-        const btnZone = this.scene.add.zone(width / 2, resultY + 23, btnW, btnH)
+        const btnZone = this.scene.add.zone(fieldCenterX, resultY + 23, btnW, btnH)
             .setInteractive({ useHandCursor: true }).setDepth(10003);
         btnZone.on('pointerdown', () => {
             const v = victory;

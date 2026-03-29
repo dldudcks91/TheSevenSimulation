@@ -250,13 +250,13 @@ function buildGameData(csvData) {
         facilities: csvData.facilities.map(r => ({
             id: r.id, name_ko: r.name_ko, tier: r.tier,
             requires: r.requires ? r.requires.split('|').filter(Boolean) : [],
-            cost: r.cost, build_turns: r.build_turns,
+            cost: r.cost, build_cost: r.build_cost,
             description: r.description,
             effects: {}
         })),
         research: csvData.research.map(r => ({
             id: r.id, name_ko: r.name_ko, category: r.category,
-            requires_facility: r.requires_facility, cost: r.cost, turns: r.turns,
+            requires_facility: r.requires_facility, cost: r.cost, research_cost: r.research_cost,
             effect: { type: r.effect_type, value: r.effect_value },
             description: r.description
         }))

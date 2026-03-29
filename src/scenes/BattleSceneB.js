@@ -9,10 +9,14 @@
  */
 import { BATTLE_MODES } from '../game_logic/BattleEngine.js';
 import { FONT } from '../constants.js';
-const FRAME_SIZE = 64;
+import {
+    FRAME_SIZE, ANIM_FPS, SHEET_CONFIG, DIR_EAST, DIR_WEST,
+    DEFAULT_SPRITE, MONSTER_SPRITES, BOSS_SPRITES,
+    pickEnemySprite, SIN_SPRITE_MAP, HERO_SPRITE_TYPES
+} from './SpriteConstants.js';
+
 const SPRITE_SCALE = 2.0;
 const DISPLAY_SIZE = FRAME_SIZE * SPRITE_SCALE;
-const ANIM_FPS = 8;
 
 const TICK_MS = 400;
 
@@ -22,72 +26,7 @@ const HERO_X = 350;
 const ENEMY_X = 930;
 const QUEUE_Y = 180;
 
-// 스프라이트
-const SHEET_CONFIG = {
-    idle:  { frames: 2, rows: 4 },
-    slash: { frames: 6, rows: 4 },
-    hurt:  { frames: 6, rows: 1 }
-};
-const DIR_EAST = 3;
-const DIR_WEST = 1;
-
-const DEFAULT_SPRITE = 'warrior_male';
-
-// 몬스터 스프라이트 (LPC monsters)
-const MONSTER_SPRITES = [
-    'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
-    'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
-];
-const BOSS_SPRITES = ['boss_demon', 'boss_shadow'];
-
-// 적 이름 키워드 → 스프라이트 매핑
-const ENEMY_NAME_SPRITE_MAP = {
-    '박쥐': 'monster_bat',
-    '사냥개': 'monster_worm',
-    '졸개': 'monster_slime',
-    '전사': 'monster_ghost',
-    '마법사': 'monster_eyeball',
-    '근위병': 'monster_pumpking',
-    '정예': 'monster_snake',
-    '꽃': 'monster_bee',
-    '늑대': 'monster_worm',
-    '멧돼지': 'monster_slime',
-    '거미': 'monster_bee',
-    '곰': 'monster_pumpking',
-    '벌레': 'monster_worm',
-    '유령': 'monster_ghost',
-    '슬라임': 'monster_slime',
-    '뱀': 'monster_snake',
-    '눈알': 'monster_eyeball',
-    '호박': 'monster_pumpking',
-};
-
-function pickEnemySprite(name, index) {
-    // 보스 체크 (이름에 '—' 포함)
-    if (name.includes('—') || name.includes('화신')) {
-        return BOSS_SPRITES[index % BOSS_SPRITES.length];
-    }
-    // 키워드 매칭
-    for (const [keyword, sprite] of Object.entries(ENEMY_NAME_SPRITE_MAP)) {
-        if (name.includes(keyword)) return sprite;
-    }
-    // 폴백: 인덱스 순환
-    return MONSTER_SPRITES[index % MONSTER_SPRITES.length];
-}
-
-const ENEMY_SPRITES = MONSTER_SPRITES; // 하위 호환
-
-const SIN_SPRITE_MAP = {
-    wrath: 'hero_wrath',
-    envy: 'hero_envy',
-    greed: 'hero_greed',
-    sloth: 'hero_sloth',
-    gluttony: 'hero_gluttony',
-    lust: 'hero_lust',
-    pride: 'hero_pride',
-};
-
-const HERO_SPRITE_TYPES = Object.values(SIN_SPRITE_MAP);
+// 스프라이트 상수 → SpriteConstants.js에서 import
 
 class BattleSceneB extends Phaser.Scene {
     constructor() {
@@ -130,6 +69,8 @@ class BattleSceneB extends Phaser.Scene {
     }
 
     create() {
+        this.events.once('shutdown', () => this._cleanup());
+
         const { width, height } = this.scale;
         this._createAnimations();
 
@@ -797,6 +738,10 @@ class BattleSceneB extends Phaser.Scene {
 
         const zone = this.add.zone(cx, cy, w, h).setInteractive({ useHandCursor: true });
         zone.on('pointerdown', callback);
+    }
+
+    _cleanup() {
+        this.tweens.killAll();
     }
 }
 

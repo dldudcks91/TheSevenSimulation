@@ -172,10 +172,12 @@ class ExpeditionManager {
         };
     }
 
-    /** 방어전 (밤 습격) — balance CSV 기반 스케일링 */
-    simulateDefense(day) {
+    /** 방어전 (밤 습격) — balance CSV 기반 스케일링, 방어 배치 영웅만 참전 */
+    simulateDefense(day, defenseHeroIds = []) {
         const heroes = this.store.getState('heroes') || [];
-        const baseHeroes = heroes.filter(h => h.location === 'base' && h.status !== 'injured');
+        const baseHeroes = heroes.filter(h =>
+            defenseHeroIds.includes(h.id) && h.status !== 'injured'
+        );
         const soldiers = this.store.getState('soldiers') || 0;
 
         if (baseHeroes.length === 0 && soldiers === 0) {
@@ -190,7 +192,8 @@ class ExpeditionManager {
         const defAtkPerDay = b.defense_enemy_atk_per_day ?? 1;
         const defSpd = b.defense_enemy_spd ?? 5;
 
-        const scale = Math.floor(day / 3) + 1;
+        const raidDivisor = b.raid_scale_divisor ?? 3;
+        const scale = Math.floor(day / raidDivisor) + 1;
         const enemies = [];
         for (let i = 0; i < scale + 1; i++) {
             enemies.push({

@@ -1,10 +1,12 @@
-id,name_ko,tier,requires,cost,build_turns,description,recruit_slots,feast_available,craft_weapon,repair,raid_info_level,heal_speed,morale_stabilize,trade_available,alchemy_available,gold_per_turn
-tavern,주점,1,,100,1,영웅 고용 + 사기 상승 + 연회 개최,3,true,,,,,,,
-smithy,대장간,1,,150,1,장비 제작/수리,,,true,true,,,,,,
-watchtower,감시탑,1,,100,1,습격 유무 알림,,,,,1,,,,,
-hospital,병원,2,tavern,200,2,부상 영웅 치료 (회복 턴 절반) + 사기 안정화,,,,,, 2,true,,,
-stagecoach,역마차,2,tavern,150,1,"교역 상인 도착, 외부 정보",,,,,,,,true,,
-watchtower_2,감시탑 Lv.2,2,watchtower,200,1,습격 규모 알림,,,,,2,,,,,
-alchemy_lab,연금술소,3,smithy|hospital,300,2,"소모품 제작 (치료약, 사기 물약 등)",,,,,,,, ,true,
-market,시장,3,stagecoach,200,2,턴당 골드 수입,,,,,,,,,,20
-watchtower_3,감시탑 Lv.3,3,watchtower_2,350,2,적 구성 상세 공개,,,,,3,,,,,
+id,name_ko,tier,requires,cost,build_cost,description,recruit_slots,feast_available,craft_weapon,repair,raid_info_level,heal_speed,morale_stabilize,trade_available,alchemy_available,gold_per_turn
+tavern,주점,1,,100,30,영웅 고용 + 사기 상승 + 연회 개최,3,true,,,,,,,
+smithy,대장간,1,,150,40,장비 제작/수리,,,true,true,,,,,,
+watchtower,감시탑,1,,100,25,습격 유무 알림,,,,,1,,,,,
+hospital,병원,2,tavern,200,70,부상 영웅 치료 (회복 턴 절반) + 사기 안정화,,,,,, 2,true,,,
+stagecoach,역마차,2,tavern,150,50,"교역 상인 도착, 외부 정보",,,,,,,,true,,
+watchtower_2,감시탑 Lv.2,2,watchtower,200,45,습격 규모 알림,,,,,2,,,,,
+alchemy_lab,연금술소,3,smithy|hospital,300,100,"소모품 제작 (치료약, 사기 물약 등)",,,,,,,, ,true,
+farm,농장,1,,80,25,턴당 식량 생산,,,,,,,,,,,
+lumber_mill,벌목장,1,,80,25,턴당 나무 생산,,,,,,,,,,,
+market,시장,3,stagecoach,200,80,턴당 골드 수입,,,,,,,,,,20
+watchtower_3,감시탑 Lv.3,3,watchtower_2,350,90,적 구성 상세 공개,,,,,3,,,,,

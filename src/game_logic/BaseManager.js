@@ -14,11 +14,17 @@ class BaseManager {
     }
 
     _initState() {
+        // 초기 해금: 3×3 왼쪽 위 (인덱스 0,1,2,5,6,7,10,11,12)
+        const initialUnlocked = [0, 1, 2, 5, 6, 7, 10, 11, 12];
+
         this.store.setState('base', {
             built: [],
-            building: null,
+            buildings: [],
             researched: [],
             researching: null,
+            unlockedCells: [...initialUnlocked],
+            pioneering: null, // { cellIndex, assignedHeroId }
+            defenseHeroIds: [], // 방어 배치된 영웅 ID 목록
             policies: {
                 ration: 'normal',
                 training: 'normal',
@@ -33,9 +39,10 @@ class BaseManager {
         const base = this.store.getState('base');
         const gold = this.store.getState('gold') || 0;
 
+        const buildingIds = (base.buildings || []).map(b => b.facilityId);
         return this.allFacilities.filter(f => {
             if (base.built.includes(f.id)) return false;
-            if (base.building && base.building.facilityId === f.id) return false;
+            if (buildingIds.includes(f.id)) return false;
             const prereqsMet = f.requires.every(req => base.built.includes(req));
             return prereqsMet && gold >= f.cost;
         });
@@ -43,7 +50,7 @@ class BaseManager {
 
     startBuilding(facilityId, heroId) {
         const base = this.store.getState('base');
-        if (base.building) return { success: false, reason: '이미 건설 중' };
+        if (!base.buildings) base.buildings = [];
 
         const facility = this.allFacilities.find(f => f.id === facilityId);
         if (!facility) return { success: false, reason: '시설 없음' };
@@ -52,12 +59,13 @@ class BaseManager {
         if (gold < facility.cost) return { success: false, reason: '골드 부족' };
 
         this.store.setState('gold', gold - facility.cost);
-        base.building = {
+        base.buildings.push({
             facilityId: facility.id,
             name: facility.name_ko,
-            turnsLeft: facility.build_turns,
+            progress: 0,
+            buildCost: facility.build_cost,
             assignedHeroId: heroId
-        };
+        });
         this.store.setState('base', { ...base });
 
         return { success: true, facility };
@@ -65,20 +73,37 @@ class BaseManager {
 
     processBuildTurn() {
         const base = this.store.getState('base');
-        if (!base.building) return null;
+        if (!base.buildings || base.buildings.length === 0) return null;
 
-        base.building.turnsLeft--;
+        const heroes = this.store.getState('heroes') || [];
+        const results = [];
 
-        if (base.building.turnsLeft <= 0) {
-            const completed = base.building;
-            base.built.push(completed.facilityId);
-            base.building = null;
-            this.store.setState('base', { ...base });
-            return { type: 'complete', facilityId: completed.facilityId, name: completed.name };
+        // 역순으로 순회 (완료 시 splice해도 안전)
+        for (let i = base.buildings.length - 1; i >= 0; i--) {
+            const building = base.buildings[i];
+            const hero = heroes.find(h => h.id === building.assignedHeroId);
+            const buildPower = hero
+                ? Math.floor((hero.stats.strength + hero.stats.agility) / 2)
+                : 1;
+
+            building.progress += buildPower;
+
+            if (building.progress >= building.buildCost) {
+                base.built.push(building.facilityId);
+                base.buildings.splice(i, 1);
+                // 건설 완료 시 영웅 상태 복원
+                if (hero) hero.status = 'idle';
+                results.push({ type: 'complete', facilityId: building.facilityId, name: building.name });
+            } else {
+                results.push({ type: 'progress', progress: building.progress, buildCost: building.buildCost, name: building.name });
+            }
         }
 
         this.store.setState('base', { ...base });
-        return { type: 'progress', turnsLeft: base.building.turnsLeft, name: base.building.name };
+        if (results.some(r => r.type === 'complete')) {
+            this.store.setState('heroes', [...heroes]);
+        }
+        return results.length > 0 ? results : null;
     }
 
     // ─── 연구 ───
@@ -110,7 +135,8 @@ class BaseManager {
         base.researching = {
             researchId: research.id,
             name: research.name_ko,
-            turnsLeft: research.turns,
+            progress: 0,
+            researchCost: research.research_cost,
             assignedHeroId: heroId
         };
         this.store.setState('base', { ...base });
@@ -122,9 +148,14 @@ class BaseManager {
         const base = this.store.getState('base');
         if (!base.researching) return null;
 
-        base.researching.turnsLeft--;
+        // 영웅 스탯으로 연구력 계산: 지능
+        const heroes = this.store.getState('heroes') || [];
+        const hero = heroes.find(h => h.id === base.researching.assignedHeroId);
+        const researchPower = hero ? hero.stats.intelligence : 1;
 
-        if (base.researching.turnsLeft <= 0) {
+        base.researching.progress += researchPower;
+
+        if (base.researching.progress >= base.researching.researchCost) {
             const completed = base.researching;
             base.researched.push(completed.researchId);
             base.researching = null;
@@ -133,7 +164,109 @@ class BaseManager {
         }
 
         this.store.setState('base', { ...base });
-        return { type: 'progress', turnsLeft: base.researching.turnsLeft, name: base.researching.name };
+        return { type: 'progress', progress: base.researching.progress, researchCost: base.researching.researchCost, name: base.researching.name };
+    }
+
+    // ─── 개척 (거점 확장) ───
+
+    /** 개척 가능한 셀 목록 (잠긴 셀 중 해금 셀과 인접) */
+    getAvailablePioneerCells() {
+        const base = this.store.getState('base');
+        const unlocked = base.unlockedCells;
+        const allCells = Array.from({ length: 25 }, (_, i) => i);
+        const locked = allCells.filter(i => !unlocked.includes(i));
+
+        return locked.filter(i => {
+            const row = Math.floor(i / 5);
+            const col = i % 5;
+            const neighbors = [];
+            if (row > 0) neighbors.push(i - 5);
+            if (row < 4) neighbors.push(i + 5);
+            if (col > 0) neighbors.push(i - 1);
+            if (col < 4) neighbors.push(i + 1);
+            return neighbors.some(n => unlocked.includes(n));
+        });
+    }
+
+    /** 개척 시작 */
+    startPioneering(cellIndex, heroId) {
+        const base = this.store.getState('base');
+        if (base.pioneering) return { success: false, reason: '이미 개척 중' };
+        if (base.unlockedCells.includes(cellIndex)) return { success: false, reason: '이미 해금된 셀' };
+
+        const available = this.getAvailablePioneerCells();
+        if (!available.includes(cellIndex)) return { success: false, reason: '인접한 해금 셀 없음' };
+
+        const wood = this.store.getState('wood') || 0;
+        const cost = this.balance.pioneer_cost_wood ?? 30;
+        if (wood < cost) return { success: false, reason: '나무 부족' };
+
+        this.store.setState('wood', wood - cost);
+        const pioneerCost = this.balance.pioneer_build_cost ?? 30;
+        base.pioneering = { cellIndex, assignedHeroId: heroId, progress: 0, buildCost: pioneerCost };
+        this.store.setState('base', { ...base });
+        return { success: true, cellIndex };
+    }
+
+    /** 턴 처리: 개척 진행도 (힘+체력)/2 */
+    processPioneerTurn() {
+        const base = this.store.getState('base');
+        if (!base.pioneering) return null;
+
+        const heroes = this.store.getState('heroes') || [];
+        const hero = heroes.find(h => h.id === base.pioneering.assignedHeroId);
+        const pioneerPower = hero
+            ? Math.floor((hero.stats.strength + hero.stats.vitality) / 2)
+            : 1;
+
+        base.pioneering.progress += pioneerPower;
+
+        if (base.pioneering.progress >= base.pioneering.buildCost) {
+            const completed = base.pioneering;
+            base.unlockedCells.push(completed.cellIndex);
+            base.pioneering = null;
+            this.store.setState('base', { ...base });
+            return { type: 'complete', cellIndex: completed.cellIndex };
+        }
+
+        this.store.setState('base', { ...base });
+        return { type: 'progress', progress: base.pioneering.progress, buildCost: base.pioneering.buildCost };
+    }
+
+    isCellUnlocked(cellIndex) {
+        const base = this.store.getState('base');
+        return base.unlockedCells.includes(cellIndex);
+    }
+
+    // ─── 방어 배치 ───
+
+    /** 방어 임무에 영웅 배치 */
+    assignDefense(heroId) {
+        const base = this.store.getState('base');
+        if (!base.defenseHeroIds.includes(heroId)) {
+            base.defenseHeroIds.push(heroId);
+            this.store.setState('base', { ...base });
+        }
+    }
+
+    /** 방어 임무에서 영웅 해제 */
+    unassignDefense(heroId) {
+        const base = this.store.getState('base');
+        base.defenseHeroIds = base.defenseHeroIds.filter(id => id !== heroId);
+        this.store.setState('base', { ...base });
+    }
+
+    /** 방어 배치된 영웅 ID 목록 */
+    getDefenseHeroIds() {
+        const base = this.store.getState('base');
+        return base.defenseHeroIds || [];
+    }
+
+    /** 턴 종료 시 방어 배치 초기화 */
+    clearDefenseAssignments() {
+        const base = this.store.getState('base');
+        base.defenseHeroIds = [];
+        this.store.setState('base', { ...base });
     }
 
     // ─── 포고령 (CSV 데이터 기반) ───
@@ -236,9 +369,12 @@ class BaseManager {
         const defAtkBase = b.defense_enemy_atk_base ?? 8;
         const defAtkPerDay = b.defense_enemy_atk_per_day ?? 1;
 
-        const scale = Math.floor(day / 3) + 1;
+        const raidDivisor = this.balance.raid_scale_divisor ?? 3;
+        const scale = Math.floor(day / raidDivisor) + 1;
         const enemyCount = scale + 1;
-        const sizeDesc = scale <= 2 ? '소규모' : scale <= 4 ? '중규모' : '대규모';
+        const smallMax = this.balance.raid_scale_small ?? 2;
+        const mediumMax = this.balance.raid_scale_medium ?? 4;
+        const sizeDesc = scale <= smallMax ? '소규모' : scale <= mediumMax ? '중규모' : '대규모';
 
         if (level === 0) return { text: '습격 정보 없음 (감시탑 필요)', detail: '' };
         if (level === 1) return { text: '오늘 밤 습격이 있습니다.', detail: '' };
@@ -251,7 +387,7 @@ class BaseManager {
         const results = [];
         for (const hero of heroes) {
             if (hero.status === 'injured') {
-                hero.recoveryTurns = (hero.recoveryTurns || 2) - 1;
+                hero.recoveryTurns = (hero.recoveryTurns || (this.balance.recovery_default_turns ?? 2)) - 1;
                 if (hasHospital) hero.recoveryTurns -= 1;
                 if (hero.recoveryTurns <= 0) {
                     hero.status = 'idle';
@@ -263,8 +399,9 @@ class BaseManager {
         return results;
     }
 
-    getCurrentBuilding() { return this.store.getState('base').building; }
+    getCurrentBuildings() { return this.store.getState('base').buildings || []; }
     getCurrentResearch() { return this.store.getState('base').researching; }
+    getCurrentPioneering() { return this.store.getState('base').pioneering; }
 }
 
 export default BaseManager;

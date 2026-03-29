@@ -4,8 +4,9 @@
  */
 
 class EventSystem {
-    constructor(store, eventsData) {
+    constructor(store, eventsData, balance = {}) {
         this.store = store;
+        this.balance = balance;
         this.allEvents = eventsData.events;
         this._usedRecently = new Set(); // 최근 발생한 이벤트 (중복 방지)
     }
@@ -29,7 +30,7 @@ class EventSystem {
             }
         }
 
-        if (candidates.length > 1 && Math.random() < 0.3) {
+        if (candidates.length > 1 && Math.random() < (this.balance.event_double_chance ?? 0.3)) {
             const remaining = candidates.filter(e => !this._usedRecently.has(e.id));
             if (remaining.length > 0) {
                 const evt2 = this._pickRandom(remaining);
@@ -41,8 +42,8 @@ class EventSystem {
             }
         }
 
-        // 5턴마다 recently 초기화
-        if (turn && turn.day % 5 === 0) {
+        // N턴마다 recently 초기화
+        if (turn && turn.day % (this.balance.event_cache_reset_interval ?? 5) === 0) {
             this._usedRecently.clear();
         }
 
@@ -61,7 +62,8 @@ class EventSystem {
 
             switch (t.type) {
                 case 'sin_elevated': {
-                    const hero = heroes.find(h => h.sinType === t.sin && h.morale >= (t.min_morale || 71));
+                    const elevatedThreshold = t.min_morale || (this.balance.elevated_threshold ?? 71);
+                    const hero = heroes.find(h => h.sinType === t.sin && h.morale >= elevatedThreshold);
                     if (!hero) return false;
                     if (t.oppose_sin) {
                         const oppose = heroes.find(h => h.sinType === t.oppose_sin);
@@ -70,21 +72,23 @@ class EventSystem {
                     return true;
                 }
                 case 'sin_frustrated': {
-                    const hero = heroes.find(h => h.sinType === t.sin && h.morale <= 30);
+                    const frustratedThreshold = this.balance.frustrated_threshold ?? 30;
+                    const hero = heroes.find(h => h.sinType === t.sin && h.morale <= frustratedThreshold);
                     return !!hero;
                 }
                 case 'rampage': {
-                    const hero = heroes.find(h => h.sinType === t.sin && h.morale >= 100);
+                    const rampageThreshold = this.balance.morale_max ?? 100;
+                    const hero = heroes.find(h => h.sinType === t.sin && h.morale >= rampageThreshold);
                     return !!hero;
                 }
                 case 'periodic':
-                    return day % (t.interval || 4) === 0;
+                    return day % (t.interval || (this.balance.default_periodic_interval ?? 4)) === 0;
                 case 'random':
-                    return day >= (t.min_day || 1) && Math.random() < (t.chance || 0.3);
+                    return day >= (t.min_day || 1) && Math.random() < (t.chance || (this.balance.default_random_chance ?? 0.3));
                 case 'roster_available':
-                    return heroes.length < 7;
+                    return day >= (t.min_day || 1) && heroes.length < (this.balance.event_roster_max ?? 7);
                 case 'chapter_progress':
-                    return day >= (t.min_day || 10);
+                    return day >= (t.min_day || (this.balance.event_chapter_min_day ?? 10));
                 case 'after_defense_victory':
                 case 'after_defense_defeat':
                 case 'after_defense_injury':
@@ -182,17 +186,20 @@ class EventSystem {
         const results = [];
         const targetMap = choice.targetMap || {};
 
+        const moraleMin = this.balance.morale_min ?? 0;
+        const moraleMax = this.balance.morale_max ?? 100;
+
         for (const effect of choice.effects) {
             if (effect.target === 'all') {
                 for (const hero of heroes) {
-                    hero.morale = Math.max(0, Math.min(100, hero.morale + (effect.morale || 0)));
+                    hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + (effect.morale || 0)));
                     results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
                 }
             } else if (effect.target === 'others') {
                 const mainSin = event.id.startsWith('A4') ? 'pride' : null;
                 for (const hero of heroes) {
                     if (mainSin && hero.sinType === mainSin) continue;
-                    hero.morale = Math.max(0, Math.min(100, hero.morale + (effect.morale || 0)));
+                    hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + (effect.morale || 0)));
                     results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
                 }
             } else if (effect.target === 'gold') {
@@ -214,7 +221,7 @@ class EventSystem {
                             if (idx !== -1) heroes.splice(idx, 1);
                             results.push({ heroId: hero.id, name: hero.name, type: 'dismissed' });
                         } else {
-                            hero.morale = Math.max(0, Math.min(100, hero.morale + delta));
+                            hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + delta));
                             results.push({ heroId: hero.id, name: hero.name, delta });
                         }
                     }

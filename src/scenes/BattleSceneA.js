@@ -10,10 +10,15 @@
 import { BATTLE_MODES } from '../game_logic/BattleEngine.js';
 import SpriteRenderer from './SpriteRenderer.js';
 import { FONT } from '../constants.js';
-const FRAME_SIZE = 64;
+import {
+    FRAME_SIZE, ANIM_FPS, SHEET_CONFIG, DIR_EAST, DIR_WEST,
+    DEFAULT_SPRITE, MONSTER_SPRITES, BOSS_SPRITES,
+    ENEMY_NAME_SPRITE_MAP, pickEnemySprite,
+    SIN_SPRITE_MAP, HERO_SPRITE_TYPES, UNIT_STATE
+} from './SpriteConstants.js';
+
 const SPRITE_SCALE = 1.5;
 const DISPLAY_SIZE = FRAME_SIZE * SPRITE_SCALE;
-const ANIM_FPS = 8;
 
 const TICK_MS = 400;
 
@@ -62,59 +67,7 @@ const SPRITE_RANGE = {
     boss_shadow: ENGAGE_RANGE_MELEE,
 };
 
-// 스프라이트
-const SHEET_CONFIG = {
-    idle:  { frames: 2, rows: 4 },
-    walk:  { frames: 9, rows: 4 },
-    slash: { frames: 6, rows: 4 },
-    hurt:  { frames: 6, rows: 1 }
-};
-const DIR_EAST = 3;
-const DIR_WEST = 1;
-
-const DEFAULT_SPRITE = 'warrior_male';
-
-const MONSTER_SPRITES = [
-    'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
-    'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
-];
-const BOSS_SPRITES = ['boss_demon', 'boss_shadow'];
-
-const ENEMY_NAME_SPRITE_MAP = {
-    '박쥐': 'monster_bat', '사냥개': 'monster_worm', '졸개': 'monster_slime',
-    '전사': 'monster_ghost', '마법사': 'monster_eyeball', '근위병': 'monster_pumpking',
-    '정예': 'monster_snake', '꽃': 'monster_bee', '늑대': 'monster_worm',
-    '멧돼지': 'monster_slime', '거미': 'monster_bee', '곰': 'monster_pumpking',
-    '벌레': 'monster_worm', '유령': 'monster_ghost', '슬라임': 'monster_slime',
-    '뱀': 'monster_snake', '눈알': 'monster_eyeball', '호박': 'monster_pumpking',
-};
-
-function pickEnemySprite(name, index = 0) {
-    if (name.includes('—') || name.includes('화신')) {
-        return BOSS_SPRITES[index % BOSS_SPRITES.length];
-    }
-    for (const [keyword, sprite] of Object.entries(ENEMY_NAME_SPRITE_MAP)) {
-        if (name.includes(keyword)) return sprite;
-    }
-    return MONSTER_SPRITES[index % MONSTER_SPRITES.length];
-}
-
-const ENEMY_SPRITES = MONSTER_SPRITES;
-
-// 죄종 → 영웅 스프라이트 매핑
-const SIN_SPRITE_MAP = {
-    wrath: 'hero_wrath',
-    envy: 'hero_envy',
-    greed: 'hero_greed',
-    sloth: 'hero_sloth',
-    gluttony: 'hero_gluttony',
-    lust: 'hero_lust',
-    pride: 'hero_pride',
-};
-
-const HERO_SPRITE_TYPES = Object.values(SIN_SPRITE_MAP);
-
-const UNIT_STATE = { IDLE: 'idle', WALKING: 'walking', ATTACKING: 'attacking', HURT: 'hurt', DEAD: 'dead' };
+// 스프라이트 상수 → SpriteConstants.js에서 import
 
 class BattleSceneA extends Phaser.Scene {
     constructor() {
@@ -178,6 +131,8 @@ class BattleSceneA extends Phaser.Scene {
     }
 
     create() {
+        this.events.once('shutdown', () => this._cleanup());
+
         const { width, height } = this.scale;
         this._createAnimations();
 
@@ -1289,6 +1244,31 @@ class BattleSceneA extends Phaser.Scene {
 
         const zone = this.add.zone(cx, cy, w, h).setInteractive({ useHandCursor: true }).setDepth(10003);
         zone.on('pointerdown', callback);
+    }
+
+    _cleanup() {
+        // tweens/timers 정리
+        this.tweens.killAll();
+        // 일기토 오버레이 정리
+        if (this._duelOverlay) {
+            this._duelOverlay.destroy();
+            this._duelOverlay = null;
+        }
+        // 증원 패널 정리
+        if (this._reinforcePanel) {
+            this._reinforcePanel.destroy();
+            this._reinforcePanel = null;
+        }
+        // 합성 텍스처 정리
+        if (this._composedHeroes) {
+            for (const composed of Object.values(this._composedHeroes)) {
+                for (const texKey of Object.values(composed)) {
+                    if (this.textures.exists(texKey)) this.textures.remove(texKey);
+                }
+            }
+            this._composedHeroes = {};
+        }
+        this.units = {};
     }
 }
 

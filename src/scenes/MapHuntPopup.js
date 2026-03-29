@@ -10,12 +10,16 @@
  *   // scene.update에서: popup.update(time, delta);
  */
 import BattleEngine, { BATTLE_TYPES } from '../game_logic/BattleEngine.js';
+import SpriteRenderer from './SpriteRenderer.js';
 import { FONT } from '../constants.js';
+import {
+    FRAME_SIZE, ANIM_FPS, SHEET_CONFIG, DIR_EAST, DIR_WEST,
+    DEFAULT_SPRITE, MONSTER_SPRITES, BOSS_SPRITES,
+    pickEnemySprite, SIN_SPRITE_MAP, HERO_SPRITE_TYPES
+} from './SpriteConstants.js';
 
-const FRAME_SIZE = 64;
 const SPRITE_SCALE = 1.8;
-const ANIM_FPS = 8;
-const TICK_MS = 700;
+const TICK_MS_DEFAULT = 700;
 
 // 팝업 크기/위치
 const POP_W = 600;
@@ -25,50 +29,6 @@ const POP_H = 400;
 const GROUND_Y = 160;
 const HERO_X = 170;
 const ENEMY_X = 430;
-
-const DIR_EAST = 3;
-const DIR_WEST = 1;
-
-const SHEET_CONFIG = {
-    idle:  { frames: 2, rows: 4 },
-    slash: { frames: 6, rows: 4 },
-    hurt:  { frames: 6, rows: 1 }
-};
-
-const DEFAULT_SPRITE = 'warrior_male';
-
-const MONSTER_SPRITES = [
-    'monster_slime', 'monster_bat', 'monster_snake', 'monster_ghost',
-    'monster_eyeball', 'monster_pumpking', 'monster_bee', 'monster_worm',
-];
-const BOSS_SPRITES = ['boss_demon', 'boss_shadow'];
-
-const ENEMY_NAME_SPRITE_MAP = {
-    '박쥐': 'monster_bat', '사냥개': 'monster_worm', '졸개': 'monster_slime',
-    '전사': 'monster_ghost', '마법사': 'monster_eyeball', '근위병': 'monster_pumpking',
-    '정예': 'monster_snake', '꽃': 'monster_bee', '늑대': 'monster_worm',
-    '멧돼지': 'monster_slime', '거미': 'monster_bee', '곰': 'monster_pumpking',
-    '벌레': 'monster_worm', '유령': 'monster_ghost', '슬라임': 'monster_slime',
-    '뱀': 'monster_snake', '눈알': 'monster_eyeball', '호박': 'monster_pumpking',
-};
-
-function pickEnemySprite(name, index = 0) {
-    if (name.includes('—') || name.includes('화신')) {
-        return BOSS_SPRITES[index % BOSS_SPRITES.length];
-    }
-    for (const [keyword, sprite] of Object.entries(ENEMY_NAME_SPRITE_MAP)) {
-        if (name.includes(keyword)) return sprite;
-    }
-    return MONSTER_SPRITES[index % MONSTER_SPRITES.length];
-}
-
-const ENEMY_SPRITE_POOL = MONSTER_SPRITES;
-
-const SIN_SPRITE_MAP = {
-    wrath: 'hero_wrath', envy: 'hero_envy', greed: 'hero_greed',
-    sloth: 'hero_sloth', gluttony: 'hero_gluttony', lust: 'hero_lust', pride: 'hero_pride',
-};
-const HERO_SPRITE_TYPES = Object.values(SIN_SPRITE_MAP);
 
 class MapHuntPopup {
     /**
@@ -87,6 +47,7 @@ class MapHuntPopup {
         this.stageName = config.stageName || '사냥';
         this.onComplete = config.onComplete || (() => {});
         this.balance = config.balance || {};
+        this._tickMs = Number(this.balance.battle_tick_ms) || TICK_MS_DEFAULT;
 
         this.active = false;
         this.paused = false;
@@ -94,6 +55,7 @@ class MapHuntPopup {
         this._tickAccumulator = 0;
         this._resultShown = false;
         this._logLines = [];
+        this._activeTimers = [];
 
         this._container = null;
         this._units = {};
@@ -128,6 +90,16 @@ class MapHuntPopup {
         popBg.strokeRoundedRect(this._ox, this._oy, POP_W, POP_H, 8);
         this._container.add(popBg);
 
+        // 영웅 합성 스프라이트 생성
+        this._composedHero = null;
+        this._composedHeroId = null;
+        if (this.heroData.appearance && this.heroData.appearance.layers) {
+            const spriteRenderer = new SpriteRenderer(this.scene);
+            const heroId = `hero_${this.heroData.id}`;
+            this._composedHero = spriteRenderer.compose(this.heroData.appearance, heroId);
+            this._composedHeroId = heroId;
+        }
+
         // 내부 UI
         this._createAnimations();
         this._drawHeader();
@@ -145,12 +117,32 @@ class MapHuntPopup {
 
     destroy() {
         this.active = false;
+        // 진행 중인 tweens/timers 정리
+        for (const u of Object.values(this._units)) {
+            if (u.sprite) {
+                u.sprite.stop();
+                this.scene.tweens.killTweensOf(u.sprite);
+            }
+            if (u.container) this.scene.tweens.killTweensOf(u.container);
+        }
+        for (const t of this._activeTimers) {
+            if (t && t.remove) t.remove(false);
+        }
+        this._activeTimers = [];
         if (this._container) {
             this._container.destroy();
             this._container = null;
         }
         this._units = {};
         this._logLines = [];
+        // 합성 텍스처 정리
+        if (this._composedHero && this._composedHeroId) {
+            for (const texKey of Object.values(this._composedHero)) {
+                if (this.scene.textures.exists(texKey)) this.scene.textures.remove(texKey);
+            }
+        }
+        this._composedHero = null;
+        this._composedHeroId = null;
     }
 
     // ═══════════════════════════════════
@@ -161,8 +153,8 @@ class MapHuntPopup {
         if (!this.active || this._resultShown || this.paused) return;
 
         this._tickAccumulator += delta * this.speed;
-        while (this._tickAccumulator >= TICK_MS) {
-            this._tickAccumulator -= TICK_MS;
+        while (this._tickAccumulator >= this._tickMs) {
+            this._tickAccumulator -= this._tickMs;
             this._tick();
             if (this._resultShown) break;
         }
@@ -300,18 +292,21 @@ class MapHuntPopup {
     // ═══════════════════════════════════
 
     _createHeroUnit() {
-        const spriteType = SIN_SPRITE_MAP[this.heroData.sinType] || DEFAULT_SPRITE;
         const units = this.engine.getUnits();
         const heroUnit = units.heroes[0];
+        const useComposed = !!this._composedHero;
+        const spriteType = useComposed
+            ? this._composedHeroId
+            : (SIN_SPRITE_MAP[this.heroData.sinType] || DEFAULT_SPRITE);
 
         this._units.hero = this._createUnitDisplay(
             this.heroData.name, this._ox + HERO_X, this._oy + GROUND_Y,
-            spriteType, true, heroUnit.maxHp, heroUnit.hp
+            spriteType, true, heroUnit.maxHp, heroUnit.hp, useComposed
         );
     }
 
     _createEnemyUnit() {
-        const spriteType = pickEnemySprite(this._enemyData.name);
+        const spriteType = pickEnemySprite(this.enemyData.name);
         const units = this.engine.getUnits();
         const enemyUnit = units.enemies[0];
 
@@ -321,17 +316,23 @@ class MapHuntPopup {
         );
     }
 
-    _createUnitDisplay(name, x, y, spriteType, isHero, maxHp, currentHp) {
+    _createUnitDisplay(name, x, y, spriteType, isHero, maxHp, currentHp, useComposed = false) {
         const container = this.scene.add.container(x, y);
 
-        const dir = isHero ? DIR_EAST : DIR_WEST;
-        const dirName = isHero ? 'east' : 'west';
-        this._ensureDirectionalIdle(spriteType, dirName, dir);
-
-        const sprite = this.scene.add.sprite(0, 0, `${spriteType}_idle`);
-        sprite.setScale(SPRITE_SCALE);
-        sprite.play(`${spriteType}_idle_${dirName}`);
-        // 몬스터 전용 스프라이트 사용 — 틴트 불필요
+        let sprite;
+        if (useComposed) {
+            const idleKey = `composed_${spriteType}_walk`;
+            sprite = this.scene.add.sprite(0, 0, idleKey, 0);
+            sprite.setScale(SPRITE_SCALE);
+            sprite.play(`${spriteType}_idle`);
+        } else {
+            const dir = isHero ? DIR_EAST : DIR_WEST;
+            const dirName = isHero ? 'east' : 'west';
+            this._ensureDirectionalIdle(spriteType, dirName, dir);
+            sprite = this.scene.add.sprite(0, 0, `${spriteType}_idle`);
+            sprite.setScale(SPRITE_SCALE);
+            sprite.play(`${spriteType}_idle_${dirName}`);
+        }
         container.add(sprite);
 
         const halfH = (FRAME_SIZE * SPRITE_SCALE) / 2;
@@ -367,7 +368,7 @@ class MapHuntPopup {
         return {
             container, sprite, hpBar, hpBg, nameText, hpText,
             baseX: x, baseY: y,
-            maxHp, isHero,
+            maxHp, isHero, useComposed,
             hpBarWidth: HP_BAR_W,
             spriteType, alive: true
         };
@@ -407,11 +408,16 @@ class MapHuntPopup {
         const defender = this._getUnit(evt.defender);
         if (!attacker || !defender) return;
 
-        const dirName = attacker.isHero ? 'east' : 'west';
-        const slashKey = `${attacker.spriteType}_slash_${dirName}`;
-        const idleKey = `${attacker.spriteType}_idle_${dirName}`;
-
-        this._ensureSlash(attacker.spriteType, dirName);
+        let slashKey, idleKey;
+        if (attacker.useComposed) {
+            slashKey = `${attacker.spriteType}_slash`;
+            idleKey = `${attacker.spriteType}_idle`;
+        } else {
+            const dirName = attacker.isHero ? 'east' : 'west';
+            slashKey = `${attacker.spriteType}_slash_${dirName}`;
+            idleKey = `${attacker.spriteType}_idle_${dirName}`;
+            this._ensureSlash(attacker.spriteType, dirName);
+        }
 
         attacker.sprite.play(slashKey);
         attacker.sprite.once('animationcomplete', () => {
@@ -429,12 +435,18 @@ class MapHuntPopup {
         });
 
         // 피격
-        this.scene.time.delayedCall(duration, () => {
-            if (!defender.alive) return;
+        const timer = this.scene.time.delayedCall(duration, () => {
+            if (!this.active || !defender.alive) return;
 
-            const hurtKey = `${defender.spriteType}_hurt`;
-            const defIdleKey = `${defender.spriteType}_idle_${defender.isHero ? 'east' : 'west'}`;
-            this._ensureHurt(defender.spriteType);
+            let hurtKey, defIdleKey;
+            if (defender.useComposed) {
+                hurtKey = `${defender.spriteType}_slash`;
+                defIdleKey = `${defender.spriteType}_idle`;
+            } else {
+                hurtKey = `${defender.spriteType}_hurt`;
+                defIdleKey = `${defender.spriteType}_idle_${defender.isHero ? 'east' : 'west'}`;
+                this._ensureHurt(defender.spriteType);
+            }
 
             defender.sprite.play(hurtKey);
             defender.sprite.once('animationcomplete', () => {
@@ -468,6 +480,7 @@ class MapHuntPopup {
                 onComplete: () => dmgText.destroy()
             });
         });
+        this._activeTimers.push(timer);
     }
 
     _animateDefeat(evt) {
@@ -637,13 +650,14 @@ class MapHuntPopup {
     }
 
     _createAnimations() {
-        // 필요한 애니메이션은 _ensure* 메서드에서 lazy 생성
-        // 여기서는 기본 idle만 보장
-        const heroSprite = SIN_SPRITE_MAP[this.heroData.sinType] || DEFAULT_SPRITE;
-        this._ensureDirectionalIdle(heroSprite, 'east', DIR_EAST);
+        // 합성 스프라이트 영웅은 SpriteRenderer.compose()에서 이미 애니메이션 생성됨
+        if (!this._composedHero) {
+            const heroSprite = SIN_SPRITE_MAP[this.heroData.sinType] || DEFAULT_SPRITE;
+            this._ensureDirectionalIdle(heroSprite, 'east', DIR_EAST);
+        }
 
-        // 해당 적의 몬스터 스프라이트 idle 보장
-        const enemySprite = pickEnemySprite(this._enemyData.name);
+        // 적 몬스터 idle 보장
+        const enemySprite = pickEnemySprite(this.enemyData.name);
         this._ensureDirectionalIdle(enemySprite, 'west', DIR_WEST);
     }
 }

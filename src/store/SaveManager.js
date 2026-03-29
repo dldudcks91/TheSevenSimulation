@@ -28,7 +28,14 @@ const SaveManager = {
         if (saveData.heroes) store.setState('heroes', saveData.heroes);
         if (saveData.turn) store.setState('turn', saveData.turn);
         if (saveData.gold !== undefined) store.setState('gold', saveData.gold);
-        if (saveData.base) store.setState('base', saveData.base);
+        if (saveData.base) {
+            // 마이그레이션: building(단수) → buildings(배열)
+            if (saveData.base.building !== undefined && !saveData.base.buildings) {
+                saveData.base.buildings = saveData.base.building ? [saveData.base.building] : [];
+                delete saveData.base.building;
+            }
+            store.setState('base', saveData.base);
+        }
         if (saveData.expedition) store.setState('expedition', saveData.expedition);
         return true;
     },
