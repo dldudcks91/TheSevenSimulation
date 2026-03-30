@@ -66,6 +66,10 @@ const PANEL_CONTENT_H = PANEL_H - PANEL_TAB_H; // 216
 const ZONE_INSIDE_END = 680;   // 영내: 0~680
 const ZONE_OUTSIDE_START = 680; // 영외: 680~1280
 
+// 적 접근 경로 (성문 → 오른쪽)
+const GATE_X = 445;            // 성문 x (디버그로 확정)
+const APPROACH_Y = 213;        // 성문 y (디버그로 확정)
+
 // 탭 정의
 const TABS = [
     { id: 'base', icon: '🏰', label: '시설' },
@@ -73,6 +77,7 @@ const TABS = [
     { id: 'item', icon: '🎒', label: '아이템' },
     { id: 'expedition', icon: '🗺', label: '원정' },
     { id: 'policy', icon: '📜', label: '정책' },
+    { id: 'bestiary', icon: '📖', label: '도감' },
 ];
 
 // 건물 슬롯 — 이미지 좌측 성벽 안 5x5 그리드 (디버그로 확정)
@@ -140,6 +145,20 @@ class MapScene extends Phaser.Scene {
                         frameWidth: 64, frameHeight: 64
                     });
                 }
+            }
+        }
+
+        // 도감용 풀 스프라이트시트 (64x64 프레임)
+        const bestiarySheets = [
+            'monster_wolf', 'monster_goblin', 'monster_spider',
+            'monster_bear', 'monster_lion', 'monster_deer',
+            'monster_flower', 'monster_bigworm',
+        ];
+        for (const key of bestiarySheets) {
+            if (!this.textures.exists(key)) {
+                this.load.spritesheet(key, `assets/sprites/${key}/full.png`, {
+                    frameWidth: 64, frameHeight: 64
+                });
             }
         }
     }
@@ -212,6 +231,7 @@ class MapScene extends Phaser.Scene {
         this._updateSoldiers();
         this._updatePhaseDisplay();
         this._switchTab('base');
+        this._initDebugMode();
 
         if (!loaded) {
             this._startMorningPhase();
@@ -371,6 +391,7 @@ class MapScene extends Phaser.Scene {
             const tex = this.textures.get('map_bg').getSourceImage();
             const scale = MAP_WORLD_H / tex.height;
             bgImg.setScale(scale);
+            this._bgWidth = tex.width * scale;  // 배경 실제 가로 폭
             mc.add(bgImg);
         } else {
             const ground = this.add.graphics();
@@ -454,6 +475,105 @@ class MapScene extends Phaser.Scene {
         });
 
         this._updateBuildings();
+        this._drawApproachPath();
+    }
+
+    // ─── 적 접근 경로 (성문 → 배경 끝, 정사각형 점선) ───
+    _drawApproachPath() {
+        if (this._approachElements) {
+            this._approachElements.forEach(el => el.destroy());
+        }
+        this._approachElements = [];
+
+        const endX = (this._bgWidth || MAP_WORLD_W) - 16;
+        const pathLen = endX - GATE_X;
+        const dotCount = 7;
+        const dotSize = 6;
+        const gap = (pathLen - dotCount * dotSize) / (dotCount + 1);
+
+        const g = this.add.graphics();
+        g.fillStyle(0xffffff, 0.4);
+
+        for (let i = 0; i < dotCount; i++) {
+            const x = GATE_X + gap + i * (dotSize + gap);
+            g.fillRect(x, APPROACH_Y - dotSize / 2, dotSize, dotSize);
+        }
+
+        this.mapContainer.add(g);
+        this._approachElements.push(g);
+    }
+
+    // ─── 디버그 모드: 맵 클릭 → 좌표 표시 + 십자선 ───
+    _initDebugMode() {
+        this._debugOn = true;
+        this._debugMarkers = [];
+
+        // 좌표 표시 텍스트 (HUD 우측 상단)
+        this._debugCoordText = this.add.text(1270, HUD_H + 4, '', {
+            fontSize: '11px', fontFamily: FONT, color: '#00ff88',
+            backgroundColor: '#000000aa', padding: { x: 4, y: 2 },
+            shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
+        }).setOrigin(1, 0).setDepth(999).setScrollFactor(0);
+
+        // 맵 영역 전체에 인터랙티브 존
+        const debugZone = this.add.zone(0, HUD_H, MAP_VP_W, MAP_VP_H)
+            .setOrigin(0, 0).setInteractive().setDepth(998);
+
+        // 마우스 이동 → 실시간 좌표
+        debugZone.on('pointermove', (pointer) => {
+            if (!this._debugOn) return;
+            const mx = Math.round(pointer.x);
+            const my = Math.round(pointer.y - HUD_H);
+            this._debugCoordText.setText(`x:${mx}  y:${my}`);
+        });
+
+        // 클릭 → 마커 찍기
+        debugZone.on('pointerdown', (pointer) => {
+            if (!this._debugOn) return;
+            const mx = Math.round(pointer.x);
+            const my = Math.round(pointer.y - HUD_H);
+
+            // 십자 마커
+            const g = this.add.graphics().setDepth(999);
+            g.lineStyle(1, 0x00ff88, 0.8);
+            g.lineBetween(mx - 8, pointer.y, mx + 8, pointer.y);
+            g.lineBetween(mx, pointer.y - 8, mx, pointer.y + 8);
+
+            // 좌표 라벨
+            const label = this.add.text(mx + 10, pointer.y - 6, `(${mx},${my})`, {
+                fontSize: '9px', fontFamily: FONT, color: '#00ff88',
+                backgroundColor: '#000000cc', padding: { x: 2, y: 1 }
+            }).setDepth(999);
+
+            this._debugMarkers.push(g, label);
+
+            // 콘솔에도 출력
+            console.log(`[DEBUG] click: x=${mx}, y=${my}`);
+        });
+
+        // 안내 텍스트
+        this._debugHint = this.add.text(640, HUD_H + MAP_VP_H - 12,
+            '[DEBUG] 맵 클릭 → 좌표 찍기  |  D키: 마커 초기화  |  Shift+D: 디버그 끄기', {
+                fontSize: '10px', fontFamily: FONT, color: '#00ff88',
+                backgroundColor: '#000000aa', padding: { x: 6, y: 2 }
+            }).setOrigin(0.5, 1).setDepth(999);
+
+        // D키: 마커 초기화 / Shift+D: 디버그 끄기
+        this.input.keyboard.on('keydown-D', (event) => {
+            if (event.shiftKey) {
+                // 디버그 끄기
+                this._debugOn = false;
+                this._debugMarkers.forEach(m => m.destroy());
+                this._debugMarkers = [];
+                this._debugCoordText.setVisible(false);
+                this._debugHint.setVisible(false);
+                debugZone.disableInteractive();
+            } else {
+                // 마커만 초기화
+                this._debugMarkers.forEach(m => m.destroy());
+                this._debugMarkers = [];
+            }
+        });
     }
 
     _drawPlaza(x, y) {
@@ -558,6 +678,7 @@ class MapScene extends Phaser.Scene {
             case 'item': this._renderItemTab(); break;
             case 'expedition': this._renderExpeditionTab(); break;
             case 'policy': this._renderPolicyTab(); break;
+            case 'bestiary': this._renderBestiaryTab(); break;
         }
     }
 
@@ -756,54 +877,111 @@ class MapScene extends Phaser.Scene {
     // 팝업: 건설
     // ═══════════════════════════════════
     _popupBuild(px, py, pw, ph) {
+        const TIER_COLORS = { 1: 0x40a060, 2: 0x4080e0, 3: 0x8040e0 };
         const cx = px + pw / 2;
         let y = py + 16;
 
+        // 제목
         this._pp(this.add.text(cx, y, '[ 건설 ]', {
             fontSize: '16px', fontFamily: FONT_BOLD, color: C.accentRed,
             shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5));
-        y += 30;
+        y += 24;
 
-        const available = this.baseManager.getAvailableBuilds();
+        // 보유 골드
         const gold = store.getState('gold') || 0;
+        this._pp(this.add.text(cx, y, `보유 골드  💰 ${gold}G`, {
+            fontSize: '12px', fontFamily: FONT_BOLD, color: C.expYellow
+        }).setOrigin(0.5));
+        y += 26;
+
+        // 구분선
+        const lineG = this._pp(this.add.graphics());
+        lineG.lineStyle(1, C.borderPrimary, 0.5);
+        lineG.lineBetween(px + 24, y, px + pw - 24, y);
+        y += 10;
+
+        const available = this.baseManager.getPrereqMetBuilds();
 
         if (available.length === 0) {
-            this._pp(this.add.text(cx, y + 40, '건설 가능한 시설이 없습니다.', {
-                fontSize: '11px', fontFamily: FONT, color: C.textMuted
+            this._pp(this.add.text(cx, py + ph / 2 - 20, '건설 가능한 시설이 없습니다.', {
+                fontSize: '12px', fontFamily: FONT, color: C.textMuted
             }).setOrigin(0.5));
         } else {
             const iw = pw - 40;
-            for (const f of available.slice(0, 8)) {
+            const ih = 60;
+            for (const f of available.slice(0, 7)) {
                 const cost = this.baseManager.getBuildCost(f);
                 const canAfford = gold >= cost;
+                const tierColor = TIER_COLORS[f.tier] || C.borderPrimary;
 
+                // 카드 배경 그리기 함수
                 const ibg = this._pp(this.add.graphics());
-                ibg.fillStyle(C.inputBg, 1); ibg.fillRect(px + 20, y, iw, 44);
-                ibg.lineStyle(1, C.borderPrimary); ibg.strokeRect(px + 20, y, iw, 44);
+                const cardY = y;
+                const drawCard = (hover) => {
+                    ibg.clear();
+                    ibg.fillStyle(hover ? 0x1a1a30 : (canAfford ? C.inputBg : 0x08080e), 1);
+                    ibg.fillRoundedRect(px + 20, cardY, iw, ih, 4);
+                    ibg.lineStyle(hover ? 2 : 1, hover ? 0xe03030 : (canAfford ? C.borderPrimary : 0x202030));
+                    ibg.strokeRoundedRect(px + 20, cardY, iw, ih, 4);
+                    // 좌측 티어 악센트 라인
+                    ibg.fillStyle(tierColor, canAfford ? 0.6 : 0.2);
+                    ibg.fillRect(px + 20, cardY + 4, 3, ih - 8);
+                    // 티어 뱃지
+                    ibg.fillStyle(tierColor, canAfford ? 0.9 : 0.4);
+                    ibg.fillRoundedRect(px + 28, cardY + 6, 30, 16, 3);
+                };
+                drawCard(false);
 
-                this._pp(this.add.text(px + 32, y + 6, `${f.name_ko} (T${f.tier})`, {
-                    fontSize: '13px', fontFamily: FONT_BOLD, color: canAfford ? C.textPrimary : C.textMuted
+                // 티어 텍스트
+                this._pp(this.add.text(px + 43, cardY + 14, `T${f.tier}`, {
+                    fontSize: '10px', fontFamily: FONT_BOLD, color: '#fff'
+                }).setOrigin(0.5));
+
+                // 시설명
+                this._pp(this.add.text(px + 66, cardY + 8, f.name_ko, {
+                    fontSize: '14px', fontFamily: FONT_BOLD,
+                    color: canAfford ? C.textPrimary : C.textMuted
                 }));
-                this._pp(this.add.text(px + 32, y + 26, f.description, {
-                    fontSize: '9px', fontFamily: FONT, color: C.textMuted,
-                    wordWrap: { width: iw - 120 }
+
+                // 설명
+                this._pp(this.add.text(px + 66, cardY + 30, f.description, {
+                    fontSize: '10px', fontFamily: FONT,
+                    color: canAfford ? C.textSecondary : '#404060',
+                    wordWrap: { width: iw - 200 }
                 }));
-                this._pp(this.add.text(px + iw - 8, y + 6, `${cost}G / 진행도 ${f.build_cost}`, {
-                    fontSize: '11px', fontFamily: FONT, color: canAfford ? C.expYellow : '#f04040'
+
+                // 골드 비용 (우측 상단)
+                this._pp(this.add.text(px + iw + 12, cardY + 10, `💰 ${cost}G`, {
+                    fontSize: '12px', fontFamily: FONT_BOLD,
+                    color: canAfford ? C.expYellow : '#f04040'
                 }).setOrigin(1, 0));
 
+                // 필요 진행도 (우측 하단)
+                this._pp(this.add.text(px + iw + 12, cardY + 30, `🔨 ${f.build_cost}`, {
+                    fontSize: '10px', fontFamily: FONT,
+                    color: canAfford ? C.textSecondary : '#404060'
+                }).setOrigin(1, 0));
+
+                // 골드 부족 라벨
+                if (!canAfford) {
+                    this._pp(this.add.text(px + iw + 12, cardY + ih - 8, '골드 부족', {
+                        fontSize: '9px', fontFamily: FONT, color: '#f04040'
+                    }).setOrigin(1, 0.5));
+                }
+
+                // 호버 + 클릭 (골드 충분할 때만)
                 if (canAfford) {
-                    const zone = this._pp(this.add.zone(px + 20 + iw / 2, y + 22, iw, 44).setInteractive({ useHandCursor: true }));
+                    const zone = this._pp(this.add.zone(px + 20 + iw / 2, cardY + ih / 2, iw, ih).setInteractive({ useHandCursor: true }));
                     const facility = f;
-                    zone.on('pointerover', () => { ibg.clear(); ibg.fillStyle(0x1e1e34, 1); ibg.fillRect(px + 20, y, iw, 44); ibg.lineStyle(1, 0xe03030); ibg.strokeRect(px + 20, y, iw, 44); });
-                    zone.on('pointerout', () => { ibg.clear(); ibg.fillStyle(C.inputBg, 1); ibg.fillRect(px + 20, y, iw, 44); ibg.lineStyle(1, C.borderPrimary); ibg.strokeRect(px + 20, y, iw, 44); });
+                    zone.on('pointerover', () => drawCard(true));
+                    zone.on('pointerout', () => drawCard(false));
                     zone.on('pointerdown', () => {
                         const heroes = this.heroManager.getBaseHeroes().filter(h => h.status === 'idle');
                         this._showPopup('heroSelect', { actionType: 'build', target: facility, heroes });
                     });
                 }
-                y += 50;
+                y += ih + 6;
             }
         }
 
@@ -1705,7 +1883,6 @@ class MapScene extends Phaser.Scene {
 
     _popupBuildingInfo(px, py, pw, ph, building) {
         const cx = px + pw / 2;
-        const pct = Math.floor((building.progress / building.buildCost) * 100);
         const heroes = this.heroManager.getHeroes();
         const hero = heroes.find(h => h.id === building.assignedHeroId);
         const heroName = hero ? hero.name : '없음';
@@ -1714,7 +1891,7 @@ class MapScene extends Phaser.Scene {
             fontSize: '14px', fontFamily: FONT_BOLD, color: C.infoCyan
         }).setOrigin(0.5));
 
-        this._pp(this.add.text(cx, py + 50, `건설 진행: ${pct}% (${building.progress}/${building.buildCost})`, {
+        this._pp(this.add.text(cx, py + 50, `건설 진행: ${building.progress}/${building.buildCost}`, {
             fontSize: '11px', fontFamily: FONT, color: C.textPrimary
         }).setOrigin(0.5));
 
@@ -2031,7 +2208,7 @@ class MapScene extends Phaser.Scene {
             cx += CARD_W + GAP;
         }
 
-        if (heroes.length < 7) {
+        if (heroes.length < 7 && this.baseManager.hasFacility('tavern')) {
             this._p(this._smallPanelBtn(cx + 40, y + 40, '고용', () => this._showPanelAction('recruit')));
         }
 
@@ -2055,6 +2232,7 @@ class MapScene extends Phaser.Scene {
         const buildings = this.baseManager.getCurrentBuildings();
         const researching = this.baseManager.getCurrentResearch();
 
+        // 완성 시설
         if (built.length === 0 && buildings.length === 0) {
             this._p(this.add.text(px + 8, y, '건설된 시설 없음', { fontSize: '11px', fontFamily: FONT, color: C.textMuted }));
             y += 20;
@@ -2062,22 +2240,37 @@ class MapScene extends Phaser.Scene {
             for (const f of built) {
                 this._p(this._insetPanel(px, y, pw, 24));
                 this._p(this.add.text(px + 8, y + 5, `✓ ${f.name_ko}`, { fontSize: '11px', fontFamily: FONT, color: C.successGreen }));
-                y += 30;
+                this._p(this.add.text(px + pw - 8, y + 5, `T${f.tier}`, { fontSize: '10px', fontFamily: FONT, color: C.textMuted }).setOrigin(1, 0));
+                y += 28;
             }
         }
 
+        // 건설 중 — 진행도 바
         for (const building of buildings) {
-            this._p(this._insetPanel(px, y, pw, 24));
-            const bPct = Math.floor((building.progress / building.buildCost) * 100);
-            this._p(this.add.text(px + 8, y + 5, `🔨 ${building.name} (${bPct}% — ${building.progress}/${building.buildCost})`, { fontSize: '11px', fontFamily: FONT, color: C.infoCyan }));
-            y += 30;
+            const bPct = Math.min(building.progress / building.buildCost, 1);
+            this._p(this._insetPanel(px, y, pw, 34));
+            this._p(this.add.text(px + 8, y + 3, `🔨 ${building.name}`, { fontSize: '11px', fontFamily: FONT_BOLD, color: C.infoCyan }));
+            this._p(this.add.text(px + pw - 8, y + 3, `${building.progress}/${building.buildCost}`, { fontSize: '10px', fontFamily: FONT, color: C.textSecondary }).setOrigin(1, 0));
+            const barG = this._p(this.add.graphics());
+            const barX = px + 28, barY = y + 21, barW = pw - 56, barH = 8;
+            barG.fillStyle(0x0a0a14, 1); barG.fillRoundedRect(barX, barY, barW, barH, 3);
+            barG.fillStyle(0x40a0f8, 1); barG.fillRoundedRect(barX, barY, Math.max(barW * bPct, 4), barH, 3);
+            barG.lineStyle(1, 0x303048); barG.strokeRoundedRect(barX, barY, barW, barH, 3);
+            y += 38;
         }
 
+        // 연구 중 — 진행도 바
         if (researching) {
-            this._p(this._insetPanel(px, y, pw, 24));
-            const rPct = Math.floor((researching.progress / researching.researchCost) * 100);
-            this._p(this.add.text(px + 8, y + 5, `📖 ${researching.name} (${rPct}% — ${researching.progress}/${researching.researchCost})`, { fontSize: '11px', fontFamily: FONT, color: C.infoCyan }));
-            y += 30;
+            const rPct = Math.min(researching.progress / researching.researchCost, 1);
+            this._p(this._insetPanel(px, y, pw, 34));
+            this._p(this.add.text(px + 8, y + 3, `📖 ${researching.name}`, { fontSize: '11px', fontFamily: FONT_BOLD, color: C.infoCyan }));
+            this._p(this.add.text(px + pw - 8, y + 3, `${researching.progress}/${researching.researchCost}`, { fontSize: '10px', fontFamily: FONT, color: C.textSecondary }).setOrigin(1, 0));
+            const barG = this._p(this.add.graphics());
+            const barX = px + 28, barY = y + 21, barW = pw - 56, barH = 8;
+            barG.fillStyle(0x0a0a14, 1); barG.fillRoundedRect(barX, barY, barW, barH, 3);
+            barG.fillStyle(0xf8c830, 1); barG.fillRoundedRect(barX, barY, Math.max(barW * rPct, 4), barH, 3);
+            barG.lineStyle(1, 0x303048); barG.strokeRoundedRect(barX, barY, barW, barH, 3);
+            y += 38;
         }
 
         y += 10;
@@ -2229,6 +2422,91 @@ class MapScene extends Phaser.Scene {
     }
 
     // ═══════════════════════════════════
+    // 탭: 도감
+    // ═══════════════════════════════════
+    _renderBestiaryTab() {
+        const px = 16;
+        let y = PANEL_CONTENT_Y + 8;
+
+        this._p(this._sectionTitle(px, y, '몬스터 도감'));
+        y += 24;
+
+        // idle 액션 시트가 있는 기존 몬스터
+        const existingMonsters = [
+            { key: 'monster_slime', name: '슬라임' },
+            { key: 'monster_bat', name: '박쥐' },
+            { key: 'monster_snake', name: '뱀' },
+            { key: 'monster_ghost', name: '유령' },
+            { key: 'monster_eyeball', name: '눈알' },
+            { key: 'monster_pumpking', name: '펌프킹' },
+            { key: 'monster_bee', name: '벌' },
+            { key: 'monster_worm', name: '벌레' },
+            { key: 'boss_demon', name: '악마(보스)' },
+            { key: 'boss_shadow', name: '그림자(보스)' },
+            { key: 'boss_minion', name: '하수인(보스)' },
+        ];
+        // 풀 스프라이트시트로 로드된 신규 몬스터 (idle = 첫 행 0~3)
+        const newMonsters = [
+            { key: 'monster_wolf', name: '늑대' },
+            { key: 'monster_goblin', name: '고블린' },
+            { key: 'monster_spider', name: '거미' },
+            { key: 'monster_bear', name: '곰' },
+            { key: 'monster_lion', name: '사자' },
+            { key: 'monster_deer', name: '사슴' },
+            { key: 'monster_flower', name: '식인화' },
+            { key: 'monster_bigworm', name: '대형벌레' },
+        ];
+        const monsters = [...existingMonsters, ...newMonsters];
+
+        const cardW = 80;
+        const cardH = 90;
+        const gap = 8;
+        const cols = Math.floor((1280 - px * 2 + gap) / (cardW + gap));
+
+        monsters.forEach((m, i) => {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const cx = px + col * (cardW + gap);
+            const cy = y + row * (cardH + gap);
+
+            // 카드 배경
+            const bg = this._p(this.add.graphics());
+            bg.fillStyle(C.cardBg, 1);
+            bg.fillRoundedRect(cx, cy, cardW, cardH, 4);
+            bg.lineStyle(1, C.borderPrimary, 0.6);
+            bg.strokeRoundedRect(cx, cy, cardW, cardH, 4);
+
+            // 스프라이트 (idle)
+            const idleKey = `${m.key}_idle`;  // 기존: 액션별 시트
+            const fullKey = m.key;            // 신규: 풀 시트
+            const hasIdle = this.textures.exists(idleKey);
+            const hasFull = !hasIdle && this.textures.exists(fullKey);
+            const texKey = hasIdle ? idleKey : hasFull ? fullKey : null;
+
+            if (texKey) {
+                const animKey = `bestiary_${m.key}_idle`;
+                if (!this.anims.exists(animKey)) {
+                    this.anims.create({
+                        key: animKey,
+                        frames: this.anims.generateFrameNumbers(texKey, { start: 0, end: 2 }),
+                        frameRate: 4,
+                        repeat: -1
+                    });
+                }
+                const sprite = this._p(this.add.sprite(cx + cardW / 2, cy + 38, texKey));
+                sprite.play(animKey);
+                sprite.setScale(1.2);
+            }
+
+            // 이름
+            this._p(this.add.text(cx + cardW / 2, cy + cardH - 12, m.name, {
+                fontSize: '9px', fontFamily: FONT, color: m.key.startsWith('boss_') ? '#e03030' : C.textSecondary,
+                shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
+            }).setOrigin(0.5));
+        });
+    }
+
+    // ═══════════════════════════════════
     // 적합도 계산
     // ═══════════════════════════════════
     _calcFitness(hero, primaryStats) {
@@ -2336,8 +2614,7 @@ class MapScene extends Phaser.Scene {
                 this._drawSlotBg(slot.bg, hw, hh, C.building, 0.5);
             } else if (buildingItem) {
                 slot.nameText.setText(buildingItem.name).setColor(C.infoCyan);
-                const bPct2 = Math.floor((buildingItem.progress / buildingItem.buildCost) * 100);
-                slot.statusText.setText(`건설 ${bPct2}%`);
+                slot.statusText.setText(`건설 ${buildingItem.progress}/${buildingItem.buildCost}`);
                 this._drawSlotBg(slot.bg, hw, hh, 0x1e2e1e, 0.6, 0x40a060);
             } else if (isPioneering) {
                 slot.nameText.setText('개척 중').setColor('#c89050');
@@ -2380,6 +2657,7 @@ class MapScene extends Phaser.Scene {
         const turn = this.turnManager.getCurrentTurn();
         this.dayText.setText(`Day ${turn.day}`);
         this.phaseText.setText(`[${this.turnManager.getPhaseName()}]`);
+        this._drawApproachPath();
     }
 
     _getSlotBuilding(i) { return this.baseManager.getBuiltFacilities()[i] || null; }
@@ -2490,9 +2768,9 @@ class MapScene extends Phaser.Scene {
             store.setState('wood', (store.getState('wood') || 0) + millWood);
         }
         const heroes = this.heroManager.getHeroes();
-        // 사냥/채집 상태 → idle 복원 (턴 종료 시)
+        // 턴 종료 시 모든 영웅 → idle 복원 (원정/부상/기절 제외)
         for (const h of heroes) {
-            if (h.status === 'hunt' || h.status === 'gather' || h.status === 'lumber') h.status = 'idle';
+            if (h.status !== 'expedition' && h.status !== 'injured' && h.status !== 'knocked_out') h.status = 'idle';
         }
         store.setState('heroes', [...heroes]);
         if (this.baseManager.processHeroRecovery(heroes).length > 0) store.setState('heroes', [...heroes]);

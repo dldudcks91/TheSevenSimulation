@@ -48,6 +48,17 @@ class BaseManager {
         });
     }
 
+    /** 전제조건 충족 시설 전체 (골드 무관) — 건설 UI용 */
+    getPrereqMetBuilds() {
+        const base = this.store.getState('base');
+        const buildingIds = (base.buildings || []).map(b => b.facilityId);
+        return this.allFacilities.filter(f => {
+            if (base.built.includes(f.id)) return false;
+            if (buildingIds.includes(f.id)) return false;
+            return f.requires.every(req => base.built.includes(req));
+        });
+    }
+
     startBuilding(facilityId, heroId) {
         const base = this.store.getState('base');
         if (!base.buildings) base.buildings = [];

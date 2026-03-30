@@ -136,22 +136,28 @@ class BattleSceneA extends Phaser.Scene {
         const { width, height } = this.scale;
         this._createAnimations();
 
-        // 배경
-        this.add.rectangle(width / 2, height / 2, width, height, 0x0a0a12);
+        // 배경 — 그래디언트 하늘
+        this._drawBackground(width, height);
 
         // 지면
         this._drawGround(width);
 
         // 헤더
-        this.add.text(width / 2, 20, this.stageName, {
+        this.add.text(width / 2, 16, this.stageName, {
             fontSize: '14px', fontFamily: FONT, color: '#e03030',
             shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5);
 
+        // 라운드 카운터
+        this._currentRound = 0;
+        this._roundText = this.add.text(width - 30, 16, '', {
+            fontSize: '11px', fontFamily: FONT, color: '#606080'
+        }).setOrigin(1, 0);
+
         // 병사 카운터
         this._soldierAlive = 0;
         this._soldierTotal = 0;
-        this.soldierText = this.add.text(width / 2, 38, '', {
+        this.soldierText = this.add.text(width / 2, 34, '', {
             fontSize: '11px', fontFamily: FONT, color: '#a0a0c0'
         }).setOrigin(0.5);
 
@@ -172,17 +178,22 @@ class BattleSceneA extends Phaser.Scene {
         this._duelActive = false;
 
         // 카드 핸드 영역 (로그 위)
-        const cardY = height - 190;
+        const cardY = height - 200;
         this._drawCardHand(width, cardY);
 
         // 로그 패널
         const logY = height - 100;
         const logG = this.add.graphics();
-        logG.fillStyle(0x0e0e1a, 0.9);
-        logG.fillRect(20, logY, width - 40, 80);
-        logG.lineStyle(1, 0x303048);
-        logG.strokeRect(20, logY, width - 40, 80);
-        this.logText = this.add.text(30, logY + 6, '', {
+        logG.fillStyle(0x08080e, 0.9);
+        logG.fillRoundedRect(20, logY, width - 40, 80, 4);
+        logG.lineStyle(1, 0x303048, 0.6);
+        logG.strokeRoundedRect(20, logY, width - 40, 80, 4);
+
+        this.add.text(30, logY + 4, '전투 로그', {
+            fontSize: '8px', fontFamily: FONT, color: '#505068'
+        });
+
+        this.logText = this.add.text(30, logY + 16, '', {
             fontSize: '9px', fontFamily: FONT, color: '#a0a0c0',
             lineSpacing: 3, wordWrap: { width: width - 80 }
         });
@@ -325,7 +336,7 @@ class BattleSceneA extends Phaser.Scene {
 
             const fx = HERO_START_X + i * 30;
             const fy = GROUND_Y + (Y_OFFSETS[i] || 0);
-            this._createUnit(u.name, fx, fy, spriteType, true, u.maxHp, useComposed);
+            this._createUnit(u.name, fx, fy, spriteType, true, u.maxHp, useComposed, u.sinType);
         });
 
         unitsData.enemies.forEach((u, i) => {
@@ -406,16 +417,22 @@ class BattleSceneA extends Phaser.Scene {
     // ═══════════════════════════════════
 
     _processEvent(evt) {
+        // 라운드 업데이트
+        if (evt.round && evt.round !== this._currentRound) {
+            this._currentRound = evt.round;
+            this._roundText.setText(`R${this._currentRound}`);
+        }
+
         switch (evt.type) {
             case 'start':
                 break;
 
             case 'attack':
                 if (evt.attackerIsSoldier || evt.defenderIsSoldier) {
-                    this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`);
+                    this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`, '#808090');
                 } else {
                     this._animateAttack(evt);
-                    this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`);
+                    this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`, '#c0c0d0');
                 }
                 break;
 
@@ -423,36 +440,36 @@ class BattleSceneA extends Phaser.Scene {
                 if (evt.isSoldier) {
                     this._soldierAlive = Math.max(0, this._soldierAlive - 1);
                     this._updateSoldierDisplay();
-                    this._addLog(`▼ ${evt.name} 전사 (잔여: ${this._soldierAlive})`);
+                    this._addLog(`▼ ${evt.name} 전사 (잔여: ${this._soldierAlive})`, '#f08040');
                 } else if (evt.isHero) {
                     this._animateDefeat(evt);
-                    this._addLog(`▼ ${evt.name} 쓰러졌다!`);
+                    this._addLog(`▼ ${evt.name} 쓰러졌다!`, '#f04040');
                 } else {
                     this._animateDefeat(evt);
-                    this._addLog(`★ ${evt.name} 격파!`);
+                    this._addLog(`★ ${evt.name} 격파!`, '#40d870');
                 }
                 break;
 
             case 'duel_start':
                 this._startDuelVisual(evt);
-                this._addLog(`⚔ ${evt.hero.name}(이)가 ${evt.enemy.name}에게 일기토 신청!`);
+                this._addLog(`⚔ ${evt.hero.name}(이)가 ${evt.enemy.name}에게 일기토 신청!`, '#f8c830');
                 break;
 
             case 'duel_refused':
-                this._addLog(`✗ ${evt.enemy.name}(이)가 일기토를 거부! 비겁하다!`);
+                this._addLog(`✗ ${evt.enemy.name}(이)가 일기토를 거부! 비겁하다!`, '#f08040');
                 break;
 
             case 'duel_end':
                 this._endDuelVisual(evt);
                 if (evt.heroWon) {
-                    this._addLog(`⚔ 일기토 승리! ${evt.winner} 승!`);
+                    this._addLog(`⚔ 일기토 승리! ${evt.winner} 승!`, '#40d870');
                 } else {
-                    this._addLog(`⚔ 일기토 패배... ${evt.winner} 승`);
+                    this._addLog(`⚔ 일기토 패배... ${evt.winner} 승`, '#f04040');
                 }
                 break;
 
             case 'card_used':
-                this._addLog(`🃏 [${evt.name}] 발동!${evt.sinBonus ? ' (죄종 시너지!)' : ''}`);
+                this._addLog(`🃏 [${evt.name}] 발동!${evt.sinBonus ? ' (죄종 시너지!)' : ''}`, '#f8c830');
                 this._flashCardEffect(evt);
                 break;
 
@@ -496,21 +513,47 @@ class BattleSceneA extends Phaser.Scene {
         // 오버레이
         this._duelOverlay = this.add.container(0, 0).setDepth(5000);
 
-        const bg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7);
+        const bg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.75);
         this._duelOverlay.add(bg);
 
-        // VS 텍스트
-        const vsText = this.add.text(width / 2, GROUND_Y - 80, '⚔ 일기토 ⚔', {
-            fontSize: '20px', fontFamily: FONT, color: '#f8c830',
-            shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
-        }).setOrigin(0.5);
+        // VS 텍스트 (스케일 애니메이션)
+        const vsText = this.add.text(width / 2, GROUND_Y - 90, '⚔ 일기토 ⚔', {
+            fontSize: '24px', fontFamily: FONT, color: '#f8c830',
+            shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true }
+        }).setOrigin(0.5).setScale(0.1);
         this._duelOverlay.add(vsText);
+        this.tweens.add({
+            targets: vsText, scaleX: 1, scaleY: 1,
+            duration: 300, ease: 'Back.easeOut'
+        });
+
+        // 참여자 이름 표시
+        const heroName = this.add.text(width / 2 - 100, GROUND_Y - 60, evt.hero.name, {
+            fontSize: '12px', fontFamily: FONT, color: '#a0c0f0',
+            shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
+        }).setOrigin(0.5).setAlpha(0);
+        this._duelOverlay.add(heroName);
+
+        const vsLabel = this.add.text(width / 2, GROUND_Y - 60, 'VS', {
+            fontSize: '14px', fontFamily: FONT, color: '#e03030',
+            shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
+        }).setOrigin(0.5).setAlpha(0);
+        this._duelOverlay.add(vsLabel);
+
+        const enemyName = this.add.text(width / 2 + 100, GROUND_Y - 60, evt.enemy.name, {
+            fontSize: '12px', fontFamily: FONT, color: '#f0a0a0',
+            shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
+        }).setOrigin(0.5).setAlpha(0);
+        this._duelOverlay.add(enemyName);
+
+        // 이름 페이드 인
+        this.tweens.add({ targets: [heroName, vsLabel, enemyName], alpha: 1, duration: 300, delay: 200 });
 
         // 기존 유닛 어둡게
         for (const name of Object.keys(this.units)) {
             const unit = this.units[name];
             if (unit.name !== evt.hero.name && unit.name !== evt.enemy.name) {
-                unit.container.setAlpha(0.2);
+                unit.container.setAlpha(0.15);
             }
         }
 
@@ -523,10 +566,8 @@ class BattleSceneA extends Phaser.Scene {
             heroUnit._savedY = heroUnit.fieldY;
             this.tweens.add({
                 targets: heroUnit.container,
-                x: width / 2 - 100,
-                y: GROUND_Y,
-                duration: 400,
-                ease: 'Power2'
+                x: width / 2 - 100, y: GROUND_Y,
+                duration: 500, ease: 'Power2'
             });
             heroUnit.fieldX = width / 2 - 100;
             heroUnit.container.setDepth(5001);
@@ -536,10 +577,8 @@ class BattleSceneA extends Phaser.Scene {
             enemyUnit._savedY = enemyUnit.fieldY;
             this.tweens.add({
                 targets: enemyUnit.container,
-                x: width / 2 + 100,
-                y: GROUND_Y,
-                duration: 400,
-                ease: 'Power2'
+                x: width / 2 + 100, y: GROUND_Y,
+                duration: 500, ease: 'Power2'
             });
             enemyUnit.fieldX = width / 2 + 100;
             enemyUnit.container.setDepth(5001);
@@ -646,22 +685,27 @@ class BattleSceneA extends Phaser.Scene {
                 onComplete: () => defender.container.setPosition(defender.fieldX, defender.fieldY)
             });
 
-            // HP 갱신
+            // HP 갱신 + 비율별 컬러
             const maxHp = entry.maxHp || defender.maxHp || 100;
             const hpPercent = Math.max(0, entry.remainHp / maxHp);
             defender.hpBar.width = Math.max(0, hpPercent * defender.maxHpBarWidth);
+            defender.hpBar.setFillStyle(this._hpColor(hpPercent, defender.isHero));
 
-            // 데미지 텍스트
+            // 데미지 텍스트 — 큰 데미지일수록 큰 폰트
+            const dmgRatio = entry.damage / maxHp;
+            const fontSize = dmgRatio >= 0.3 ? '18px' : dmgRatio >= 0.15 ? '14px' : '11px';
+            const dmgColor = dmgRatio >= 0.3 ? '#ff3030' : '#f04040';
             const dmgText = this.add.text(defender.fieldX, defender.fieldY - 50, `-${entry.damage}`, {
-                fontSize: '12px', fontFamily: FONT, color: '#f04040',
+                fontSize, fontFamily: FONT, color: dmgColor,
                 shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
             }).setOrigin(0.5).setDepth(9999);
 
             this.tweens.add({
                 targets: dmgText,
-                y: dmgText.y - 25,
+                y: dmgText.y - 30,
                 alpha: 0,
-                duration: 500,
+                duration: 600,
+                ease: 'Power2',
                 onComplete: () => dmgText.destroy()
             });
         });
@@ -704,13 +748,19 @@ class BattleSceneA extends Phaser.Scene {
 
     _drawSPBar(width) {
         const spBarX = 30;
-        const spBarY = 55;
+        const spBarY = 52;
         const spBarW = 200;
         const spBarH = 10;
 
-        this.add.text(spBarX, spBarY - 12, 'SP', {
-            fontSize: '10px', fontFamily: FONT, color: '#f8c830'
+        this.add.text(spBarX, spBarY - 13, 'SP', {
+            fontSize: '10px', fontFamily: FONT, color: '#f8c830',
+            shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         });
+
+        // 테두리
+        const spBorder = this.add.graphics();
+        spBorder.lineStyle(1, 0x606080, 0.5);
+        spBorder.strokeRoundedRect(spBarX - 1, spBarY - spBarH / 2 - 1, spBarW + 2, spBarH + 2, 3);
 
         const spBg = this.add.rectangle(spBarX, spBarY, spBarW, spBarH, 0x1a1a2a);
         spBg.setOrigin(0, 0.5);
@@ -741,57 +791,77 @@ class BattleSceneA extends Phaser.Scene {
     // ═══════════════════════════════════
 
     _drawCardHand(width, y) {
+        const SIN_CARD_COLORS = {
+            wrath: 0xe03030, envy: 0x30b050, greed: 0xd0a020,
+            sloth: 0x808898, gluttony: 0xe07020, lust: 0xe03080, pride: 0x8040e0
+        };
+
         this._cardButtons = [];
         const cards = this.registry.get('battleCards') || [];
         if (cards.length === 0) return;
 
         const cardW = 130;
-        const cardH = 70;
+        const cardH = 80;
         const gap = 10;
         const totalW = cards.length * (cardW + gap) - gap;
         const startX = (width - totalW) / 2;
 
         // 카드 핸드 배경
         const handBg = this.add.graphics();
-        handBg.fillStyle(0x0e0e1a, 0.8);
-        handBg.fillRect(startX - 10, y - 5, totalW + 20, cardH + 10);
+        handBg.fillStyle(0x0a0a14, 0.85);
+        handBg.fillRoundedRect(startX - 14, y - 8, totalW + 28, cardH + 16, 6);
         handBg.lineStyle(1, 0x303048);
-        handBg.strokeRect(startX - 10, y - 5, totalW + 20, cardH + 10);
+        handBg.strokeRoundedRect(startX - 14, y - 8, totalW + 28, cardH + 16, 6);
 
         for (let i = 0; i < cards.length; i++) {
             const card = cards[i];
             const cx = startX + i * (cardW + gap);
+            const sinColor = SIN_CARD_COLORS[card.sin_bonus_type] || 0x484868;
 
-            // 카드 배경
+            // 카드 배경 (그래픽)
             const cardBg = this.add.graphics();
-            cardBg.fillStyle(0x161624, 1);
-            cardBg.fillRect(cx, y, cardW, cardH);
-            cardBg.lineStyle(1, 0x484868);
-            cardBg.strokeRect(cx, y, cardW, cardH);
+            const drawCardBg = (hover) => {
+                cardBg.clear();
+                cardBg.fillStyle(hover ? 0x1e1e34 : 0x161624, 1);
+                cardBg.fillRoundedRect(cx, y, cardW, cardH, 4);
+                cardBg.lineStyle(hover ? 2 : 1, hover ? 0xf8c830 : 0x484868);
+                cardBg.strokeRoundedRect(cx, y, cardW, cardH, 4);
+                // 상단 죄종 악센트 라인
+                cardBg.fillStyle(sinColor, hover ? 0.9 : 0.6);
+                cardBg.fillRect(cx + 4, y + 1, cardW - 8, 3);
+            };
+            drawCardBg(false);
 
             // 카드 이름
-            const nameText = this.add.text(cx + cardW / 2, y + 14, card.name_ko, {
-                fontSize: '11px', fontFamily: FONT, color: '#e8e8f0'
+            const nameText = this.add.text(cx + cardW / 2, y + 16, card.name_ko, {
+                fontSize: '12px', fontFamily: FONT, color: '#e8e8f0'
             }).setOrigin(0.5);
 
-            // SP 코스트
-            const costText = this.add.text(cx + cardW / 2, y + 32, `SP: ${card.sp_cost}`, {
-                fontSize: '9px', fontFamily: FONT, color: '#f8c830'
+            // SP 코스트 (뱃지 스타일)
+            const costText = this.add.text(cx + cardW / 2, y + 36, `SP ${card.sp_cost}`, {
+                fontSize: '10px', fontFamily: FONT, color: '#f8c830'
             }).setOrigin(0.5);
 
             // 짧은 설명
-            const descText = this.add.text(cx + cardW / 2, y + 50, card.description.substring(0, 12), {
-                fontSize: '8px', fontFamily: FONT, color: '#606080'
+            const descText = this.add.text(cx + cardW / 2, y + 56, card.description.substring(0, 14), {
+                fontSize: '9px', fontFamily: FONT, color: '#707090'
+            }).setOrigin(0.5);
+
+            // 시너지 죄종
+            const sinLabel = this.add.text(cx + cardW / 2, y + cardH - 8, card.sin_bonus_type ? `${card.sin_bonus_type}` : '', {
+                fontSize: '8px', fontFamily: FONT, color: `#${(sinColor).toString(16).padStart(6, '0')}`
             }).setOrigin(0.5);
 
             // 인터랙션 영역
             const zone = this.add.zone(cx + cardW / 2, y + cardH / 2, cardW, cardH)
                 .setInteractive({ useHandCursor: true });
 
+            zone.on('pointerover', () => drawCardBg(true));
+            zone.on('pointerout', () => drawCardBg(false));
             zone.on('pointerdown', () => this._onCardClick(card));
 
             // 비활성 오버레이
-            const disableOverlay = this.add.rectangle(cx + cardW / 2, y + cardH / 2, cardW, cardH, 0x000000, 0.5);
+            const disableOverlay = this.add.rectangle(cx + cardW / 2, y + cardH / 2, cardW, cardH, 0x000000, 0.6);
             disableOverlay.setVisible(true);
 
             this._cardButtons.push({
@@ -831,7 +901,7 @@ class BattleSceneA extends Phaser.Scene {
 
         this._updateSPDisplay();
 
-        // 회복 카드: HP 바 업데이트
+        // 회복 카드: HP 바 + 컬러 업데이트 + 녹색 힐 텍스트
         if (card.effect_type === 'heal_percent') {
             const units = this.engine.getUnits();
             for (const heroData of units.heroes) {
@@ -839,33 +909,82 @@ class BattleSceneA extends Phaser.Scene {
                 if (unit && unit.alive) {
                     const hpPercent = heroData.hp / heroData.maxHp;
                     unit.hpBar.width = Math.max(0, hpPercent * unit.maxHpBarWidth);
+                    unit.hpBar.setFillStyle(this._hpColor(hpPercent, true));
+
+                    // 녹색 회복 텍스트
+                    const healText = this.add.text(unit.fieldX, unit.fieldY - 50, '+HP', {
+                        fontSize: '12px', fontFamily: FONT, color: '#40d870',
+                        shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
+                    }).setOrigin(0.5).setDepth(9999);
+                    this.tweens.add({
+                        targets: healText, y: healText.y - 25, alpha: 0,
+                        duration: 600, onComplete: () => healText.destroy()
+                    });
                 }
             }
         }
     }
 
+    _drawBackground(width, height) {
+        const bg = this.add.graphics();
+        // 밤하늘 그래디언트 (위→아래: 진한 남색→어두운 보라)
+        const steps = 12;
+        const stripH = (GROUND_Y + 30) / steps;
+        for (let i = 0; i < steps; i++) {
+            const t = i / (steps - 1);
+            const r = Math.floor(0x06 + t * (0x12 - 0x06));
+            const g2 = Math.floor(0x06 + t * (0x0e - 0x06));
+            const b = Math.floor(0x18 + t * (0x20 - 0x18));
+            bg.fillStyle((r << 16) | (g2 << 8) | b, 1);
+            bg.fillRect(0, i * stripH, width, stripH + 1);
+        }
+        // 하단 패널 영역
+        bg.fillStyle(0x0a0a12, 1);
+        bg.fillRect(0, GROUND_Y + 90, width, height - GROUND_Y - 90);
+    }
+
     _drawGround(width) {
         const g = this.add.graphics();
-        g.fillStyle(0x1a2a1a, 1);
-        g.fillRect(FIELD_LEFT, GROUND_Y + 30, FIELD_RIGHT - FIELD_LEFT, 60);
-        g.lineStyle(2, 0x2a3a2a);
-        g.lineBetween(FIELD_LEFT, GROUND_Y + 30, FIELD_RIGHT, GROUND_Y + 30);
+        const fw = FIELD_RIGHT - FIELD_LEFT;
 
-        for (let i = 0; i < 40; i++) {
-            const gx = FIELD_LEFT + 10 + Math.random() * (FIELD_RIGHT - FIELD_LEFT - 20);
-            const gy = GROUND_Y + 35 + Math.random() * 40;
-            g.fillStyle(0x2a3a2a, 0.3 + Math.random() * 0.4);
+        // 지면 메인
+        g.fillStyle(0x1a2a1a, 1);
+        g.fillRect(FIELD_LEFT, GROUND_Y + 30, fw, 60);
+
+        // 지면 위 풀 라인
+        g.lineStyle(2, 0x304830);
+        g.lineBetween(FIELD_LEFT, GROUND_Y + 30, FIELD_RIGHT, GROUND_Y + 30);
+        g.lineStyle(1, 0x203820, 0.5);
+        g.lineBetween(FIELD_LEFT, GROUND_Y + 32, FIELD_RIGHT, GROUND_Y + 32);
+
+        // 풀 점
+        for (let i = 0; i < 60; i++) {
+            const gx = FIELD_LEFT + 10 + Math.random() * (fw - 20);
+            const gy = GROUND_Y + 28 + Math.random() * 6;
+            g.fillStyle(0x2a4a2a, 0.3 + Math.random() * 0.5);
+            g.fillRect(gx, gy, 1, 2 + Math.floor(Math.random() * 3));
+        }
+
+        // 먼지/자갈 점
+        for (let i = 0; i < 30; i++) {
+            const gx = FIELD_LEFT + 10 + Math.random() * (fw - 20);
+            const gy = GROUND_Y + 40 + Math.random() * 40;
+            g.fillStyle(0x2a3a2a, 0.2 + Math.random() * 0.3);
             g.fillRect(gx, gy, 2, 2);
         }
     }
 
-    _createUnit(name, fx, fy, spriteType, isHero, maxHp, useComposed = false) {
+    _createUnit(name, fx, fy, spriteType, isHero, maxHp, useComposed = false, sinType = null) {
+        const SIN_NAME_COLORS = {
+            wrath: '#f06060', envy: '#50d070', greed: '#e0c040',
+            sloth: '#9098a8', gluttony: '#f08030', lust: '#f050a0', pride: '#a060f0'
+        };
+
         const container = this.add.container(fx, fy);
         const dir = isHero ? DIR_EAST : DIR_WEST;
 
         let sprite;
         if (useComposed) {
-            // 런타임 합성 텍스처 사용
             const idleKey = `composed_${spriteType}_idle`;
             sprite = this.add.sprite(0, 0, idleKey, 0);
             sprite.setScale(SPRITE_SCALE);
@@ -875,22 +994,31 @@ class BattleSceneA extends Phaser.Scene {
             sprite.setScale(SPRITE_SCALE);
             sprite.play(`${spriteType}_idle_${dir}`);
         }
-        // 몬스터 전용 스프라이트 사용 — 틴트 불필요
         container.add(sprite);
 
         const halfH = DISPLAY_SIZE / 2;
 
-        // HP 바
-        const hpBarWidth = DISPLAY_SIZE + 4;
-        const hpBg = this.add.rectangle(0, -halfH - 6, hpBarWidth, 4, 0x1a1a2a);
+        // HP 바 (넓고 테두리 있음)
+        const hpBarWidth = DISPLAY_SIZE + 8;
+        const hpBarH = 6;
+        const hpBarY = -halfH - 8;
+
+        const hpBorder = this.add.graphics();
+        hpBorder.lineStyle(1, 0x606080, 0.6);
+        hpBorder.strokeRect(-hpBarWidth / 2 - 1, hpBarY - hpBarH / 2 - 1, hpBarWidth + 2, hpBarH + 2);
+        container.add(hpBorder);
+
+        const hpBg = this.add.rectangle(0, hpBarY, hpBarWidth, hpBarH, 0x1a1a2a);
         container.add(hpBg);
-        const hpBar = this.add.rectangle(-hpBarWidth / 2, -halfH - 6, hpBarWidth, 4, isHero ? 0x40d870 : 0xe03030);
+
+        const hpBar = this.add.rectangle(-hpBarWidth / 2, hpBarY, hpBarWidth, hpBarH, isHero ? 0x40d870 : 0xe03030);
         hpBar.setOrigin(0, 0.5);
         container.add(hpBar);
 
-        // 이름
+        // 이름 (영웅은 죄종 컬러)
+        const nameColor = isHero ? (SIN_NAME_COLORS[sinType] || '#a0c0f0') : '#f0a0a0';
         const nameText = this.add.text(0, halfH + 4, name, {
-            fontSize: '8px', fontFamily: FONT, color: isHero ? '#a0c0f0' : '#f0a0a0'
+            fontSize: '9px', fontFamily: FONT, color: nameColor
         }).setOrigin(0.5);
         container.add(nameText);
 
@@ -1150,19 +1278,67 @@ class BattleSceneA extends Phaser.Scene {
         this.paused = true;
 
         const { width, height } = this.scale;
-        const overlay = this.add.rectangle(width / 2, height / 2 - 60, 300, 80, 0x0a0a12, 0.9);
-        overlay.setStrokeStyle(2, victory ? 0x40d870 : 0xe03030);
-        overlay.setDepth(10000);
 
+        // 풀스크린 오버레이
+        const dimBg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0).setDepth(10000);
+        this.tweens.add({ targets: dimBg, fillAlpha: 0.6, duration: 400 });
+
+        // 결과 패널
+        const panelW = 360, panelH = 200;
+        const px = (width - panelW) / 2, py = (height - panelH) / 2 - 30;
+        const borderColor = victory ? 0x40d870 : 0xe03030;
+
+        const panelBg = this.add.graphics().setDepth(10001);
+        panelBg.fillStyle(0x0a0a16, 0.95);
+        panelBg.fillRoundedRect(px, py, panelW, panelH, 8);
+        panelBg.lineStyle(2, borderColor);
+        panelBg.strokeRoundedRect(px, py, panelW, panelH, 8);
+        panelBg.lineStyle(1, borderColor, 0.3);
+        panelBg.lineBetween(px + 20, py + 60, px + panelW - 20, py + 60);
+
+        // 승/패 텍스트 (스케일 애니메이션)
         const resultText = victory ? '승 리' : '패 배';
         const resultColor = victory ? '#40d870' : '#e03030';
+        const titleText = this.add.text(width / 2, py + 34, resultText, {
+            fontSize: '36px', fontFamily: FONT, color: resultColor,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true }
+        }).setOrigin(0.5).setDepth(10002).setScale(0.1);
 
-        this.add.text(width / 2, height / 2 - 70, resultText, {
-            fontSize: '32px', fontFamily: FONT, color: resultColor,
-            shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
-        }).setOrigin(0.5).setDepth(10001);
+        this.tweens.add({
+            targets: titleText, scaleX: 1, scaleY: 1,
+            duration: 400, ease: 'Back.easeOut'
+        });
 
-        this._createBtn(width / 2, height / 2 - 35, '닫 기', () => {
+        // 전과 요약
+        const aliveHeroes = Object.values(this.units).filter(u => u.isHero && u.alive).length;
+        const totalHeroes = Object.values(this.units).filter(u => u.isHero).length;
+        const defeatedEnemies = Object.values(this.units).filter(u => !u.isHero && !u.alive).length;
+        const totalEnemies = Object.values(this.units).filter(u => !u.isHero).length;
+
+        let summaryY = py + 76;
+        const summaryStyle = { fontSize: '12px', fontFamily: FONT, color: '#a0a0c0' };
+
+        this.add.text(px + 30, summaryY, `아군 생존`, summaryStyle).setDepth(10002);
+        this.add.text(px + panelW - 30, summaryY, `${aliveHeroes} / ${totalHeroes}`, {
+            ...summaryStyle, color: aliveHeroes > 0 ? '#40d870' : '#e03030'
+        }).setOrigin(1, 0).setDepth(10002);
+
+        summaryY += 24;
+        this.add.text(px + 30, summaryY, `적 격파`, summaryStyle).setDepth(10002);
+        this.add.text(px + panelW - 30, summaryY, `${defeatedEnemies} / ${totalEnemies}`, {
+            ...summaryStyle, color: '#f8c830'
+        }).setOrigin(1, 0).setDepth(10002);
+
+        if (this._soldierTotal > 0) {
+            summaryY += 24;
+            this.add.text(px + 30, summaryY, `민병 생존`, summaryStyle).setDepth(10002);
+            this.add.text(px + panelW - 30, summaryY, `${this._soldierAlive} / ${this._soldierTotal}`, {
+                ...summaryStyle, color: this._soldierAlive > 0 ? '#40d870' : '#e03030'
+            }).setOrigin(1, 0).setDepth(10002);
+        }
+
+        // 닫기 버튼
+        this._createBtn(width / 2, py + panelH - 30, '닫 기', () => {
             this.onClose();
             this.scene.stop('BattleSceneA');
         });
@@ -1223,10 +1399,18 @@ class BattleSceneA extends Phaser.Scene {
     // 유틸
     // ═══════════════════════════════════
 
-    _addLog(msg) {
-        this._logLines.push(msg);
-        if (this._logLines.length > 5) this._logLines.shift();
-        this.logText.setText(this._logLines.join('\n'));
+    _addLog(msg, color) {
+        this._logLines.push({ text: msg, color: color || '#a0a0c0' });
+        if (this._logLines.length > 6) this._logLines.shift();
+        this.logText.setText(this._logLines.map(l => l.text).join('\n'));
+    }
+
+    /** HP 비율 → 색상 (초록→노랑→빨강) */
+    _hpColor(pct, isHero) {
+        if (!isHero) return pct > 0.5 ? 0xe03030 : pct > 0.25 ? 0xc02020 : 0x901010;
+        if (pct > 0.6) return 0x40d870;
+        if (pct > 0.3) return 0xf0c030;
+        return 0xe04040;
     }
 
     _createBtn(cx, cy, label, callback) {
