@@ -32,7 +32,7 @@
                                       ↓
                             ┌─→ [MapScene] (단일 맵 — 모든 페이즈 처리)
                             │       │
-                            │   [아침] → EventScene 오버레이 → 선택지 고르면
+                            │   [아침] → MorningReportPopup (심리 보고) → EventScene 오버레이
                             │       │
                             │   [낮] → 맵 직접 조작 (건설/원정/사냥) → "턴 종료"
                             │       │

@@ -18,6 +18,8 @@ import SpriteComposer from '../game_logic/SpriteComposer.js';
 import SaveManager from '../store/SaveManager.js';
 import MapDefenseMode from './MapDefenseMode.js';
 import MapHuntPopup from './MapHuntPopup.js';
+import MorningReportPopup from './MorningReportPopup.js';
+import MorningReport from '../game_logic/MorningReport.js';
 import BattleEngine, { BATTLE_MODES } from '../game_logic/BattleEngine.js';
 import { FONT, FONT_BOLD } from '../constants.js';
 
@@ -2690,9 +2692,25 @@ class MapScene extends Phaser.Scene {
     _startMorningPhase() {
         SaveManager.save(store);  // 아침 시작 자동 저장
         this._updatePhaseDisplay();
-        const events = this.eventSystem.generateEvents();
-        if (events.length > 0) { this._eventQueue = [...events]; this._showNextEvent(); }
-        else { this.turnManager.advancePhase(); this._updatePhaseDisplay(); }
+
+        // 아침 보고 → 이벤트 순서
+        const turn = this.turnManager.getCurrentTurn();
+        const morningReport = new MorningReport(this.balance);
+        const heroes = this.heroManager.getHeroes().filter(h => h.status !== 'dead');
+        const raidInfo = this.baseManager.getRaidInfo(turn.day);
+        const reportData = morningReport.generate(heroes, raidInfo);
+
+        // 현재 일차 저장 (팝업에서 참조)
+        this.registry.set('currentDay', turn.day);
+
+        this._morningReportPopup = new MorningReportPopup(this, reportData, () => {
+            this._morningReportPopup = null;
+            // 보고 닫힌 후 이벤트 진행
+            const events = this.eventSystem.generateEvents();
+            if (events.length > 0) { this._eventQueue = [...events]; this._showNextEvent(); }
+            else { this.turnManager.advancePhase(); this._updatePhaseDisplay(); }
+        });
+        this._morningReportPopup.show();
     }
 
     _showNextEvent() {
@@ -2895,11 +2913,36 @@ class MapScene extends Phaser.Scene {
 
         const b = this.balance;
         if (defenseResult) {
+            // 교만 영웅 방어 결과 플래그 (아침 보고에서 참조)
+            for (const h of this.heroManager.getHeroes()) {
+                if (h.sinType === 'pride') h._lastDefenseWin = defenseResult.victory;
+            }
+
             if (defenseResult.victory) {
                 store.setState('gold', (store.getState('gold') || 0) + (b.defense_victory_gold_base ?? 10) + turn.day * (b.defense_victory_gold_per_day ?? 2));
-                for (const h of this.heroManager.getHeroes()) this.heroManager.updateMorale(h.id, b.defense_victory_morale ?? 5);
+                for (const h of this.heroManager.getHeroes()) {
+                    this.heroManager.updateMorale(h.id, b.defense_victory_morale ?? 5);
+                    if (h.sinType === 'pride') this.heroManager.updateMorale(h.id, b.pride_defense_win_morale ?? 8);
+                }
             } else {
-                for (const h of this.heroManager.getHeroes()) this.heroManager.updateMorale(h.id, b.defense_defeat_morale ?? -10);
+                for (const h of this.heroManager.getHeroes()) {
+                    this.heroManager.updateMorale(h.id, b.defense_defeat_morale ?? -10);
+                    if (h.sinType === 'pride') this.heroManager.updateMorale(h.id, b.pride_defense_lose_morale ?? -12);
+                }
+                // 패배 시 자원 약탈
+                const lootRatio = defenseResult.reason === 'no_defenders'
+                    ? (b.defense_nodefender_loot_ratio ?? 0.5)
+                    : (b.defense_defeat_loot_ratio ?? 0.3);
+                const food = store.getState('food') || 0;
+                const wood = store.getState('wood') || 0;
+                const gold = store.getState('gold') || 0;
+                const lostFood = Math.floor(food * lootRatio);
+                const lostWood = Math.floor(wood * lootRatio);
+                const lostGold = Math.floor(gold * lootRatio);
+                store.setState('food', food - lostFood);
+                store.setState('wood', wood - lostWood);
+                store.setState('gold', gold - lostGold);
+                defenseResult.loot = { food: lostFood, wood: lostWood, gold: lostGold };
             }
         }
         this._checkSinConditions();

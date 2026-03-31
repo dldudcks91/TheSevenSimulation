@@ -72,10 +72,14 @@ defense_victory_gold_base,10
 defense_victory_gold_per_day,2
 defense_victory_morale,5
 defense_defeat_morale,-10
+defense_defeat_loot_ratio,0.3
+defense_nodefender_loot_ratio,0.5
 wrath_idle_threshold,3
 wrath_idle_morale,-5
 sloth_work_morale,-3
 sloth_rest_morale,3
+pride_defense_win_morale,8
+pride_defense_lose_morale,-12
 defense_enemy_hp_base,120
 defense_enemy_hp_per_day,8
 defense_enemy_atk_base,12
