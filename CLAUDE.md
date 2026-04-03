@@ -67,11 +67,12 @@ TheSevenSimulation/
     │   │   └── popups/ (PopupsBuild, PopupsHero, PopupsAction)
     │   ├── MapDefenseMode.js  # 방어전 오버레이 (영외 전투)
     │   ├── MapHuntPopup.js    # 사냥 1:1 팝업 (MapScene 위)
+    │   ├── MapActionPopup.js  # 채집/벌목 행동 결과 팝업 (MapScene 위)
     │   ├── SpriteConstants.js # 스프라이트 공유 상수/유틸
     │   ├── SpriteRenderer.js  # LPC 스프라이트 런타임 합성 (RenderTexture)
     │   └── ...
     ├── ui/                    # UI 컴포넌트
-    └── data/                  # 게임 데이터 CSV (22개) + CsvLoader.js
+    └── data/                  # 게임 데이터 CSV (23개) + CsvLoader.js + traits.csv
 ```
 
 ## 기획 문서 위치

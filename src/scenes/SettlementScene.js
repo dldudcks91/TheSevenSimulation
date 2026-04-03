@@ -63,11 +63,12 @@ class SettlementScene extends Phaser.Scene {
         y += 20;
 
         for (const hero of this.heroes) {
-            const sinColor = SIN_COLORS[hero.sinType] || '#a0a0c0';
+            const sinColor = SIN_COLORS[hero.primarySin] || '#a0a0c0';
             const moraleColor = hero.morale <= 30 ? '#f8b830' : hero.morale >= 90 ? '#e03030' : '#a0a0c0';
             const warning = hero.morale >= 90 ? ' ⚠ 폭주 임박' : hero.morale <= 10 ? ' ⚠ 이탈 임박' : '';
 
-            this.add.text(72, y, `[${hero.sinName}]`, {
+            const traitText = hero.trait ? `[${hero.trait.name}]` : hero.sinName;
+            this.add.text(72, y, traitText, {
                 fontSize: '9px', fontFamily: FONT, color: sinColor
             });
 

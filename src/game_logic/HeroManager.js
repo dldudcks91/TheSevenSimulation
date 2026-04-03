@@ -4,7 +4,10 @@
  */
 
 const STAT_KEYS = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
-const SUB_STAT_KEYS = ['aggression', 'greediness', 'pride', 'curiosity', 'tenacity', 'sensitivity', 'independence'];
+const SIN_STAT_KEYS = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'pride'];
+
+// 하위 호환: 기존 SUB_STAT_KEYS → SIN_STAT_KEYS 매핑
+const SUB_STAT_KEYS = SIN_STAT_KEYS;
 
 const MORALE_STATE = {
     DESERTION: 'desertion',
@@ -22,6 +25,8 @@ class HeroManager {
         this._nextId = 1;
         this._spriteComposer = null;
         this._epithets = [];
+        this._itemsData = [];
+        this._traitsData = [];
 
         // balance에서 상수 로드 (기본값 폴백)
         this.MORALE_MIN = balance.morale_min ?? 0;
@@ -48,29 +53,49 @@ class HeroManager {
         this._epithets = epithets || [];
     }
 
+    /** 아이템 데이터 주입 */
+    setItemsData(itemsData) {
+        this._itemsData = itemsData || [];
+    }
+
+    /** 특성 데이터 주입 */
+    setTraitsData(traitsData) {
+        this._traitsData = traitsData || [];
+    }
+
     /** 게임 시작 시 초기 영웅 생성 */
     initStartingHeroes() {
         const heroes = [];
-        const usedSins = [];
 
         for (let i = 0; i < this.STARTING_HEROES; i++) {
-            const hero = this._generateHero(usedSins);
-            usedSins.push(hero.sinType);
+            const hero = this._generateHero();
             heroes.push(hero);
         }
 
         this.store.setState('heroes', heroes);
+        this.grantStartingItem();
         return heroes;
+    }
+
+    /** 게임 시작 시 인벤토리에 일반 등급 아이템 1개 랜덤 지급 */
+    grantStartingItem() {
+        const equippable = this._itemsData.filter(
+            item => item.grade === 'normal' && item.type !== 'consumable'
+        );
+        if (equippable.length === 0) return;
+
+        const pick = equippable[Math.floor(Math.random() * equippable.length)];
+        const inventory = this.store.getState('inventory') || [];
+        inventory.push({ ...pick });
+        this.store.setState('inventory', inventory);
     }
 
     /** 미리보기용 초기 영웅 생성 (Store에 저장하지 않음) */
     previewStartingHeroes() {
         const heroes = [];
-        const usedSins = [];
 
         for (let i = 0; i < this.STARTING_HEROES; i++) {
-            const hero = this._generateHero(usedSins);
-            usedSins.push(hero.sinType);
+            const hero = this._generateHero();
             heroes.push(hero);
         }
 
@@ -83,27 +108,31 @@ class HeroManager {
     }
 
     /** 영웅 1명 랜덤 생성 */
-    _generateHero(excludeSins = []) {
-        const sinType = this._randomSin(excludeSins);
+    _generateHero() {
         const stats = this._rollStats();
-        const subStats = this._rollSubStats();
-        const epithet = this._pickEpithet(subStats);
+        const sinStats = this._rollSinStats();
+        const primarySin = this._derivePrimarySin(sinStats);
+        const sinDef = this.heroData.sin_types.find(s => s.id === primarySin);
+        const trait = this._randomTrait();
+        const epithet = this._pickEpithet(sinStats);
         const firstName = this._randomFirstName();
         const name = epithet ? `"${epithet}" ${firstName}` : firstName;
 
         return {
             id: this._nextId++,
             name,
-            sinType: sinType.id,
-            sinName: sinType.name_ko,
-            sinFlaw: sinType.flaw,
+            sinStats,
+            primarySin,
+            sinName: sinDef?.name_ko || '',
+            sinFlaw: sinDef?.flaw || '',
+            trait: trait ? { id: trait.id, name: trait.name, category: trait.category, pro_effect: trait.pro_effect, con_effect: trait.con_effect } : null,
             morale: this.MORALE_DEFAULT,
             stats,
-            subStats,
+            subStats: sinStats,
             foodCost: this.calcFoodCost(stats),
             status: 'idle',
             location: 'base',
-            equipment: { weapon: null, armor: null, accessory: null },
+            equipment: [null, null, null],
             appearance: this._spriteComposer ? this._spriteComposer.generateAppearance() : null,
             daysIdle: 0,
             expeditionFailStreak: 0
@@ -116,13 +145,13 @@ class HeroManager {
         return first[Math.floor(Math.random() * first.length)];
     }
 
-    /** 독립 세부스탯 상위 2개 조합으로 수식어 결정 */
-    _pickEpithet(subStats) {
-        if (!subStats || this._epithets.length === 0) return null;
+    /** 죄종 수치 상위 2개 조합으로 수식어 결정 */
+    _pickEpithet(sinStats) {
+        if (!sinStats || this._epithets.length === 0) return null;
 
         // 상위 2개 스탯 찾기
-        const sorted = SUB_STAT_KEYS
-            .map(k => ({ key: k, val: subStats[k] || 0 }))
+        const sorted = SIN_STAT_KEYS
+            .map(k => ({ key: k, val: sinStats[k] || 0 }))
             .sort((a, b) => b.val - a.val);
 
         const top1 = sorted[0].key;
@@ -141,14 +170,24 @@ class HeroManager {
         return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
-    /** 죄종 랜덤 선택 (중복 제외) */
-    _randomSin(excludeSins = []) {
-        const sins = this.heroData.sin_types;
-        const available = sins.filter(s => !excludeSins.includes(s.id));
-        if (available.length === 0) {
-            return sins[Math.floor(Math.random() * sins.length)];
+    /** sinStats에서 가장 높은 죄종 파생 */
+    _derivePrimarySin(sinStats) {
+        let max = -1;
+        let primary = SIN_STAT_KEYS[0];
+        for (const key of SIN_STAT_KEYS) {
+            if ((sinStats[key] || 0) > max) {
+                max = sinStats[key];
+                primary = key;
+            }
         }
-        return available[Math.floor(Math.random() * available.length)];
+        return primary;
+    }
+
+    /** 선천 특성 1개 랜덤 선택 (innate 타입만) */
+    _randomTrait() {
+        const innate = this._traitsData.filter(t => t.type === 'innate');
+        if (innate.length === 0) return null;
+        return innate[Math.floor(Math.random() * innate.length)];
     }
 
     /** 메인스탯 굴림 — 총합 60~80 랜덤, 최소 2, 최대 18 */
@@ -215,25 +254,26 @@ class HeroManager {
         return values;
     }
 
-    /** 독립 세부스탯 7개 랜덤 굴림 (각 1~20) */
-    _rollSubStats() {
-        const subStats = {};
-        for (const key of SUB_STAT_KEYS) {
+    /** 죄종 수치 7개 랜덤 굴림 (각 1~20) */
+    _rollSinStats() {
+        const sinStats = {};
+        for (const key of SIN_STAT_KEYS) {
             let roll = this.STAT_ROLL_BONUS;
             for (let i = 0; i < this.STAT_ROLL_DICE; i++) {
                 roll += Math.floor(Math.random() * this.STAT_ROLL_SIDES);
             }
-            subStats[key] = Math.max(1, Math.min(20, roll));
+            sinStats[key] = Math.max(1, Math.min(20, roll));
         }
-        return subStats;
+        return sinStats;
     }
 
-    /** 파생 관계 스탯 계산 (기본 스탯/독립 세부스탯에서 산출) */
+    /** 파생 관계 스탯 계산 (기본 스탯/죄종 수치에서 산출) */
     getDerivedStats(hero) {
+        const sinStats = hero.sinStats || hero.subStats;
         return {
             commandPower: hero.stats.leadership,
             charm: hero.stats.charisma,
-            susceptibility: hero.subStats ? (hero.subStats.sensitivity ?? (this.balance.sensitivity_default ?? 10)) : (this.balance.sensitivity_default ?? 10)
+            susceptibility: sinStats ? (sinStats.lust ?? (this.balance.sensitivity_default ?? 10)) : (this.balance.sensitivity_default ?? 10)
         };
     }
 
@@ -296,11 +336,9 @@ class HeroManager {
 
     /** 고용 후보 생성 (주점용) */
     generateRecruits(count = 3) {
-        const heroes = this.getHeroes();
-        const usedSins = heroes.map(h => h.sinType);
         const recruits = [];
         for (let i = 0; i < count; i++) {
-            recruits.push(this._generateHero(usedSins));
+            recruits.push(this._generateHero());
         }
         return recruits;
     }
@@ -324,4 +362,4 @@ class HeroManager {
 }
 
 export default HeroManager;
-export { STAT_KEYS, SUB_STAT_KEYS, MORALE_STATE };
+export { STAT_KEYS, SIN_STAT_KEYS, SUB_STAT_KEYS, MORALE_STATE };

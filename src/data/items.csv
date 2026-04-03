@@ -1,0 +1,44 @@
+id,name_ko,type,grade,description,build,pioneer,gather,lumber,research,smithing,alchemy,diplomacy,trade,recruit,hunt,atk,hp,damage_reduce,atk_speed,crit,range,sp_cost_reduce,sin_type,morale_per_turn,special,cost,craft_facility,craft_stat
+tool_hammer,건설 망치,tool,normal,기본적인 건설 도구,3,,,,,,,,,,,,,,,,,,50,smithy,str_sense
+tool_gloves,작업 장갑,tool,normal,건설과 개척에 유용한 장갑,2,2,,,,,,,,,,,,,,,,,40,smithy,str_sense
+tool_axe,벌목 도끼,tool,normal,나무를 빠르게 벤다,,,,,,,,,,,,,,,,,,,30,smithy,str_sense
+tool_herb_pouch,약초 주머니,tool,normal,채집 효율을 높여주는 주머니,,,2,,,,,,,,,,,,,,,,30,smithy,str_sense
+tool_glasses,학자의 안경,tool,normal,연구에 집중할 수 있다,,,,,3,,,,,,,,,,,,,,60,smithy,str_sense
+tool_tongs,장인의 집게,tool,normal,대장간 작업 효율 증가,,,,,,3,,,,,,,,,,,,,50,smithy,str_sense
+tool_distiller,증류기,tool,normal,연금술 효율 증가,,,,,,,3,,,,,,,,,,,,50,smithy,str_sense
+tool_trap,사냥꾼의 덫,tool,normal,사냥 효율 증가,,,,,,,,,,,3,,,,,,,40,smithy,str_sense
+tool_seal,인장 반지,tool,normal,외교 시 신뢰를 높인다,,,,,,,,3,,,,,,,,,,,60,,
+tool_scale,상인의 저울,tool,normal,교역 시 유리한 거래,,,,,,,,,3,,,,,,,,,,50,,
+tool_letter,추천서,tool,normal,고용 시 더 좋은 후보,,,,,,,,,,3,,,,,,,,,40,,
+tool_shovel,개척 삽,tool,normal,개척 효율 증가,,3,,,,,,,,,,,,,,,,,30,smithy,str_sense
+tool_hammer_e,정예 건설 망치,tool,elite,숙련 장인의 망치,5,,,,,,,,,,,,,,,,,,120,smithy,str_sense
+tool_glasses_e,정밀 안경,tool,elite,고급 렌즈로 만든 안경,,,,,5,,,,,,,,,,,,,,140,smithy,str_sense
+weapon_sword,철검,weapon,normal,기본적인 검,,,,,,,,,,,,,5,,,,,,,,60,smithy,str_sense
+weapon_axe,전투 도끼,weapon,normal,무겁지만 강력한 도끼,,,,,,,,,,,,,8,,-10,,,,,,80,smithy,str_sense
+weapon_dagger,단검,weapon,normal,빠르고 치명적인 단검,,,,,,,,,,,,,3,,,10,15,,,,40,smithy,str_sense
+weapon_bow,사냥활,weapon,normal,원거리 공격이 가능한 활,,,,,,,,,,2,,4,,,,,,50,,70,,
+weapon_staff,마법 지팡이,weapon,normal,SP 효율을 높여주는 지팡이,,,,,,,,,,,,,2,,,,,,15,,80,,
+weapon_sword_e,강철검,weapon,elite,단련된 강철로 만든 검,,,,,,,,,,,,,8,,,,,,,,140,smithy,str_sense
+weapon_greataxe,대형 전투도끼,weapon,elite,파괴적인 양손 도끼,,,,,,,,,,,,,13,,-20,,,,,,180,smithy,str_sense
+weapon_longbow,장궁,weapon,elite,사거리가 긴 활,,,,,,,,,,4,,7,,,,,,75,,160,,
+armor_heavy,중갑,armor,normal,단단한 방어구,,,,,,,,,,,,,,,30,,,,,100,smithy,str_sense
+armor_light,경갑,armor,normal,가벼운 방어구,,,,,,,,,,,,,,,15,,,,,60,smithy,str_sense
+armor_robe,로브,armor,normal,학자나 연금술사에게 적합,,,,,2,,2,,,,,,,,5,,,,,50,smithy,str_sense
+armor_shield,방패,armor,normal,추가 방어를 제공,,,,,,,,,,,,,,,20,,,,,70,smithy,str_sense
+armor_heavy_e,정예 중갑,armor,elite,장인이 만든 중갑,,,,,,,,,,,,,,,45,,,,,220,smithy,str_sense
+armor_light_e,정예 경갑,armor,elite,정밀하게 제작된 경갑,,,,,,,,,,,,,,,25,,,,,140,smithy,str_sense
+acc_wrath,분노의 부적,accessory,normal,[분노] 영웅의 투지를 불태운다,,,,,,,,,,,,3,,,,,,wrath,3,,70,,
+acc_greed,탐욕의 반지,accessory,normal,[탐욕] 영웅의 거래 감각을 높인다,,,,,,,,,3,,,,,,,,,,greed,2,,70,,
+acc_sloth,나태의 베개,accessory,normal,[나태] 영웅의 회복력을 높인다,,,,,,,,,,,,,,10,,,,,sloth,3,,70,,
+acc_gluttony,미식가의 향낭,accessory,normal,[폭식] 영웅의 채집 본능을 깨운다,,,3,,,,,,,,,,,,,,,,gluttony,3,,70,,
+acc_envy,시기의 거울,accessory,normal,[시기] 영웅의 관찰력을 높인다,,,,,,,,,,,2,,,,,5,,envy,2,,70,,
+acc_lust,매혹의 브로치,accessory,normal,[색욕] 영웅의 매력을 높인다,,,,,,,,2,2,2,,,,,,,,,lust,3,,70,,
+acc_pride,왕관 파편,accessory,normal,[교만] 영웅의 지휘력을 높인다,,,,,2,,,,,,,,,,,,,,,pride,3,,80,,
+acc_bond,전우의 팔찌,accessory,normal,방어전에서 결속력을 높인다,,,,,,,,,,,,,,,10,,,,,,60,,
+acc_wrath_e,격노의 부적,accessory,elite,[분노] 전투 본능을 극대화한다,,,,,,,,,,,,6,,,,,,wrath,5,,160,,
+acc_pride_e,파멸왕의 왕관,accessory,elite,[교만] 강력한 지도력을 발휘한다,,,,,4,,,,,,,3,,,,,,,pride,5,,180,,
+consumable_heal,치료약,consumable,normal,부상을 즉시 회복한다,,,,,,,,,,,,,,,,,,,,,즉시 부상 회복,30,alchemy,sense_int
+consumable_morale,사기 물약,consumable,normal,사기를 즉시 올려준다,,,,,,,,,,,,,,,,,,,,,사기+20,40,alchemy,sense_int
+consumable_antidote,해독제,consumable,normal,상태이상을 해제한다,,,,,,,,,,,,,,,,,,,,,상태이상 해제,25,alchemy,sense_int
+consumable_heal_e,고급 치료약,consumable,elite,전투 중에도 사용 가능,,,,,,,,,,,,,,,,,,,,,즉시 부상 회복 + HP 50%,80,alchemy,sense_int
+consumable_morale_e,고급 사기 물약,consumable,elite,강력한 사기 부양 효과,,,,,,,,,,,,,,,,,,,,,사기+40,90,alchemy,sense_int

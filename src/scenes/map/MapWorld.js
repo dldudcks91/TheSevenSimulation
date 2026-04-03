@@ -234,8 +234,11 @@ class MapWorld {
                 this._drawSlotBg(slot.bg, hw, hh, C.building, 0.5);
             } else if (buildingItem) {
                 slot.nameText.setText(buildingItem.name).setColor(C.infoCyan);
-                slot.statusText.setText(`건설 ${buildingItem.progress}/${buildingItem.buildCost}`);
-                this._drawSlotBg(slot.bg, hw, hh, 0x1e2e1e, 0.6, 0x40a060);
+                const hasHero = !!buildingItem.assignedHeroId;
+                slot.statusText.setText(hasHero
+                    ? `건설 ${buildingItem.progress}/${buildingItem.buildCost}`
+                    : `대기 ${buildingItem.progress}/${buildingItem.buildCost}`);
+                this._drawSlotBg(slot.bg, hw, hh, hasHero ? 0x1e2e1e : 0x2e2e1e, 0.6, hasHero ? 0x40a060 : 0xa0a040);
             } else if (isPioneering) {
                 slot.nameText.setText('개척 중').setColor('#c89050');
                 slot.statusText.setText('');

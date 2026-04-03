@@ -30,6 +30,7 @@ import MapTurnFlow from './map/MapTurnFlow.js';
 import PopupsBuild from './map/popups/PopupsBuild.js';
 import PopupsHero from './map/popups/PopupsHero.js';
 import PopupsAction from './map/popups/PopupsAction.js';
+import MapHeroInspector from './map/MapHeroInspector.js';
 
 class MapScene extends Phaser.Scene {
     constructor() {
@@ -38,6 +39,17 @@ class MapScene extends Phaser.Scene {
 
     preload() {
         this.load.image('map_bg', './assets/map_bg.png');
+
+        // LPC 파츠 프리로드 (세이브 로드 시 HeroSelectScene을 건너뛰므로 여기서도 로드)
+        const lpcParts = this.registry.get('lpcParts') || [];
+        for (const part of lpcParts) {
+            for (const action of ['walk', 'slash']) {
+                const key = `lpc_${part.path}_${action}`.replace(/\//g, '_');
+                if (!this.textures.exists(key)) {
+                    this.load.image(key, `assets/${part.path}_${action}.png`);
+                }
+            }
+        }
 
         const spriteTypes = [
             'warrior_male', 'warrior_female', 'base_male', 'base_female',
@@ -91,6 +103,8 @@ class MapScene extends Phaser.Scene {
         const spriteComposer = new SpriteComposer(lpcParts);
         this.heroManager.setSpriteComposer(spriteComposer);
         this.heroManager.setEpithets(this.registry.get('heroEpithets') || []);
+        this.heroManager.setItemsData(this.registry.get('itemsData') || []);
+        this.heroManager.setTraitsData(this.registry.get('traitsData') || []);
         this.eventSystem = new EventSystem(store, eventsData, balance);
         this.baseManager = new BaseManager(store, facilitiesData, policies, balance);
         this.sinSystem = new SinSystem(store, this.registry.get('sinRelations'), balance, desertionEffects);
@@ -133,6 +147,7 @@ class MapScene extends Phaser.Scene {
         this.popupsBuild = new PopupsBuild(this);
         this.popupsHero = new PopupsHero(this);
         this.popupsAction = new PopupsAction(this);
+        this.heroInspector = new MapHeroInspector(this);
 
         // ─── 카메라 / 컨테이너 ───
         this.cameras.main.setBackgroundColor(C.bgPrimary);
@@ -166,7 +181,7 @@ class MapScene extends Phaser.Scene {
         this.hud.updateSoldiers();
         this.hud.updatePhaseDisplay();
         this.bottomPanel.switchTab('base');
-        this.world.initDebugMode();
+        // this.world.initDebugMode();
 
         // ─── 게임 시작 ───
         if (!loaded) {
@@ -190,6 +205,13 @@ class MapScene extends Phaser.Scene {
             this._huntPopup.destroy();
             this._huntPopup = null;
         }
+        if (this._actionPopup) {
+            this._actionPopup.destroy();
+            this._actionPopup = null;
+        }
+        if (this.heroInspector && this.heroInspector.active) {
+            this.heroInspector.close();
+        }
         for (const key of ['EventScene', 'ResultScene', 'SettlementScene']) {
             if (this.scene.isActive(key)) this.scene.stop(key);
         }
@@ -202,6 +224,9 @@ class MapScene extends Phaser.Scene {
         if (this._huntPopup && this._huntPopup.active) {
             this._huntPopup.update(time, delta);
         }
+        if (this._actionPopup && this._actionPopup.active) {
+            this._actionPopup.update(time, delta);
+        }
     }
 
     // ═══════════════════════════════════
@@ -210,7 +235,14 @@ class MapScene extends Phaser.Scene {
 
     /** 팝업 열기 — 기존 팝업 모두 닫고 새로 열기 */
     _showPopup(mode, data = {}) {
+        // heroDetail은 인스펙터로 라우팅 (팝업 대신 맵 영역 오버레이)
+        if (mode === 'heroDetail') {
+            this.popupSystem.closeAllPopups();
+            this.heroInspector.open(data.hero);
+            return;
+        }
         this.popupSystem.closeAllPopups();
+        if (this.heroInspector.active) this.heroInspector.close();
         this._pushPopup(mode, data);
     }
 
@@ -225,7 +257,6 @@ class MapScene extends Phaser.Scene {
             case 'facility': this.popupsBuild.popupFacility(px, py, pw, ph, data.facility); break;
             case 'buildingInfo': this.popupsBuild.popupBuildingInfo(px, py, pw, ph, data.building); break;
             case 'heroSelect': this.popupsHero.popupHeroSelect(px, py, pw, ph, data); break;
-            case 'heroDetail': this.popupsHero.popupHeroDetail(px, py, pw, ph, data.hero); break;
             case 'recruit': this.popupsHero.popupRecruit(px, py, pw, ph); break;
             case 'gather': this.popupsAction.popupGather(px, py, pw, ph); break;
             case 'lumber': this.popupsAction.popupLumber(px, py, pw, ph); break;
@@ -244,6 +275,7 @@ class MapScene extends Phaser.Scene {
         this.bottomPanel._actionData = data;
 
         const popupModes = ['build', 'research', 'facility', 'policy', 'recruit', 'heroSelect', 'heroDetail', 'hunt', 'gather', 'lumber', 'pioneer', 'defense', 'buildingInfo'];
+        // heroDetail은 _showPopup에서 인스펙터로 분기됨
         if (popupModes.includes(mode)) {
             this._showPopup(mode, data);
             return;

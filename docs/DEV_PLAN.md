@@ -59,6 +59,7 @@ src/
 │   │   └── popups/ (PopupsBuild.js, PopupsHero.js, PopupsAction.js)
 │   ├── MapDefenseMode.js     # 방어전 오버레이 (영외 전투)
 │   ├── MapHuntPopup.js       # 사냥 1:1 팝업 (MapScene 위)
+│   ├── MapActionPopup.js     # 채집/벌목 행동 결과 팝업 (MapScene 위)
 │   ├── EventScene.js         # 이벤트/선택지 (오버레이)
 │   ├── BattleSceneA.js       # X축 오토배틀 (원정 리플레이용)
 │   ├── BattleSceneB.js       # 태그매치 (프로토 보관)
@@ -75,7 +76,7 @@ src/
 ├── store/                    # 상태 관리
 │   ├── Store.js
 │   └── SaveManager.js
-└── data/                     # 게임 데이터 (CSV, 21개 파일)
+└── data/                     # 게임 데이터 (CSV, 26개 파일)
     ├── CsvLoader.js           # CSV 파서 + 전체 로더 + 데이터 조립
     ├── balance.csv            # 밸런스 상수 108개
     ├── hero_names.csv         # 영웅 이름 풀
@@ -97,7 +98,8 @@ src/
     ├── phases.csv             # 턴 4페이즈
     ├── morale_states.csv      # 사기 5단계
     ├── desertion_effects.csv  # 이탈 효과
-    └── stat_names.csv         # 스탯 한글명
+    ├── stat_names.csv         # 스탯 한글명
+    └── traits.csv             # 특성 55개 (선천 45 + 후천 10)
 ```
 
 > **핵심**: `game_logic/`는 Phaser 의존 없는 순수 JS. 모든 밸런스 상수는 CSV에서 로드하여 생성자로 주입. 하드코딩 금지.
@@ -127,7 +129,7 @@ src/
 | 19 | MainScene → MapScene 단일 맵 뷰 전환 | [x] |
 | 20 | 전투 방식 확정 (X축 오토배틀 + 카드 + 일기토) | [x] |
 | 21 | LPC 스프라이트 런타임 합성 (SpriteComposer + SpriteRenderer) | [x] |
-| 22 | 영웅 수식어 시스템 (독립 세부스탯 상위2 조합) | [x] |
+| 22 | 영웅 수식어 시스템 (죄종 수치 상위2 조합) | [x] |
 | 23 | 방어전 MapDefenseMode (맵 위 오버레이) | [x] |
 | 24 | 사냥 MapHuntPopup (맵 위 팝업) | [x] |
 | 25 | 기획서 전면 업데이트 (3자원, HP 모델, 습격 빈도) | [x] |
@@ -162,6 +164,8 @@ src/
 | 54 | 건설 팝업 UI 개선 (골드 표시, 티어 뱃지, 비용 분리, 골드부족 표시) | [x] |
 | 55 | 시설 탭 UI 개선 (진행도 바, 티어 표시) | [x] |
 | 56 | BattleSceneA UI/연출 보강 (배경/HP바/카드/일기토/결과/로그/라운드) | [x] |
+| 57 | 새 게임 초기 아이템 랜덤 지급 + 세이브/로드 인벤토리·식량·나무 연동 | [x] |
+| 58 | 채집/벌목 행동 팝업 (MapActionPopup — 프로그레스 바 + 결과 + 죄종 대사) | [x] |
 
 ---
 
@@ -176,6 +180,7 @@ src/
 | 5 | **챕터별 환경 변조 적용** | 미구현 | CSV 로드+registry 등록까지 완료, 게임플레이 적용 코드 없음 |
 | 6 | **밸런싱 수치 적용** | 초안 완료 | balance_design.md 작성 완료. 수치 적용 미착수 |
 | 7 | **MapScene 분리** | ✅ 완료 | 2979줄 → 278줄 코디네이터 + 11개 모듈(map/) + game_logic 2개(DayActions/TurnProcessor). 백테스팅 가능 구조 |
+| 8 | **죄종 수치화 + 특성 시스템** | ✅ 1단계 완료 | 죄종 태그→죄종 7수치(sinStats)+primarySin 자동파생. 선천특성 1개 랜덤부여(traits.csv 55개). sinType→primarySin 전환 완료(20+파일). 2단계: sinType 의존 로직을 특성/sinStats 기반으로 재설계 |
 
 ---
 
@@ -193,4 +198,4 @@ src/
 
 ---
 
-*마지막 업데이트: 2026-04-02 (사기 5구간 재설계 기획 확정)*
+*마지막 업데이트: 2026-04-04 (채집/벌목 행동 팝업 MapActionPopup 추가)*

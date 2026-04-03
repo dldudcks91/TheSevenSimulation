@@ -61,7 +61,8 @@ src/
     ├── morale_states.csv      # 사기 5단계
     ├── desertion_effects.csv  # 이탈 효과
     ├── defense_scaling.csv    # 방어전 스케일링
-    └── stat_names.csv         # 스탯 한글명
+    ├── stat_names.csv         # 스탯 한글명
+    └── traits.csv             # 특성 55개 (선천 45 + 후천 10)
 ```
 
 ---
@@ -254,6 +255,8 @@ export default HeroPanel;
 ## 세이브/로드
 
 ### LocalStorage
+세이브 항목: heroes, turn, gold, food, wood, inventory, base, expedition
+
 ```javascript
 const SaveManager = {
     save(state) {

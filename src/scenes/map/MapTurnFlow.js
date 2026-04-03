@@ -125,7 +125,7 @@ class MapTurnFlow {
 
         const baseHeroes = s.turnProcessor.getDefenseParty();
         const soldiers = store.getState('soldiers') || 0;
-        const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, sinType: h.sinType, appearance: h.appearance || null }));
+        const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, primarySin: h.primarySin, appearance: h.appearance || null }));
 
         if (baseHeroes.length === 0 && soldiers === 0) {
             this._finishNightPhase(turn, { victory: false, reason: 'no_defenders', log: [], soldiersLost: 0 });

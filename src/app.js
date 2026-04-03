@@ -67,6 +67,8 @@ async function boot() {
     game.registry.set('battleCards', gameData.battleCards || []);
     game.registry.set('lpcParts', gameData.lpcParts || []);
     game.registry.set('heroEpithets', gameData.heroEpithets || []);
+    game.registry.set('itemsData', gameData.itemsData || []);
+    game.registry.set('traitsData', gameData.traitsData || []);
 }
 
 boot();

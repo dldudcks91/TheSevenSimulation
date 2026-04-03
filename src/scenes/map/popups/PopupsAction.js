@@ -1,7 +1,7 @@
 /**
  * 행동 관련 팝업 — 채집, 벌목, 개척, 방어, 사냥, 포고령, 확인
  */
-import { C, ACTION_STATS, SIN_COLOR_HEX } from '../MapConstants.js';
+import { C, SIN_COLOR_HEX } from '../MapConstants.js';
 import { FONT, FONT_BOLD } from '../../../constants.js';
 import store from '../../../store/Store.js';
 
@@ -39,7 +39,7 @@ class PopupsAction {
             }).setOrigin(0.5));
         } else {
             for (const hero of heroes) {
-                const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+                const sinColor = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
 
                 const rowBg = s.add.graphics();
                 rowBg.fillStyle(C.cardBg, 1);
@@ -51,9 +51,7 @@ class PopupsAction {
                 pp(s.add.text(listX + 12, y + 8, hero.name, {
                     fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
                 }));
-                pp(s.add.text(listX + 180, y + 9, `[${hero.sinName}]`, {
-                    fontSize: '9px', fontFamily: FONT, color: sinColor
-                }));
+                hero.trait ? s.widgets.traitLabel(listX + 180, y + 9, hero.trait, { pp }) : pp(s.add.text(listX + 180, y + 9, hero.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
 
                 const heroRef = hero;
                 pp(s.popupSystem.popupSmallBtn(listX + listW - 70, y + 16, '정보', () => {
@@ -61,11 +59,7 @@ class PopupsAction {
                 }));
                 pp(s.popupSystem.popupSmallBtn(listX + listW - 10, y + 16, '파견', () => {
                     s.popupSystem.closeAllPopups();
-                    s.dayActions.doGather(hero);
-                    s.bottomPanel._actionMode = null;
-                    s.bottomPanel._actionData = null;
-                    s.hud.updateResources();
-                    s.bottomPanel.refreshActiveTab();
+                    s.actions.launchGather(heroRef);
                 }));
                 y += 38;
             }
@@ -103,7 +97,7 @@ class PopupsAction {
             }).setOrigin(0.5));
         } else {
             for (const hero of heroes) {
-                const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+                const sinColor = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
 
                 const rowBg = s.add.graphics();
                 rowBg.fillStyle(C.cardBg, 1);
@@ -115,9 +109,7 @@ class PopupsAction {
                 pp(s.add.text(listX + 12, y + 8, hero.name, {
                     fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
                 }));
-                pp(s.add.text(listX + 180, y + 9, `[${hero.sinName}]`, {
-                    fontSize: '9px', fontFamily: FONT, color: sinColor
-                }));
+                hero.trait ? s.widgets.traitLabel(listX + 180, y + 9, hero.trait, { pp }) : pp(s.add.text(listX + 180, y + 9, hero.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
 
                 const heroRef = hero;
                 pp(s.popupSystem.popupSmallBtn(listX + listW - 70, y + 16, '정보', () => {
@@ -125,11 +117,7 @@ class PopupsAction {
                 }));
                 pp(s.popupSystem.popupSmallBtn(listX + listW - 10, y + 16, '파견', () => {
                     s.popupSystem.closeAllPopups();
-                    s.dayActions.doLumber(hero);
-                    s.bottomPanel._actionMode = null;
-                    s.bottomPanel._actionData = null;
-                    s.hud.updateResources();
-                    s.bottomPanel.refreshActiveTab();
+                    s.actions.launchLumber(heroRef);
                 }));
                 y += 38;
             }
@@ -191,7 +179,7 @@ class PopupsAction {
                 }));
                 y += 20;
                 for (const hero of heroes) {
-                    const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+                    const sinColor = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
                     const rowBg = s.add.graphics();
                     rowBg.fillStyle(C.cardBg, 1);
                     rowBg.fillRoundedRect(listX, y, listW, 36, 4);
@@ -201,9 +189,7 @@ class PopupsAction {
                     pp(s.add.text(listX + 12, y + 10, hero.name, {
                         fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
                     }));
-                    pp(s.add.text(listX + 120, y + 10, `[${hero.sinName}]`, {
-                        fontSize: '9px', fontFamily: FONT, color: sinColor
-                    }));
+                    hero.trait ? s.widgets.traitLabel(listX + 120, y + 10, hero.trait, { pp }) : pp(s.add.text(listX + 120, y + 10, hero.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
                     const eff = Math.round((hero.stats.strength + hero.stats.vitality) / 2);
                     pp(s.add.text(listX + 200, y + 10, `효율: ${eff}`, {
                         fontSize: '9px', fontFamily: FONT, color: C.infoCyan
@@ -256,7 +242,7 @@ class PopupsAction {
             }).setOrigin(0.5));
         } else {
             for (const hero of heroes) {
-                const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+                const sinColor = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
                 const isAssigned = defenseIds.includes(hero.id);
 
                 const rowBg = s.add.graphics();
@@ -269,9 +255,7 @@ class PopupsAction {
                 pp(s.add.text(listX + 12, y + 10, hero.name, {
                     fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
                 }));
-                pp(s.add.text(listX + 120, y + 10, `[${hero.sinName}]`, {
-                    fontSize: '9px', fontFamily: FONT, color: sinColor
-                }));
+                hero.trait ? s.widgets.traitLabel(listX + 120, y + 10, hero.trait, { pp }) : pp(s.add.text(listX + 120, y + 10, hero.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
 
                 const statusLabel = isAssigned ? '🛡️ 배치됨' : hero.status === 'idle' ? '대기' : hero.status;
                 pp(s.add.text(listX + 200, y + 10, statusLabel, {
@@ -336,8 +320,10 @@ class PopupsAction {
             }).setOrigin(0.5));
         } else {
             for (const hero of heroes) {
-                const stars = s.dayActions.calcFitness(hero, ACTION_STATS.hunt.primary);
-                const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+                const sinColor = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
+                const b = s.balance;
+                const hp = (b.hp_base ?? 200) + (hero.stats.vitality || 10) * (b.hp_vitality_mult ?? 15) + (hero.stats.strength || 10) * (b.hp_strength_mult ?? 5);
+                const atk = Math.floor((hero.stats.strength || 10) * (b.atk_expedition_str_mult ?? 0.7) + (hero.stats.agility || 10) * (b.atk_expedition_agi_mult ?? 0.4));
 
                 const rowBg = s.add.graphics();
                 rowBg.fillStyle(C.cardBg, 1);
@@ -349,10 +335,8 @@ class PopupsAction {
                 pp(s.add.text(listX + 12, y + 8, hero.name, {
                     fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
                 }));
-                pp(s.add.text(listX + 180, y + 9, `[${hero.sinName}]`, {
-                    fontSize: '9px', fontFamily: FONT, color: sinColor
-                }));
-                pp(s.add.text(listX + 270, y + 9, `사냥력 ${stars}`, {
+                hero.trait ? s.widgets.traitLabel(listX + 180, y + 9, hero.trait, { pp }) : pp(s.add.text(listX + 180, y + 9, hero.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
+                pp(s.add.text(listX + 240, y + 9, `HP ${hp}  ATK ${atk}`, {
                     fontSize: '9px', fontFamily: FONT, color: C.expYellow
                 }));
 

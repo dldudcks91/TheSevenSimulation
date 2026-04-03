@@ -83,6 +83,59 @@ class MapWidgets {
         container.add(zone);
         return container;
     }
+    /**
+     * 특성 라벨 생성 — [특성명] 대괄호 텍스트 + 호버 시 설명 툴팁
+     * @param {number} x - 텍스트 x
+     * @param {number} y - 텍스트 y
+     * @param {object} trait - { name, pro_effect, con_effect }
+     * @param {object} opts - { fontSize, color, origin, depth, pp }
+     * @returns {Phaser.GameObjects.Text} 라벨 텍스트
+     */
+    traitLabel(x, y, trait, opts = {}) {
+        const s = this.scene;
+        const fontSize = opts.fontSize || '9px';
+        const color = opts.color || '#c0a0e0';
+        const depth = opts.depth ?? 202;
+        const pp = opts.pp || (obj => obj);
+        const originX = opts.originX ?? 0;
+        const originY = opts.originY ?? 0;
+
+        const label = pp(s.add.text(x, y, `[${trait.name}]`, {
+            fontSize, fontFamily: FONT, color
+        }).setOrigin(originX, originY).setDepth(depth).setInteractive({ useHandCursor: true }));
+
+        let tip = null;
+        label.on('pointerover', (pointer) => {
+            label.setColor('#ffffff');
+            // 툴팁 생성
+            const lines = [];
+            if (trait.pro_effect) lines.push(`▲ ${trait.pro_effect}`);
+            if (trait.con_effect) lines.push(`▼ ${trait.con_effect}`);
+            const tipText = lines.join('\n') || trait.name;
+            const tipW = 220;
+            const tipH = 14 * lines.length + 16;
+            const tx = Math.min(pointer.x, 1280 - tipW - 8);
+            const ty = pointer.y - tipH - 8;
+
+            tip = s.add.container(0, 0).setDepth(9999);
+            const bg = s.add.graphics();
+            bg.fillStyle(0x1a1a2e, 0.95);
+            bg.fillRoundedRect(tx, ty, tipW, tipH, 4);
+            bg.lineStyle(1, 0xc0a0e0);
+            bg.strokeRoundedRect(tx, ty, tipW, tipH, 4);
+            tip.add(bg);
+            tip.add(s.add.text(tx + 8, ty + 6, tipText, {
+                fontSize: '10px', fontFamily: FONT, color: '#e0e0f0',
+                lineSpacing: 2, wordWrap: { width: tipW - 16 }
+            }));
+        });
+        label.on('pointerout', () => {
+            label.setColor(color);
+            if (tip) { tip.destroy(); tip = null; }
+        });
+
+        return label;
+    }
 }
 
 export default MapWidgets;

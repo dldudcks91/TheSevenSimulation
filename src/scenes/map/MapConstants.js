@@ -27,8 +27,8 @@ export const MORALE_COLORS_HEX = {
 
 export const ACTION_STATS = {
     build: { primary: ['strength', 'vitality'], label: '건설' },
-    research: { primary: ['intellect', 'perception'], label: '연구' },
-    hunt: { primary: ['strength', 'agility'], label: '사냥' }
+    buildAssign: { primary: ['strength', 'vitality'], label: '건설 투입' },
+    research: { primary: ['intellect', 'perception'], label: '연구' }
 };
 
 // ═══ 레이아웃 ═══
@@ -60,6 +60,15 @@ export const TABS = [
     { id: 'policy', icon: '📜', label: '정책' },
     { id: 'bestiary', icon: '📖', label: '도감' },
 ];
+
+// ═══ 영웅 인스펙터 (맵 영역 가로 오버레이) ═══
+export const INSP_W = 820;
+export const INSP_H = MAP_VP_H;          // 440
+export const INSP_X = Math.floor((MAP_VP_W - INSP_W) / 2); // 중앙 배치
+export const INSP_Y = HUD_H;            // 32
+export const INSP_DEPTH = 250;           // 팝업(300+)보다 아래, 맵(기본)보다 위
+export const INSP_PROFILE_W = 260;
+export const INSP_RIGHT_W = INSP_W - INSP_PROFILE_W - 32; // 스탯+장비 (528)
 
 // 건물 슬롯 — 5x5 그리드
 export const GRID_X = 34;

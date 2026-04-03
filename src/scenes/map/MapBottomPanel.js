@@ -151,10 +151,13 @@ class MapBottomPanel {
                 shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
             }));
 
-            const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
-            this.p(s.add.text(cx + 8, y + 22, `[${hero.sinName}]`, {
-                fontSize: '10px', fontFamily: FONT, color: sinColor
-            }));
+            if (hero.trait) {
+                this.p(s.widgets.traitLabel(cx + 8, y + 22, hero.trait, { fontSize: '10px', pp: obj => this.p(obj) }));
+            } else {
+                this.p(s.add.text(cx + 8, y + 22, hero.sinName, {
+                    fontSize: '10px', fontFamily: FONT, color: C.textMuted
+                }));
+            }
 
             const statusMap = { expedition: '원정', injured: '부상', construction: '건설', research: '연구', idle: '대기' };
             this.p(s.add.text(cx + CARD_W - 8, y + 22, statusMap[hero.status] || '대기', {

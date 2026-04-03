@@ -331,12 +331,12 @@ class BattleSceneA extends Phaser.Scene {
             const composed = this._composedHeroes[u.name];
 
             // 합성 텍스처가 있으면 사용, 없으면 기존 방식
-            const spriteType = composed ? heroId : (SIN_SPRITE_MAP[u.sinType] || DEFAULT_SPRITE);
+            const spriteType = composed ? heroId : (SIN_SPRITE_MAP[u.primarySin] || DEFAULT_SPRITE);
             const useComposed = !!composed;
 
             const fx = HERO_START_X + i * 30;
             const fy = GROUND_Y + (Y_OFFSETS[i] || 0);
-            this._createUnit(u.name, fx, fy, spriteType, true, u.maxHp, useComposed, u.sinType);
+            this._createUnit(u.name, fx, fy, spriteType, true, u.maxHp, useComposed, u.primarySin);
         });
 
         unitsData.enemies.forEach((u, i) => {
@@ -380,7 +380,7 @@ class BattleSceneA extends Phaser.Scene {
 
         startEntry.heroes.forEach((name, i) => {
             const heroInfo = this.heroData.find(h => h.name === name);
-            const spriteType = SIN_SPRITE_MAP[heroInfo?.sinType] || DEFAULT_SPRITE;
+            const spriteType = SIN_SPRITE_MAP[heroInfo?.primarySin] || DEFAULT_SPRITE;
             const fx = HERO_START_X + i * 30;
             const fy = GROUND_Y + (Y_OFFSETS[i] || 0);
             this._createUnit(name, fx, fy, spriteType, true, 100);
@@ -888,7 +888,7 @@ class BattleSceneA extends Phaser.Scene {
         const partySinTypes = this._heroUnits
             ? Object.values(this.units).filter(u => u.isHero && u.alive).map(u => {
                 const heroInfo = this.heroData.find(h => h.name === u.name);
-                return heroInfo?.sinType || null;
+                return heroInfo?.primarySin || null;
             }).filter(Boolean)
             : [];
 
@@ -974,7 +974,7 @@ class BattleSceneA extends Phaser.Scene {
         }
     }
 
-    _createUnit(name, fx, fy, spriteType, isHero, maxHp, useComposed = false, sinType = null) {
+    _createUnit(name, fx, fy, spriteType, isHero, maxHp, useComposed = false, primarySin = null) {
         const SIN_NAME_COLORS = {
             wrath: '#f06060', envy: '#50d070', greed: '#e0c040',
             sloth: '#9098a8', gluttony: '#f08030', lust: '#f050a0', pride: '#a060f0'
@@ -1016,7 +1016,7 @@ class BattleSceneA extends Phaser.Scene {
         container.add(hpBar);
 
         // 이름 (영웅은 죄종 컬러)
-        const nameColor = isHero ? (SIN_NAME_COLORS[sinType] || '#a0c0f0') : '#f0a0a0';
+        const nameColor = isHero ? (SIN_NAME_COLORS[primarySin] || '#a0c0f0') : '#f0a0a0';
         const nameText = this.add.text(0, halfH + 4, name, {
             fontSize: '9px', fontFamily: FONT, color: nameColor
         }).setOrigin(0.5);

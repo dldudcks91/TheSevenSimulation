@@ -103,12 +103,13 @@ src/scenes/
 
 ### MapActions.js (~140줄)
 순수 게임 액션:
-- _doGather(hero) [1629-1650]
-- _doLumber(hero) [1706-1724]
-- _doFeast() [2103-2121]
-- _doStabilize() [2123-2140]
-- _launchHunt(hero) [2053-2101]
-- _calcFitness(hero, primaryStats) [2514-2521]
+- doGather(hero) — 즉시 실행 (레거시, 내부용)
+- doLumber(hero) — 즉시 실행 (레거시, 내부용)
+- launchGather(hero) — 채집 실행 + MapActionPopup 표시
+- launchLumber(hero) — 벌목 실행 + MapActionPopup 표시
+- doFeast()
+- doStabilize()
+- launchHunt(hero) — 사냥 실행 + MapHuntPopup 표시
 
 ### MapTurnFlow.js (~270줄)
 턴 진행 시퀀스:

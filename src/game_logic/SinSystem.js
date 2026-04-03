@@ -45,13 +45,13 @@ class SinSystem {
 
     /** 폭주 처리 */
     _processRampage(hero, heroes) {
-        const chain = this.sinRelations.rampage_chain[hero.sinType];
+        const chain = this.sinRelations.rampage_chain[hero.primarySin];
         const result = {
             type: 'rampage',
             heroId: hero.id,
             heroName: hero.name,
-            sinType: hero.sinType,
-            sinName: this.sinRelations.sin_names_ko[hero.sinType],
+            primarySin: hero.primarySin,
+            sinName: this.sinRelations.sin_names_ko[hero.primarySin],
             description: chain ? chain.description : '폭주!',
             corruptionResult: null,
             affectedHeroes: []
@@ -83,7 +83,7 @@ class SinSystem {
                     result.affectedHeroes.push({ id: t.id, name: t.name, delta: chain.morale_delta });
                 }
             } else {
-                const target = heroes.find(h => h.sinType === chain.target && h.id !== hero.id);
+                const target = heroes.find(h => h.primarySin === chain.target && h.id !== hero.id);
                 if (target) {
                     target.morale = Math.max(0, Math.min(100, target.morale + chain.morale_delta));
                     result.affectedHeroes.push({ id: target.id, name: target.name, delta: chain.morale_delta });
@@ -101,15 +101,15 @@ class SinSystem {
             type: 'desertion',
             heroId: hero.id,
             heroName: hero.name,
-            sinType: hero.sinType,
-            sinName: sinData[hero.sinType],
+            primarySin: hero.primarySin,
+            sinName: sinData[hero.primarySin],
             description: '',
             affectedHeroes: []
         };
 
         // CSV에서 이탈 효과 조회
-        const effect = this.desertionEffects.find(e => e.sin === hero.sinType);
-        const sinDef = this.sinRelations.sin_names_ko[hero.sinType];
+        const effect = this.desertionEffects.find(e => e.sin === hero.primarySin);
+        const sinDef = this.sinRelations.sin_names_ko[hero.primarySin];
 
         if (effect) {
             // 이탈 설명 (sin_types에서 desertion 필드)

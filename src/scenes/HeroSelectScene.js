@@ -51,6 +51,8 @@ class HeroSelectScene extends Phaser.Scene {
         const lpcParts = this.registry.get('lpcParts') || [];
         this.heroManager.setSpriteComposer(new SpriteComposer(lpcParts));
         this.heroManager.setEpithets(this.registry.get('heroEpithets') || []);
+        this.heroManager.setItemsData(this.registry.get('itemsData') || []);
+        this.heroManager.setTraitsData(this.registry.get('traitsData') || []);
         if (!this._spriteRenderer) {
             this._spriteRenderer = new SpriteRenderer(this);
         }
@@ -153,7 +155,7 @@ class HeroSelectScene extends Phaser.Scene {
         this._cardElements.push(bg);
 
         // 죄종 색상 상단 바
-        const sinColorHex = SIN_COLOR_HEX[hero.sinType] || '#606080';
+        const sinColorHex = SIN_COLOR_HEX[hero.primarySin] || '#606080';
         const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
         const sinBar = this.add.graphics();
         sinBar.fillStyle(sinColor, 0.6);
@@ -167,16 +169,42 @@ class HeroSelectScene extends Phaser.Scene {
             fontSize: '16px', fontFamily: FONT_BOLD, color: C.textPrimary,
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         }));
-        this._cardElements.push(this.add.text(x + w - 12, ty + 2, `[ ${hero.sinName} ]`, {
-            fontSize: '11px', fontFamily: FONT_BOLD, color: sinColorHex
-        }).setOrigin(1, 0));
+        const traitName = hero.trait ? `[${hero.trait.name}]` : hero.sinName;
+        const traitLabel = this.add.text(x + w - 12, ty + 2, traitName, {
+            fontSize: '11px', fontFamily: FONT_BOLD, color: '#c0a0e0'
+        }).setOrigin(1, 0);
+        this._cardElements.push(traitLabel);
+        if (hero.trait) {
+            traitLabel.setInteractive({ useHandCursor: true });
+            let tip = null;
+            traitLabel.on('pointerover', (pointer) => {
+                traitLabel.setColor('#ffffff');
+                const lines = [];
+                if (hero.trait.pro_effect) lines.push(`▲ ${hero.trait.pro_effect}`);
+                if (hero.trait.con_effect) lines.push(`▼ ${hero.trait.con_effect}`);
+                const tipW = 220, tipH = 14 * lines.length + 16;
+                const tx = Math.min(pointer.x, 1280 - tipW - 8);
+                tip = this.add.container(0, 0).setDepth(9999);
+                const bg = this.add.graphics();
+                bg.fillStyle(0x1a1a2e, 0.95); bg.fillRoundedRect(tx, pointer.y - tipH - 8, tipW, tipH, 4);
+                bg.lineStyle(1, 0xc0a0e0); bg.strokeRoundedRect(tx, pointer.y - tipH - 8, tipW, tipH, 4);
+                tip.add(bg);
+                tip.add(this.add.text(tx + 8, pointer.y - tipH - 2, lines.join('\n'), {
+                    fontSize: '10px', fontFamily: FONT, color: '#e0e0f0', lineSpacing: 2, wordWrap: { width: tipW - 16 }
+                }));
+            });
+            traitLabel.on('pointerout', () => {
+                traitLabel.setColor('#c0a0e0');
+                if (tip) { tip.destroy(); tip = null; }
+            });
+        }
         this._cardElements.push(this.add.text(x + w - 12, ty + 18, `비용 ${hero.foodCost ?? '?'}/턴`, {
             fontSize: '10px', fontFamily: FONT, color: '#a08040'
         }).setOrigin(1, 0));
         ty += 48;
 
         // 짧은 배경 스토리
-        const storyText = this._getHeroStory(hero.sinType);
+        const storyText = this._getHeroStory(hero.primarySin);
         const storyObj = this.add.text(x + 12, ty, storyText, {
             fontSize: '11px', fontFamily: FONT, color: C.textMuted,
             lineSpacing: 4,
@@ -295,7 +323,7 @@ class HeroSelectScene extends Phaser.Scene {
         }
     }
 
-    _getHeroStory(sinType) {
+    _getHeroStory(primarySin) {
         const stories = {
             wrath: '전쟁에서 돌아온 뒤로 분노를 멈출 수 없었다.\n칼을 내려놓으면 손이 떨렸고,\n결국 바알의 부름에 응했다.',
             envy: '언제나 형의 그림자 속에 있었다.\n인정받지 못한 재능은 독이 되어\n결국 그를 이곳으로 이끌었다.',
@@ -305,7 +333,7 @@ class HeroSelectScene extends Phaser.Scene {
             lust: '사랑에 실패한 뒤 혼자가 되는 것이 두려웠다.\n누군가 곁에 있어야만 했고,\n그 절박함이 이곳까지 왔다.',
             pride: '왕좌에서 쫓겨난 지휘관.\n자신이 옳다는 확신은 변하지 않았고,\n바알 아래서라도 증명하려 한다.',
         };
-        return stories[sinType] || '어둠 속에서 바알의 부름을 들었다.\n갈 곳 없는 자에게 선택지란 없었다.';
+        return stories[primarySin] || '어둠 속에서 바알의 부름을 들었다.\n갈 곳 없는 자에게 선택지란 없었다.';
     }
 
     _drawButtons(width, height) {
@@ -325,6 +353,7 @@ class HeroSelectScene extends Phaser.Scene {
             store.setState('food', balance.starting_food ?? 100);
             store.setState('wood', balance.starting_wood ?? 50);
             this.heroManager.confirmHeroes(this._heroes);
+            this.heroManager.grantStartingItem();
 
             // 페이드 아웃
             const fade = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0);

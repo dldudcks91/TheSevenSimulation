@@ -161,7 +161,7 @@ class MorningReportPopup {
 
     _drawHeroEntry(ox, y, entry, isAlert, container) {
         const target = container || this._container;
-        const sinColor = SIN_COLORS[entry.sinType] || '#a0a0c0';
+        const sinColor = SIN_COLORS[entry.primarySin] || '#a0a0c0';
 
         // 아이콘 + 이름
         const icon = isAlert ? (entry.level === 'high' ? '⚠' : '⚠') : '·';

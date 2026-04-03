@@ -10,6 +10,9 @@ const SaveManager = {
             heroes: store.getState('heroes'),
             turn: store.getState('turn'),
             gold: store.getState('gold'),
+            food: store.getState('food'),
+            wood: store.getState('wood'),
+            inventory: store.getState('inventory'),
             base: store.getState('base'),
             expedition: store.getState('expedition'),
             savedAt: new Date().toISOString()
@@ -37,6 +40,9 @@ const SaveManager = {
             store.setState('base', saveData.base);
         }
         if (saveData.expedition) store.setState('expedition', saveData.expedition);
+        if (saveData.food !== undefined) store.setState('food', saveData.food);
+        if (saveData.wood !== undefined) store.setState('wood', saveData.wood);
+        if (saveData.inventory) store.setState('inventory', saveData.inventory);
         return true;
     },
 

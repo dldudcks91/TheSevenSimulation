@@ -3,6 +3,7 @@
  */
 import store from '../../store/Store.js';
 import MapHuntPopup from '../MapHuntPopup.js';
+import MapActionPopup from '../MapActionPopup.js';
 
 class MapActions {
     constructor(scene) {
@@ -23,6 +24,50 @@ class MapActions {
         this.scene.bottomPanel._actionData = null;
         this.scene.hud.updateResources();
         this.scene.bottomPanel.refreshActiveTab();
+    }
+
+    launchGather(hero) {
+        const s = this.scene;
+        const b = s.balance;
+        const result = s.dayActions.doGather(hero);
+        const moraleDelta = b.gather_morale ?? 2;
+
+        s._actionPopup = new MapActionPopup(s, {
+            hero,
+            actionType: 'gather',
+            result,
+            moraleDelta,
+            onComplete: () => {
+                s._actionPopup = null;
+                s.bottomPanel._actionMode = null;
+                s.bottomPanel._actionData = null;
+                s.hud.updateResources();
+                s.bottomPanel.refreshActiveTab();
+            }
+        });
+        s._actionPopup.start();
+    }
+
+    launchLumber(hero) {
+        const s = this.scene;
+        const b = s.balance;
+        const result = s.dayActions.doLumber(hero);
+        const moraleDelta = b.lumber_morale ?? 1;
+
+        s._actionPopup = new MapActionPopup(s, {
+            hero,
+            actionType: 'lumber',
+            result,
+            moraleDelta,
+            onComplete: () => {
+                s._actionPopup = null;
+                s.bottomPanel._actionMode = null;
+                s.bottomPanel._actionData = null;
+                s.hud.updateResources();
+                s.bottomPanel.refreshActiveTab();
+            }
+        });
+        s._actionPopup.start();
     }
 
     doFeast() {

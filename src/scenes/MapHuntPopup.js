@@ -135,12 +135,7 @@ class MapHuntPopup {
         }
         this._units = {};
         this._logLines = [];
-        // 합성 텍스처 정리
-        if (this._composedHero && this._composedHeroId) {
-            for (const texKey of Object.values(this._composedHero)) {
-                if (this.scene.textures.exists(texKey)) this.scene.textures.remove(texKey);
-            }
-        }
+        // 합성 텍스처는 재사용을 위해 보존 (같은 영웅이 재사냥할 수 있음)
         this._composedHero = null;
         this._composedHeroId = null;
     }
@@ -297,7 +292,7 @@ class MapHuntPopup {
         const useComposed = !!this._composedHero;
         const spriteType = useComposed
             ? this._composedHeroId
-            : (SIN_SPRITE_MAP[this.heroData.sinType] || DEFAULT_SPRITE);
+            : (SIN_SPRITE_MAP[this.heroData.primarySin] || DEFAULT_SPRITE);
 
         this._units.hero = this._createUnitDisplay(
             this.heroData.name, this._ox + HERO_X, this._oy + GROUND_Y,
@@ -491,8 +486,13 @@ class MapHuntPopup {
         unit.hpBar.width = 0;
         unit.hpText.setText('0/' + unit.maxHp);
 
-        const hurtKey = `${unit.spriteType}_hurt`;
-        this._ensureHurt(unit.spriteType);
+        let hurtKey;
+        if (unit.useComposed) {
+            hurtKey = `${unit.spriteType}_slash`;
+        } else {
+            hurtKey = `${unit.spriteType}_hurt`;
+            this._ensureHurt(unit.spriteType);
+        }
         unit.sprite.play(hurtKey);
         unit.sprite.once('animationcomplete', () => unit.sprite.stop());
 
@@ -652,7 +652,7 @@ class MapHuntPopup {
     _createAnimations() {
         // 합성 스프라이트 영웅은 SpriteRenderer.compose()에서 이미 애니메이션 생성됨
         if (!this._composedHero) {
-            const heroSprite = SIN_SPRITE_MAP[this.heroData.sinType] || DEFAULT_SPRITE;
+            const heroSprite = SIN_SPRITE_MAP[this.heroData.primarySin] || DEFAULT_SPRITE;
             this._ensureDirectionalIdle(heroSprite, 'east', DIR_EAST);
         }
 

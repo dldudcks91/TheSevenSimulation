@@ -40,7 +40,7 @@ class PopupsHero {
         } else {
             for (const hero of heroes) {
                 const stars = s.dayActions.calcFitness(hero, statConfig.primary);
-                const sinColor = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+                const sinColor = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
 
                 const ibg = pp(s.add.graphics());
                 ibg.fillStyle(C.bgSecondary, 1); ibg.fillRoundedRect(px + 20, y, iw, 32, 4);
@@ -49,21 +49,26 @@ class PopupsHero {
                 pp(s.add.text(px + 32, y + 8, `${hero.name}`, {
                     fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
                 }));
-                pp(s.add.text(px + 200, y + 9, `[${hero.sinName}]`, {
-                    fontSize: '9px', fontFamily: FONT, color: sinColor
-                }));
+                if (hero.trait) {
+                    s.widgets.traitLabel(px + 200, y + 9, hero.trait, { pp });
+                } else {
+                    pp(s.add.text(px + 200, y + 9, hero.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
+                }
                 pp(s.add.text(px + 290, y + 9, `${statConfig.label}력 ${stars}`, {
                     fontSize: '9px', fontFamily: FONT, color: C.expYellow
                 }));
 
                 const heroRef = hero;
                 pp(s.popupSystem.popupSmallBtn(px + iw - 70, y + 16, '정보', () => {
-                    s._pushPopup('heroDetail', { hero: heroRef });
+                    s._showPopup('heroDetail', { hero: heroRef });
                 }));
                 pp(s.popupSystem.popupSmallBtn(px + iw - 10, y + 16, '투입', () => {
                     let result;
                     if (actionType === 'build') {
                         result = s.baseManager.startBuilding(target.id, hero.id);
+                        if (result.success) { hero.status = 'construction'; store.setState('heroes', [...s.heroManager.getHeroes()]); }
+                    } else if (actionType === 'buildAssign') {
+                        result = s.baseManager.assignHeroToBuilding(target.facilityId, hero.id);
                         if (result.success) { hero.status = 'construction'; store.setState('heroes', [...s.heroManager.getHeroes()]); }
                     } else if (actionType === 'research') {
                         result = s.baseManager.startResearch(target.id, hero.id);
@@ -78,7 +83,11 @@ class PopupsHero {
         }
 
         pp(s.popupSystem.popupButton(cx - 80, py + ph - 40, '← 뒤로', () => {
-            s._showPopup(actionType === 'build' ? 'build' : 'research');
+            if (actionType === 'buildAssign') {
+                s._closePanelAction();
+            } else {
+                s._showPopup(actionType === 'build' ? 'build' : 'research');
+            }
         }));
         pp(s.popupSystem.popupButton(cx + 80, py + ph - 40, '닫기', () => {
             s.popupSystem.closeAllPopups();
@@ -98,7 +107,7 @@ class PopupsHero {
         const st = hero.stats;
         const sub = hero.subStats || {};
         const derived = s.heroManager.getDerivedStats(hero);
-        const sinColorHex = SIN_COLOR_HEX[hero.sinType] || C.textMuted;
+        const sinColorHex = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
         const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
 
         // ─── 상단 카드 ───
@@ -151,16 +160,18 @@ class PopupsHero {
             fontSize: '22px', fontFamily: FONT_BOLD, color: C.textPrimary,
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         }));
-        pp(s.add.text(infoX + nameObj.width + 10, ty + 4, `[${hero.sinName}]`, {
-            fontSize: '16px', fontFamily: FONT_BOLD, color: sinColorHex
-        }));
+        if (hero.trait) {
+            s.widgets.traitLabel(infoX + nameObj.width + 10, ty + 6, hero.trait, { fontSize: '14px', pp });
+        } else {
+            pp(s.add.text(infoX + nameObj.width + 10, ty + 4, hero.sinName, { fontSize: '16px', fontFamily: FONT_BOLD, color: sinColorHex }));
+        }
         pp(s.add.text(infoX + nameObj.width + 10, ty + 22, `🌾${hero.foodCost ?? '?'}/턴`, {
             fontSize: '11px', fontFamily: FONT, color: '#a08040'
         }));
         ty += 30;
 
         // 스토리
-        const storyText = this.getHeroStory(hero.sinType);
+        const storyText = this.getHeroStory(hero.primarySin);
         pp(s.add.text(infoX, ty, storyText, {
             fontSize: '11px', fontFamily: FONT, color: C.textMuted,
             lineSpacing: 3,
@@ -274,16 +285,13 @@ class PopupsHero {
         // 감정 스탯
         _drawSectionHeader('감정');
         const subLabels = [
-            { key: 'aggression', label: '공격성', src: 'sub' },
-            { key: 'greediness', label: '욕심', src: 'sub' },
-            { key: 'pride', label: '자존심', src: 'sub' },
-            { key: 'curiosity', label: '호기심', src: 'sub' },
-            { key: 'tenacity', label: '집요함', src: 'sub' },
-            { key: 'sensitivity', label: '감수성', src: 'sub' },
-            { key: 'independence', label: '독립심', src: 'sub' },
-            { key: 'commandPower', label: '통솔력', src: 'derived' },
-            { key: 'charm', label: '매력도', src: 'derived' },
-            { key: 'susceptibility', label: '민감도', src: 'derived' }
+            { key: 'wrath', label: '분노', src: 'sub' },
+            { key: 'greed', label: '탐욕', src: 'sub' },
+            { key: 'pride', label: '교만', src: 'sub' },
+            { key: 'envy', label: '시기', src: 'sub' },
+            { key: 'gluttony', label: '폭식', src: 'sub' },
+            { key: 'lust', label: '색욕', src: 'sub' },
+            { key: 'sloth', label: '나태', src: 'sub' }
         ];
         for (let i = 0; i < subLabels.length; i++) {
             const sl = subLabels[i];
@@ -313,7 +321,7 @@ class PopupsHero {
     // ═══════════════════════════════════
     // 영웅 스토리 텍스트
     // ═══════════════════════════════════
-    getHeroStory(sinType) {
+    getHeroStory(primarySin) {
         const stories = {
             wrath: '전쟁에서 돌아온 뒤로 분노를 멈출 수 없었다.\n칼을 내려놓으면 손이 떨렸고,\n결국 바알의 부름에 응했다.',
             envy: '언제나 형의 그림자 속에 있었다.\n인정받지 못한 재능은 독이 되어\n결국 그를 이곳으로 이끌었다.',
@@ -323,7 +331,7 @@ class PopupsHero {
             lust: '사랑에 실패한 뒤 혼자가 되는 것이 두려웠다.\n누군가 곁에 있어야만 했고,\n그 절박함이 이곳까지 왔다.',
             pride: '왕좌에서 쫓겨난 지휘관.\n자신이 옳다는 확신은 변하지 않았고,\n바알 아래서라도 증명하려 한다.',
         };
-        return stories[sinType] || '어둠 속에서 바알의 부름을 들었다.\n갈 곳 없는 자에게 선택지란 없었다.';
+        return stories[primarySin] || '어둠 속에서 바알의 부름을 들었다.\n갈 곳 없는 자에게 선택지란 없었다.';
     }
 
     // ═══════════════════════════════════
@@ -361,7 +369,7 @@ class PopupsHero {
         } else {
             const recruits = s.heroManager.generateRecruits(3);
             for (const recruit of recruits) {
-                const sinColor = SIN_COLOR_HEX[recruit.sinType] || C.textMuted;
+                const sinColor = SIN_COLOR_HEX[recruit.primarySin] || C.textMuted;
 
                 const ibg = pp(s.add.graphics());
                 ibg.fillStyle(C.bgSecondary, 1); ibg.fillRect(px + 20, y, iw, 80);
@@ -370,9 +378,11 @@ class PopupsHero {
                 pp(s.add.text(px + 32, y + 8, recruit.name, {
                     fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
                 }));
-                pp(s.add.text(px + 32, y + 26, `[${recruit.sinName}]`, {
-                    fontSize: '9px', fontFamily: FONT, color: sinColor
-                }));
+                if (recruit.trait) {
+                    s.widgets.traitLabel(px + 32, y + 26, recruit.trait, { pp });
+                } else {
+                    pp(s.add.text(px + 32, y + 26, recruit.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
+                }
                 pp(s.add.text(px + 32, y + 42, '스탯: 고용 후 확인', {
                     fontSize: '9px', fontFamily: FONT, color: C.textMuted
                 }));

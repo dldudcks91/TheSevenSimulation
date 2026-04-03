@@ -5,7 +5,7 @@
  * 사냥 / 일기토 공용.
  *
  * init(data):
- *   hero     — 영웅 객체 (name, stats, sinType, id, ...)
+ *   hero     — 영웅 객체 (name, stats, primarySin, id, ...)
  *   enemy    — 적 객체 (name, hp, atk, spd)
  *   stageName — 화면 제목
  *   onClose  — 전투 종료 콜백 (result: { victory, heroResult })
@@ -232,7 +232,7 @@ class DuelBattleScene extends Phaser.Scene {
 
     _createHeroUnit() {
         const hero = this._heroData;
-        const spriteType = SIN_SPRITE_MAP[hero.sinType] || DEFAULT_SPRITE;
+        const spriteType = SIN_SPRITE_MAP[hero.primarySin] || DEFAULT_SPRITE;
         const units = this.engine.getUnits();
         const heroUnit = units.heroes[0];
 

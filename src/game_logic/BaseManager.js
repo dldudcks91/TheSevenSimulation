@@ -92,20 +92,25 @@ class BaseManager {
         // 역순으로 순회 (완료 시 splice해도 안전)
         for (let i = base.buildings.length - 1; i >= 0; i--) {
             const building = base.buildings[i];
-            const hero = heroes.find(h => h.id === building.assignedHeroId);
-            const buildPower = hero
-                ? Math.floor((hero.stats.strength + hero.stats.agility) / 2)
-                : 1;
+            const hero = building.assignedHeroId
+                ? heroes.find(h => h.id === building.assignedHeroId)
+                : null;
+            if (!hero) {
+                results.push({ type: 'no_hero', name: building.name });
+                continue;
+            }
+            const buildPower = Math.floor((hero.stats.strength + hero.stats.agility) / 2);
 
             building.progress += buildPower;
 
             if (building.progress >= building.buildCost) {
                 base.built.push(building.facilityId);
                 base.buildings.splice(i, 1);
-                // 건설 완료 시 영웅 상태 복원
                 if (hero) hero.status = 'idle';
                 results.push({ type: 'complete', facilityId: building.facilityId, name: building.name });
             } else {
+                // 매 턴 영웅 해제 — 다음 턴에 재투입 필요
+                building.assignedHeroId = null;
                 results.push({ type: 'progress', progress: building.progress, buildCost: building.buildCost, name: building.name });
             }
         }
@@ -408,6 +413,16 @@ class BaseManager {
             }
         }
         return results;
+    }
+
+    assignHeroToBuilding(facilityId, heroId) {
+        const base = this.store.getState('base');
+        const building = (base.buildings || []).find(b => b.facilityId === facilityId);
+        if (!building) return { success: false, reason: '건설중인 시설 없음' };
+        if (building.assignedHeroId) return { success: false, reason: '이미 영웅 배정됨' };
+        building.assignedHeroId = heroId;
+        this.store.setState('base', { ...base });
+        return { success: true };
     }
 
     getCurrentBuildings() { return this.store.getState('base').buildings || []; }

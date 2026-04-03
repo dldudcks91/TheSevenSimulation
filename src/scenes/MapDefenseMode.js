@@ -19,7 +19,7 @@ import {
     pickEnemySprite, SIN_SPRITE_MAP, HERO_SPRITE_TYPES, UNIT_STATE
 } from './SpriteConstants.js';
 
-const SPRITE_SCALE = 1.5;
+const SPRITE_SCALE = 0.75;
 const DISPLAY_SIZE = FRAME_SIZE * SPRITE_SCALE;
 const TICK_MS = 400;
 
@@ -45,7 +45,7 @@ class MapDefenseMode {
      * @param {Phaser.Scene} scene - MapScene 인스턴스
      * @param {Object} config
      * @param {BattleEngine} config.engine - 초기화된 BattleEngine
-     * @param {Array} config.heroData - 영웅 데이터 [{id, name, sinType, appearance}]
+     * @param {Array} config.heroData - 영웅 데이터 [{id, name, primarySin, appearance}]
      * @param {Array} config.reserveHeroes - 증원 가능 영웅
      * @param {string} config.stageName - 전투 이름
      * @param {Function} config.onComplete - 전투 종료 콜백 (victory: boolean)
@@ -215,7 +215,7 @@ class MapDefenseMode {
             const heroInfo = this.heroData.find(h => h.name === u.name);
             const heroId = heroInfo ? `hero_${heroInfo.id}` : null;
             const composed = this._composedHeroes[u.name];
-            const spriteType = composed ? heroId : (SIN_SPRITE_MAP[u.sinType] || DEFAULT_SPRITE);
+            const spriteType = composed ? heroId : (SIN_SPRITE_MAP[u.primarySin] || DEFAULT_SPRITE);
             const useComposed = !!composed;
 
             const fx = HERO_START_X + i * 40;
@@ -505,7 +505,7 @@ class MapDefenseMode {
             .filter(u => u.isHero && u.alive)
             .map(u => {
                 const heroInfo = this.heroData.find(h => h.name === u.name);
-                return heroInfo?.sinType || null;
+                return heroInfo?.primarySin || null;
             }).filter(Boolean);
 
         const events = this.engine.useCard(card, partySinTypes);

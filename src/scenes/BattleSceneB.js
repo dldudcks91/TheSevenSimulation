@@ -354,7 +354,7 @@ class BattleSceneB extends Phaser.Scene {
         let spriteType;
         if (isHero) {
             const heroInfo = this.heroData.find(h => h.name === unitData.name);
-            spriteType = SIN_SPRITE_MAP[heroInfo?.sinType || unitData.sinType] || DEFAULT_SPRITE;
+            spriteType = SIN_SPRITE_MAP[heroInfo?.primarySin || unitData.primarySin] || DEFAULT_SPRITE;
         } else {
             spriteType = this._enemySpriteMap[unitData.name] || ENEMY_SPRITES[0];
         }

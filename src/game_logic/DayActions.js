@@ -55,7 +55,7 @@ class DayActions {
         const heroes = this.heroManager.getHeroes();
         for (const hero of heroes) {
             let delta = b.feast_morale_normal ?? 15;
-            if (hero.sinType === 'gluttony' || hero.sinType === 'lust') {
+            if (hero.primarySin === 'gluttony' || hero.primarySin === 'lust') {
                 delta = b.feast_morale_gluttony_lust ?? 25;
             }
             this.heroManager.updateMorale(hero.id, delta);

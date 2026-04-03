@@ -228,7 +228,6 @@ class PopupsBuild {
         const cx = px + pw / 2;
         const heroes = s.heroManager.getHeroes();
         const hero = heroes.find(h => h.id === building.assignedHeroId);
-        const heroName = hero ? hero.name : '없음';
 
         pp(s.add.text(cx, py + 20, `🔨 ${building.name}`, {
             fontSize: '14px', fontFamily: FONT_BOLD, color: C.infoCyan
@@ -238,9 +237,19 @@ class PopupsBuild {
             fontSize: '11px', fontFamily: FONT, color: C.textPrimary
         }).setOrigin(0.5));
 
-        pp(s.add.text(cx, py + 72, `담당: ${heroName}`, {
-            fontSize: '11px', fontFamily: FONT, color: C.textSecondary
-        }).setOrigin(0.5));
+        if (hero) {
+            pp(s.add.text(cx, py + 72, `담당: ${hero.name}`, {
+                fontSize: '11px', fontFamily: FONT, color: C.textSecondary
+            }).setOrigin(0.5));
+        } else {
+            pp(s.add.text(cx, py + 72, '담당 영웅 없음 — 영웅을 투입해야 진행됩니다', {
+                fontSize: '10px', fontFamily: FONT, color: C.expYellow
+            }).setOrigin(0.5));
+            pp(s.popupSystem.popupButton(cx, py + 100, '영웅 투입', () => {
+                const idle = s.heroManager.getBaseHeroes().filter(h => h.status === 'idle');
+                s._pushPopup('heroSelect', { actionType: 'buildAssign', target: building, heroes: idle });
+            }));
+        }
 
         s.popupSystem.popupCloseBtn(px, py, pw, ph);
     }

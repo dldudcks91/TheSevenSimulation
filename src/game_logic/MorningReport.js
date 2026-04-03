@@ -187,7 +187,7 @@ class MorningReport {
                 id: hero.id,
                 name: hero.name,
                 epithet: hero.epithet || '',
-                sinType: hero.sinType,
+                primarySin: hero.primarySin,
                 sinName: hero.sinName,
                 morale: hero.morale,
                 status: hero.status,
@@ -198,19 +198,19 @@ class MorningReport {
                 entry.level = 'high';
                 entry.icon = '🔺';
                 entry.label = '폭주 위험';
-                entry.text = this._pickText(hero.sinType, 'high');
+                entry.text = this._pickText(hero.primarySin, 'high');
                 alerts.push(entry);
             } else if (hero.morale <= this.dangerLow) {
                 entry.level = 'low';
                 entry.icon = '🔻';
                 entry.label = '이탈 위험';
-                entry.text = this._pickText(hero.sinType, 'low');
+                entry.text = this._pickText(hero.primarySin, 'low');
                 alerts.push(entry);
             } else {
                 entry.level = 'stable';
                 entry.icon = '─';
                 entry.label = '안정';
-                entry.text = this._pickText(hero.sinType, 'stable');
+                entry.text = this._pickText(hero.primarySin, 'stable');
                 stables.push(entry);
             }
         }
@@ -220,7 +220,7 @@ class MorningReport {
 
     /** 죄종별 현재 진행 중인 조건 판정 */
     _getCondition(hero) {
-        const sin = hero.sinType;
+        const sin = hero.primarySin;
         const texts = SIN_CONDITION_TEXTS[sin];
         if (!texts) return null;
 
@@ -251,8 +251,8 @@ class MorningReport {
         }
     }
 
-    _pickText(sinType, level) {
-        const pool = SIN_TEXTS[sinType]?.[level];
+    _pickText(primarySin, level) {
+        const pool = SIN_TEXTS[primarySin]?.[level];
         if (!pool || pool.length === 0) return '특이사항 없음';
         return pool[Math.floor(Math.random() * pool.length)];
     }

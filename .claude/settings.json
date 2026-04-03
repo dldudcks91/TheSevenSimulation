@@ -14,7 +14,24 @@
       "WebFetch(domain:www.tooli.co.kr)",
       "WebFetch(domain:gamefaqs.gamespot.com)",
       "WebFetch(domain:kongming.net)",
-      "WebFetch(domain:m.cafe.daum.net)"
+      "WebFetch(domain:m.cafe.daum.net)",
+      "WebFetch(domain:rimworldwiki.com)",
+      "WebFetch(domain:darkestdungeon.wiki.gg)",
+      "WebFetch(domain:ck3.paradoxwikis.com)",
+      "WebFetch(domain:dwarffortresswiki.org)",
+      "WebFetch(domain:rimworld.fandom.com)",
+      "WebFetch(domain:oxygennotincluded.wiki.gg)",
+      "WebFetch(domain:www.gameleap.com)",
+      "WebFetch(domain:rimworld.wiki)",
+      "WebFetch(domain:raiderking.com)",
+      "WebFetch(domain:emurpg.fandom.com)",
+      "WebFetch(domain:www.gameskinny.com)",
+      "WebFetch(domain:segmentnext.com)",
+      "WebFetch(domain:rimworldhub.com)",
+      "WebFetch(domain:postmasterinterest.blogspot.com)",
+      "WebFetch(domain:battlebrothers.fandom.com)",
+      "WebFetch(domain:battlebrothersgame.com)",
+      "WebFetch(domain:kingtoko.com)"
     ],
     "additionalDirectories": [
       "C:\\Users\\82109\\Desktop\\LYC\\git\\TheSevenSimulation\\.claude"

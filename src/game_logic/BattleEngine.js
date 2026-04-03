@@ -112,7 +112,7 @@ class BattleEngine {
         return {
             type: 'start',
             mode: this._mode,
-            heroes: this._heroUnits.map(u => ({ name: u.name, hp: u.hp, maxHp: u.maxHp, sinType: u.sinType })),
+            heroes: this._heroUnits.map(u => ({ name: u.name, hp: u.hp, maxHp: u.maxHp, primarySin: u.primarySin })),
             soldiers: this._soldierUnits.length,
             enemies: this._enemyUnits.map(u => ({ name: u.name, hp: u.hp, maxHp: u.maxHp }))
         };
@@ -128,7 +128,7 @@ class BattleEngine {
             isHero: true,
             isSoldier: false,
             alive: true,
-            sinType: h.sinType || null
+            primarySin: h.primarySin || null
         };
     }
 
@@ -210,14 +210,14 @@ class BattleEngine {
         };
 
         for (const hero of aliveHeroes) {
-            const chance = duelChances[hero.sinType] ?? this.DUEL_REQUEST_CHANCE;
+            const chance = duelChances[hero.primarySin] ?? this.DUEL_REQUEST_CHANCE;
             if (Math.random() < chance) {
                 // 타겟 선택
                 let target;
-                if (hero.sinType === 'pride') {
+                if (hero.primarySin === 'pride') {
                     // 교만: 가장 강한 적
                     target = aliveEnemies.reduce((a, b) => a.hp > b.hp ? a : b);
-                } else if (hero.sinType === 'gluttony') {
+                } else if (hero.primarySin === 'gluttony') {
                     // 폭식: 가장 약한 적
                     target = aliveEnemies.reduce((a, b) => a.hp < b.hp ? a : b);
                 } else {
@@ -233,14 +233,14 @@ class BattleEngine {
                     this._duelEnemy = target;
                     return {
                         type: 'duel_start',
-                        hero: { name: hero.name, hp: hero.hp, maxHp: hero.maxHp, sinType: hero.sinType },
+                        hero: { name: hero.name, hp: hero.hp, maxHp: hero.maxHp, primarySin: hero.primarySin },
                         enemy: { name: target.name, hp: target.hp, maxHp: target.maxHp },
                         round: this._round
                     };
                 } else {
                     return {
                         type: 'duel_refused',
-                        hero: { name: hero.name, sinType: hero.sinType },
+                        hero: { name: hero.name, primarySin: hero.primarySin },
                         enemy: { name: target.name },
                         round: this._round
                     };
@@ -717,7 +717,7 @@ class BattleEngine {
         return {
             heroes: this._heroUnits.map(u => ({
                 name: u.name, hp: u.hp, maxHp: u.maxHp, alive: u.alive,
-                isHero: true, sinType: u.sinType
+                isHero: true, primarySin: u.primarySin
             })),
             soldiers: { total: this._soldierUnits.length, alive: this._soldierUnits.filter(u => u.alive).length },
             enemies: this._enemyUnits.map(u => ({

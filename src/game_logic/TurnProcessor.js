@@ -132,7 +132,7 @@ class TurnProcessor {
         if (defenseResult) {
             // 교만 영웅 방어 결과 플래그
             for (const h of this.heroManager.getHeroes()) {
-                if (h.sinType === 'pride') h._lastDefenseWin = defenseResult.victory;
+                if (h.primarySin === 'pride') h._lastDefenseWin = defenseResult.victory;
             }
 
             if (defenseResult.victory) {
@@ -140,12 +140,12 @@ class TurnProcessor {
                 this.store.setState('gold', (this.store.getState('gold') || 0) + goldReward);
                 for (const h of this.heroManager.getHeroes()) {
                     this.heroManager.updateMorale(h.id, b.defense_victory_morale ?? 5);
-                    if (h.sinType === 'pride') this.heroManager.updateMorale(h.id, b.pride_defense_win_morale ?? 8);
+                    if (h.primarySin === 'pride') this.heroManager.updateMorale(h.id, b.pride_defense_win_morale ?? 8);
                 }
             } else {
                 for (const h of this.heroManager.getHeroes()) {
                     this.heroManager.updateMorale(h.id, b.defense_defeat_morale ?? -10);
-                    if (h.sinType === 'pride') this.heroManager.updateMorale(h.id, b.pride_defense_lose_morale ?? -12);
+                    if (h.primarySin === 'pride') this.heroManager.updateMorale(h.id, b.pride_defense_lose_morale ?? -12);
                 }
                 // 패배 시 자원 약탈
                 const lootRatio = defenseResult.reason === 'no_defenders'
@@ -181,17 +181,17 @@ class TurnProcessor {
     checkSinConditions() {
         const b = this.balance;
         for (const hero of this.heroManager.getHeroes()) {
-            if (hero.sinType === 'wrath' && hero.location === 'base') {
+            if (hero.primarySin === 'wrath' && hero.location === 'base') {
                 hero.daysIdle = (hero.daysIdle || 0) + 1;
                 if (hero.daysIdle >= (b.wrath_idle_threshold ?? 3)) {
                     this.heroManager.updateMorale(hero.id, b.wrath_idle_morale ?? -5);
                 }
-            } else if (hero.sinType === 'wrath') {
+            } else if (hero.primarySin === 'wrath') {
                 hero.daysIdle = 0;
             }
-            if (hero.sinType === 'sloth' && hero.status !== 'idle') {
+            if (hero.primarySin === 'sloth' && hero.status !== 'idle') {
                 this.heroManager.updateMorale(hero.id, b.sloth_work_morale ?? -3);
-            } else if (hero.sinType === 'sloth' && hero.status === 'idle') {
+            } else if (hero.primarySin === 'sloth' && hero.status === 'idle') {
                 this.heroManager.updateMorale(hero.id, b.sloth_rest_morale ?? 3);
             }
         }

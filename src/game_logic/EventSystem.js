@@ -63,22 +63,22 @@ class EventSystem {
             switch (t.type) {
                 case 'sin_elevated': {
                     const elevatedThreshold = t.min_morale || (this.balance.elevated_threshold ?? 71);
-                    const hero = heroes.find(h => h.sinType === t.sin && h.morale >= elevatedThreshold);
+                    const hero = heroes.find(h => h.primarySin === t.sin && h.morale >= elevatedThreshold);
                     if (!hero) return false;
                     if (t.oppose_sin) {
-                        const oppose = heroes.find(h => h.sinType === t.oppose_sin);
+                        const oppose = heroes.find(h => h.primarySin === t.oppose_sin);
                         if (!oppose) return false;
                     }
                     return true;
                 }
                 case 'sin_frustrated': {
                     const frustratedThreshold = this.balance.frustrated_threshold ?? 30;
-                    const hero = heroes.find(h => h.sinType === t.sin && h.morale <= frustratedThreshold);
+                    const hero = heroes.find(h => h.primarySin === t.sin && h.morale <= frustratedThreshold);
                     return !!hero;
                 }
                 case 'rampage': {
                     const rampageThreshold = this.balance.morale_max ?? 100;
-                    const hero = heroes.find(h => h.sinType === t.sin && h.morale >= rampageThreshold);
+                    const hero = heroes.find(h => h.primarySin === t.sin && h.morale >= rampageThreshold);
                     return !!hero;
                 }
                 case 'periodic':
@@ -105,13 +105,13 @@ class EventSystem {
     _resolveEvent(evt, heroes) {
         const sinHeroes = {};
         for (const h of heroes) {
-            sinHeroes[h.sinType] = h;
+            sinHeroes[h.primarySin] = h;
         }
 
         // 이벤트에 관련된 주요 영웅 결정
         const triggerSin = evt.trigger.sin;
         const mainHero = sinHeroes[triggerSin];
-        const otherHeroes = heroes.filter(h => h.sinType !== triggerSin);
+        const otherHeroes = heroes.filter(h => h.primarySin !== triggerSin);
         const otherHero = otherHeroes.length > 0 ? otherHeroes[Math.floor(Math.random() * otherHeroes.length)] : null;
         const strongest = heroes.reduce((a, b) => {
             const aSum = Object.values(a.stats).reduce((s, v) => s + v, 0);
@@ -198,7 +198,7 @@ class EventSystem {
             } else if (effect.target === 'others') {
                 const mainSin = event.id.startsWith('A4') ? 'pride' : null;
                 for (const hero of heroes) {
-                    if (mainSin && hero.sinType === mainSin) continue;
+                    if (mainSin && hero.primarySin === mainSin) continue;
                     hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + (effect.morale || 0)));
                     results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
                 }

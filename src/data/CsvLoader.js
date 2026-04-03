@@ -125,7 +125,9 @@ async function loadAllCsv(basePath = './data/') {
         'desertion_effects',
         'battle_cards',
         'lpc_parts',
-        'hero_epithets'
+        'hero_epithets',
+        'items',
+        'traits'
     ];
 
     const results = {};
@@ -345,6 +347,54 @@ function buildGameData(csvData) {
 
     // ─── heroEpithets (이름 수식어) ───
     data.heroEpithets = csvData.hero_epithets || [];
+
+    // ─── traitsData (특성) ───
+    data.traitsData = (csvData.traits || []).map(r => ({
+        id: r.id,
+        name: r.name,
+        category: r.category,
+        type: r.type,
+        pro_effect: r.pro_effect,
+        con_effect: r.con_effect,
+        earn_condition: r.earn_condition
+    }));
+
+    // ─── itemsData (아이템) ───
+    data.itemsData = (csvData.items || []).map(r => ({
+        id: r.id,
+        name_ko: r.name_ko,
+        type: r.type,
+        grade: r.grade,
+        description: r.description,
+        // 행동 보정 11종
+        build: r.build,
+        pioneer: r.pioneer,
+        gather: r.gather,
+        lumber: r.lumber,
+        research: r.research,
+        smithing: r.smithing,
+        alchemy: r.alchemy,
+        diplomacy: r.diplomacy,
+        trade: r.trade,
+        recruit: r.recruit,
+        hunt: r.hunt,
+        // 전투 보정
+        atk: r.atk,
+        hp: r.hp,
+        damage_reduce: r.damage_reduce,
+        atk_speed: r.atk_speed,
+        crit: r.crit,
+        range: r.range,
+        sp_cost_reduce: r.sp_cost_reduce,
+        // 특수
+        sin_type: r.sin_type,
+        morale_per_turn: r.morale_per_turn,
+        special: r.special,
+        // 경제
+        cost: r.cost,
+        craft_facility: r.craft_facility,
+        craft_stat: r.craft_stat
+    }));
 
     return data;
 }
