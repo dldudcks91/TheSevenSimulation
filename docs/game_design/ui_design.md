@@ -2,6 +2,7 @@
 
 > 상태: 구현 중
 > 작성일: 2026-03-25
+> 마지막 업데이트: 2026-04-03
 > 해상도: 1280x720 (16:9, Phaser Scale.FIT)
 > 참고: RimWorld(단일맵 거점), DD(탭 UI), TheSevenRPG(RPG 베벨 스타일)
 > 탭 UI 레퍼런스 분석: `docs/reference/tab_ui_analysis.md`
@@ -15,7 +16,7 @@
 | 1 | **TitleScene** | 게임 시작 전 | 새 게임 / 이어하기 | ✅ |
 | 1.5 | **IntroScene** | 새 게임 시작 직후 | 바알 내러티브 연출 (검정+빨간 재) → 영웅 선택으로 | ✅ |
 | 2 | **HeroSelectScene** | 새 게임 시작 | 초기 영웅 3명 미리보기 + 재생성 | ✅ |
-| 3 | **MapScene** | 전체 게임플레이 | 단일 맵 뷰 — 거점 운영 + 이벤트/결과/결산 오버레이 | 🔧 |
+| 3 | **MapScene** (코디네이터) | 전체 게임플레이 | 단일 맵 뷰 — 13개 모듈 분리 (map/ 하위) | 🔧 |
 | 3-a | EventScene (오버레이) | 아침 | 이벤트 읽기 + 선택지 고르기 | ✅ |
 | 3-b | ResultScene (오버레이) | 저녁 | 원정 결과 + 감시탑 정보 | ✅ |
 | 3-c | **MapDefenseMode** | 밤 | 방어전 — MapScene 위 오버레이 (카드/SP/유닛 전투) | 🔧 |
@@ -90,6 +91,32 @@
 - 월드 바운드: 0 ~ 2560 (X), 0 ~ 440 (Y)
 - 드래그로 좌우 스크롤 (맵 영역 내에서만)
 - 하단 UI 패널은 카메라 영향 없음 (고정 위치)
+
+### MapScene 모듈 구조 (2026-04-03 리팩토링)
+
+MapScene.js(~280줄, 코디네이터) + 13개 하위 모듈:
+
+```
+scenes/
+├── MapScene.js              (~280줄, 코디네이터 + 라우팅)
+└── map/
+    ├── MapConstants.js      (~100줄, 상수)
+    ├── MapWidgets.js        (~90줄, 공유 UI 유틸)
+    ├── MapPopupSystem.js    (~140줄, 팝업 스택 관리)
+    ├── MapHUD.js            (~140줄, 상단 HUD)
+    ├── MapWorld.js          (~300줄, 맵 렌더링 + 건물 슬롯)
+    ├── MapBottomPanel.js    (~660줄, 탭 렌더러)
+    ├── MapActions.js        (~75줄, DayActions→UI 브릿지)
+    ├── MapTurnFlow.js       (~200줄, TurnProcessor→씬전환)
+    └── popups/
+        ├── PopupsBuild.js   (~250줄, 건설/연구/시설)
+        ├── PopupsHero.js    (~400줄, 영웅 상세/선택/고용)
+        └── PopupsAction.js  (~480줄, 채집/벌목/사냥/방어/정책)
+```
+
+game_logic/ 백테스팅 지원:
+- `DayActions.js` — 채집/벌목/연회/사냥 보상 계산 (Phaser 무의존)
+- `TurnProcessor.js` — 턴 전체 로직 조율 (Phaser 무의존)
 
 ---
 

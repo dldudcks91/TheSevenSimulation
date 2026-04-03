@@ -1,7 +1,7 @@
 # TheSevenSimulation 개발 계획서
 
 > 작성일: 2026-03-24
-> 마지막 업데이트: 2026-03-31
+> 마지막 업데이트: 2026-04-03
 
 ---
 
@@ -44,12 +44,19 @@ src/
 │   ├── ExpeditionManager.js  # 원정/방어전 (stagesData+balance 주입)
 │   ├── BattleEngine.js       # 전투 계산 (balance 주입)
 │   ├── BaseManager.js        # 거점/건설/연구/포고령 (policies+balance 주입)
-│   └── TurnManager.js        # 턴 진행 (phases 주입)
+│   ├── TurnManager.js        # 턴 페이즈 관리 (phases 주입)
+│   ├── DayActions.js         # 낮 행동 순수 로직 — 채집/벌목/연회/사냥 (백테스팅 가능)
+│   └── TurnProcessor.js      # 턴 전체 로직 조율 — 낮→밤 처리 (백테스팅 가능)
 ├── scenes/                   # Phaser 씬 (Godot 이식 시 대체)
 │   ├── TitleScene.js         # 타이틀 화면
 │   ├── IntroScene.js         # 인트로 연출
 │   ├── HeroSelectScene.js    # 영웅 선택 화면 (LPC 합성)
-│   ├── MapScene.js           # 단일 맵 뷰 (모든 페이즈 처리)
+│   ├── MapScene.js           # 단일 맵 뷰 (코디네이터, ~280줄)
+│   ├── map/                  # MapScene 하위 모듈 (11개)
+│   │   ├── MapConstants.js, MapWidgets.js, MapPopupSystem.js
+│   │   ├── MapHUD.js, MapWorld.js, MapBottomPanel.js
+│   │   ├── MapActions.js, MapTurnFlow.js
+│   │   └── popups/ (PopupsBuild.js, PopupsHero.js, PopupsAction.js)
 │   ├── MapDefenseMode.js     # 방어전 오버레이 (영외 전투)
 │   ├── MapHuntPopup.js       # 사냥 1:1 팝업 (MapScene 위)
 │   ├── EventScene.js         # 이벤트/선택지 (오버레이)
@@ -168,7 +175,7 @@ src/
 | 4 | **원정 실시간 전투** | 미구현 | 결과형→실시간 오토배틀+카드로 전환 예정 |
 | 5 | **챕터별 환경 변조 적용** | 미구현 | CSV 로드+registry 등록까지 완료, 게임플레이 적용 코드 없음 |
 | 6 | **밸런싱 수치 적용** | 초안 완료 | balance_design.md 작성 완료. 수치 적용 미착수 |
-| 7 | **MapScene 분리** | 미착수 | 2543줄 → 팝업/탭/HUD/턴로직 모듈 분리 필요 |
+| 7 | **MapScene 분리** | ✅ 완료 | 2979줄 → 278줄 코디네이터 + 11개 모듈(map/) + game_logic 2개(DayActions/TurnProcessor). 백테스팅 가능 구조 |
 
 ---
 

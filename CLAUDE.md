@@ -54,10 +54,17 @@ TheSevenSimulation/
 └── src/                       # 소스 코드 (Phase 1: Phaser.js)
     ├── game_logic/            # 순수 게임 로직 (Godot 이식 대상, balance 주입)
     │   ├── BattleEngine.js    # 전투 계산 (MELEE/TAG/DUEL 3모드 + SP/카드)
+    │   ├── DayActions.js      # 낮 행동 순수 로직 (채집/벌목/연회/사냥, 백테스팅 가능)
+    │   ├── TurnProcessor.js   # 턴 전체 로직 조율 (낮→밤 처리, 백테스팅 가능)
     │   ├── SpriteComposer.js  # LPC 랜덤 외형 생성 (순수 JS)
     │   └── ...
     ├── scenes/                # Phaser 씬 (Godot 이식 시 대체)
-    │   ├── MapScene.js        # 단일 맵 뷰 (모든 페이즈, 영내+영외)
+    │   ├── MapScene.js        # 단일 맵 뷰 (코디네이터 ~280줄)
+    │   ├── map/               # MapScene 하위 모듈 (11개)
+    │   │   ├── MapConstants.js, MapWidgets.js, MapPopupSystem.js
+    │   │   ├── MapHUD.js, MapWorld.js, MapBottomPanel.js
+    │   │   ├── MapActions.js, MapTurnFlow.js
+    │   │   └── popups/ (PopupsBuild, PopupsHero, PopupsAction)
     │   ├── MapDefenseMode.js  # 방어전 오버레이 (영외 전투)
     │   ├── MapHuntPopup.js    # 사냥 1:1 팝업 (MapScene 위)
     │   ├── SpriteConstants.js # 스프라이트 공유 상수/유틸
