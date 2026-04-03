@@ -612,4 +612,246 @@ Day 16: 전리품 대량 → [탐욕] 만족 → 선순환
 
 ---
 
-*마지막 업데이트: 2026-04-02 (2장 사기 재설계 확정, 3장 RimWorld 특성 조사 추가, 논의 진행 중)*
+## DEV_PLAN 미완료 7개 항목 종합 개선안
+
+> 작성일: 2026-04-03  
+> 목적: DEV_PLAN.md 미완료 7개 항목에 대한 구체적 개선 방향 정리 (다음 세션 참조용)
+
+---
+
+### 우선순위 종합
+
+| 순위 | 항목 | 상태 | 이유 |
+|------|------|------|------|
+| 1 | 밸런싱 Quick Wins | CSV 교체만 | 현재 방어전이 설계서 기준 과도하게 가파름 |
+| 2 | 사기 5구간 구현 | 기획 확정 | 핵심 재미 루프 직결 |
+| 3 | 챕터별 환경 변조 | 인프라 구축 | 챕터 콘텐츠의 전제 조건 |
+| 4 | 원정 실시간 전투 | 기존 패턴 재활용 | BattleSceneA realtime 모드 활용 |
+| 5 | MapScene 분리 | 리팩토링 | 이후 모든 기능 추가의 유지보수성 |
+| 6 | 장비 시스템 | Phase 1 범위 | 폭식/시기 죄종 연동 활성화 |
+| 7 | 챕터 2~7 콘텐츠 | 인프라 완료 후 | CSV 추가로 반복 생산 |
+
+---
+
+### 1. 사기 5구간 재설계 구현
+
+**방향**: "높을수록 좋되 100이면 폭주"로 전환. 양극단 모두 나쁜 구조 해소.
+
+| 구간 | 범위 | 새 동작 |
+|------|------|--------|
+| 이탈 | 0 | 즉시 이탈 (유지) |
+| 불만 | 1~30 | 능력 저하 + 매 턴 이탈 확률 체크 |
+| 안정 | 31~70 | 정상 운용 |
+| 고양 | 71~99 | 능력 강화 + 구원(Inspiration) 확률 + 폭주 확률 체크 |
+| 폭주 | 100 | 통제 불능 (유지) |
+
+**추가**: 영웅별 최근 7건 사기 변동 로그 + 클릭 시 팝업
+
+**변경 파일**:
+- `src/data/balance.csv` — 키 9개 추가 (desertion_check_base_chance, rampage_check_base_chance, inspiration_chance, inspiration_cooldown, morale_debuff_factor, morale_buff_factor, morale_log_max, desertion_check_scale, rampage_check_scale)
+- `src/game_logic/SinSystem.js` — `checkMoraleRisks(day)` 신규 메서드
+- `src/game_logic/HeroManager.js` — `updateMorale(id, delta, reason)` 로그 기록, `getMoraleModifier(morale)` 추가
+- `src/scenes/MapScene.js` — 밤 페이즈 확률 체크 호출, 사기 로그 UI
+- `src/scenes/SettlementScene.js` — 하드코딩 임계값(30, 90, 10) → balance 참조
+
+**검증 포인트**:
+- 연쇄 반응으로 구간 진입한 턴에는 확률 체크 면제 (가혹함 방지)
+- 구원 쿨다운 5턴 (중복 발동 방지)
+- `_doStabilize()`: 불만 구간 영웅만 대상으로 제한 (고양 구간 영웅 사기 내리면 역효과)
+- 기존 세이브 호환: `hero.moraleLog || []` 폴백 처리 필수
+
+---
+
+### 2. 장비 시스템
+
+**방향**: "7스탯 보정형 트레이드오프 장비" — 모든 장비가 스탯 일부를 올리고 일부를 내림
+
+**Phase 1 (지금)**:
+- `src/data/equipment.csv` 신규 (15종: 무기 5, 방어구 5, 장신구 5)
+- `src/data/equipment_drops.csv` 신규 (스테이지별 드롭 풀)
+- `src/game_logic/EquipmentManager.js` 신규 (인벤토리, 장착/해제, 스탯 보정)
+- `src/game_logic/HeroManager.js` — `getEffectiveStats(hero)` 추가 (기본스탯 + 장비보정)
+- `src/game_logic/BattleEngine.js` — `_calcHP`, `_calcATK`에 장비 보정 반영
+- `src/scenes/MapScene.js` — `_renderItemTab()` 플레이스홀더 → 실제 UI
+- 폭식 만족조건(`fully_equipped`) / 시기 폭주(장비 파괴) 연동 활성화
+
+**Phase 2 (나중)**: 죄종 접사, 품질 3등급, 보스 유니크 7종, 강화/업그레이드
+
+**검증 포인트**:
+- 보정 범위 +1~+5 (스탯 2~18 기준)
+- 모든 장비에 양수+음수 보정 (무조건 이득 장비 없음)
+- 제작=보통급, 원정 드롭=고급급 구분 (Bannerlord 반면교사)
+- 폭식/시기 죄종 기능 Phase 1에서 반드시 활성화 (기존 CSV 조건 사용 중)
+
+---
+
+### 3. 챕터 2~7 콘텐츠
+
+**방향**: Phase A(인프라) 먼저 → Phase B(CSV 추가로 반복 생산)
+
+**Phase A — 선행 인프라** (신규 코드):
+- `src/game_logic/ChapterManager.js` 신설 — 환경 변조 적용/해제, 보스 해금 조건
+- `src/scenes/ChapterTransitionScene.js` 신설 — 보스 유언 + 기억 파편 + 다음 챕터 안내
+- `src/scenes/MapScene.js` line 2805 — 보스 승리 시 챕터 7이면 엔딩, 나머지는 ChapterTransitionScene
+- `src/scenes/GameOverScene.js` — 하드코딩 "사탄" 텍스트 → 동적 보스 서사
+- `src/game_logic/EventSystem.js` — `_filterCandidates()`에 chapter 필드 필터 추가
+- `src/data/chapters.csv` — `memory_fragment` 컬럼 추가
+
+**Phase B — 챕터별 파이프라인** (CSV만):
+```
+stages.csv 4행 + stage_enemies.csv 12~15행 + events 3CSV + chapter_modifiers.csv
+```
+
+**챕터 개발 순서**:
+1. 챕터 2 (시기) — 신규 시스템 불필요, 인프라 검증용
+2. 챕터 3 (탐욕) — 기존 자원/거래 시스템 활용
+3. 챕터 5 (폭식) — 자원 소모 증가만으로 환경 변조 가능
+4. 챕터 4 (나태) — 보스 해금 조건(이탈 없음) 추적 필요
+5. 챕터 6 (색욕) — **내통자 시스템 신규** (구현 비용 높음)
+6. 챕터 7 (교만) — **Decision Tracker + 과거 결산** (마지막)
+
+**검증 포인트**:
+- ExpeditionManager 챕터 전환 로직 이미 완비 — stages.csv 행 추가만으로 동작
+- 총 CSV 추가량 ~260~280행, 대부분 chapter_scenario.md 텍스트 → CSV 변환
+- 챕터 6/7 별도 시스템 필요 → 인프라 완성 후 최후순위
+
+---
+
+### 4. 원정 실시간 전투
+
+**방향**: 결과형(simulate 즉시완료) → 실시간(tick 단위 + 플레이어 개입)
+
+**핵심**: 방어전(`MapDefenseMode`)이 이미 동일 패턴 구현 중 → 원정에 그대로 적용
+
+**씬 플로우**:
+```
+현재: dispatch() → resolveExpedition() → simulate() 즉시완료 → ResultScene
+개선: dispatch() → prepareExpeditionBattle() → BattleSceneA(realtime) → onClose() → finalizeExpedition() → ResultScene(간소화)
+```
+
+**변경 파일**:
+- `src/game_logic/ExpeditionManager.js` — `resolveExpedition()`을 `prepareExpeditionBattle()` + `finalizeExpedition(result)`로 분리
+- `src/scenes/MapScene.js` — `_processEveningPhase()`: 방어전 패턴 참고하여 BattleSceneA launch
+- `src/scenes/ResultScene.js` — 전투 결과 제거, 보상/감시탑 정보만 남김
+
+**카드 → 지시+죄종 기술 전환** (우선순위 P1~P2):
+
+바알 지시 (쿨다운 재사용):
+- 진격: ATK+30%/DEF-20% (SP 20, 쿨다운 5틱)
+- 후퇴: DEF+30%/ATK-20% (SP 15)
+- 집중공격: 지목 적에게 집중 (SP 25)
+
+죄종 기술 (사기 71+이면 자동, 31~70이면 수동):
+- 분노: 광전사 / 교만: 불굴 / 시기: 저주 / 폭식: 포식 / 나태: 안식 / 색욕: 유혹 / 탐욕: 약탈
+
+**검증 포인트**:
+- BattleSceneA가 이미 realtime/replay 양 모드 지원 — 기술적 위험 최소
+- 반복감 방지: 스킵 기능 유지 필수
+- 구현 우선순위: P0 실시간 전환 → P1 지시 → P2 죄종 기술 → P3 일기토 선택
+
+---
+
+### 5. 챕터별 환경 변조 적용
+
+**현재 상태**: CSV 파싱+registry 완료. 실제 게임 로직 반영 코드 0줄.
+
+**신규 파일**: `src/game_logic/ChapterEnvironment.js`
+
+```javascript
+getMoraleModifier(sinType)              // 밤 결산 죄종별 사기 보정
+getPassiveMorale()                      // 매 턴 전체 사기 (나태: -2/턴)
+getRaidScaleMultiplier()                // 습격 규모 배율 (분노: 1.5x)
+getResourceConsumptionMultiplier()      // 자원 소모 배율 (폭식: 1.5x)
+getLootMultiplier()                     // 전리품 배율
+getEventChanceMultiplier(sinType)       // 이벤트 확률 배율
+getMoraleReactionMultiplier()           // 사기 반응 배율 (시기: 2x)
+getSatisfactionMultiplier()             // 죄종 만족 배율 (나태: 0.5x)
+```
+
+**CSV 확장**: `src/data/chapters.csv`에 9개 컬럼 추가
+(`env_raid_scale`, `env_raid_interval_mod`, `env_resource_consume`, `env_loot_mult`, `env_event_sin`, `env_event_mult`, `env_morale_react_mult`, `env_passive_morale`, `env_satisfaction_mult`)
+
+**적용 지점 (file:line)**:
+- `MapScene._finishNightPhase()` ~2948 — 사기 보정/반응 배율
+- `MapScene._processNightPhase()` ~2818 — 패시브 사기 + 습격 규모
+- `MapScene._processDayPhase()` ~2780 — 자원 소모 배율
+- `MapScene._checkSinConditions()` ~2968 — 만족 배율
+- `ExpeditionManager.shouldRaid()` ~46 — 습격 간격 보정
+- `ExpeditionManager.resolveExpedition()` ~121 — 전리품 배율
+- `EventSystem._filterCandidates()` ~88 — 이벤트 확률 배율
+
+**검증 포인트**:
+- 챕터 전환 시 변조 자동 교체 (스태킹 없음)
+- 극단 케이스: 나태(-2/턴) + 배급 삭감(-3) + 나태 연속배치(-3) = -8/턴 → 클램핑 필요
+- 챕터 6(내통자) / 챕터 7(과거 결산)은 CSV 불가 → 별도 플래그 처리
+
+---
+
+### 6. 밸런싱 수치 적용
+
+**Quick Wins — balance.csv 값만 교체 (즉시 가능)**:
+
+| 키 | 현재 | 변경 | 근거 |
+|---|------|------|------|
+| `defense_enemy_hp_base` | 120 | **80** | 설계서: 초기 HP 과다 |
+| `defense_enemy_hp_per_day` | 8 | **5** | 설계서: 성장률 과잉 |
+| `defense_enemy_atk_base` | 12 | **10** | 설계서 |
+| `defense_enemy_atk_per_day` | 2 | **1.2** | Day 20 ATK 52→34 |
+| `defense_enemy_spd` | 5 | **4** | 설계서 |
+| `raid_scale_divisor` | 3 | **4** | 적 수 증가 완화 |
+| `starting_wood` | 50 | **100** | Tier 1 진입 시간 단축 |
+| `gather_base_food` | 8 | **10** | 채집 기본량 상향 |
+| `lumber_base_wood` | 6 | **12** | 벌목 기본량 상향 |
+| `food_cost_base` | 5 | **8** | 식량 긴장감 강화 |
+
+**Deep Tuning — 코드 수정 필요**:
+- 불만 쿨다운 3턴: `SinSystem.js`에 영웅별 `frustrationCooldown` 상태 추적 신규
+- 방어전 step 보너스: `ExpeditionManager.simulateDefense()`에 5일마다 HP+10 추가
+- 채집/벌목 적합도 보정: `MapScene._doGather()` line ~1633의 `Math.random()*day` → 영웅 스탯 기반
+- 이탈 효과 3건: `desertion_effects.csv` (envy: 건물 레벨다운, gluttony: 식량-30, pride: 전체사기-8)
+
+**검증 포인트**:
+- `food_cost_base`(5→8)과 `gather_base_food`(8→10) **반드시 동시 적용** (식량만 올리면 Day 5 고갈)
+- `defense_scaling.csv` 미사용 확인 후 정리/삭제
+- 30턴 시뮬레이션으로 영웅 이탈률, 자원 소진, 보스 도달 가능성 검증
+
+---
+
+### 7. MapScene 분리
+
+**현재**: 2,981줄, 메서드 76개, 책임 영역 7개 혼재
+
+**제안 구조** (`MapDefenseMode`/`MapHuntPopup`의 `scene 주입 + plain class` 패턴 재사용):
+
+```
+src/scenes/
+├── MapScene.js              (~400줄, 코디네이터)
+└── map/
+    ├── MapConstants.js      (~100줄, 상수/색상/레이아웃)
+    ├── MapHUD.js            (~120줄, 상단 HUD 그리기+갱신)
+    ├── MapWorld.js          (~300줄, 맵 영역+건물 슬롯)
+    ├── MapBottomPanel.js    (~500줄, 탭 바+6개 탭 렌더러)
+    ├── MapPopupSystem.js    (~150줄, 팝업 스택 인프라+위젯)
+    ├── MapPopups.js         (~1,200줄, 14개 개별 팝업 렌더링)
+    ├── MapTurnFlow.js       (~290줄, 턴 진행 시퀀스)
+    └── MapActions.js        (~130줄, 채집/벌목/사냥 등 액션)
+```
+
+**구현 순서** (안전 우선):
+1. `MapConstants.js` — 상수 추출, 의존성 없음
+2. `MapPopupSystem.js` — 팝업 인프라, 자기 완결적
+3. `MapHUD.js` — 독립적 UI 영역
+4. `MapActions.js` — 순수 로직, UI 의존 없음
+5. `MapBottomPanel.js` — 탭 6개 일괄 이동
+6. `MapWorld.js` — 맵 렌더링 + 건물 관리
+7. `MapPopups.js` — 가장 큰 덩어리, PopupSystem 의존
+8. `MapTurnFlow.js` — 모든 매니저 참조, 씬 전환 포함
+
+**검증 포인트**:
+- 모듈 간 통신: 콜백 주입 패턴 (Phaser events 대신 — 디버깅 용이)
+- 각 모듈의 `destroy()`에서 store 구독 해제 필수
+- `MapPopups.js` 1,200줄은 추후 팝업별 추가 분리 가능 (1차에선 하나로 묶음)
+
+---
+
+*마지막 업데이트: 2026-04-03 (DEV_PLAN 미완료 7개 항목 종합 개선안 추가, 밸런싱 Quick Wins CSV 적용 완료)*
