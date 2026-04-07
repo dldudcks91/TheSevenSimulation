@@ -2,6 +2,7 @@
  * 결산 화면 (밤 끝)
  * 방어 결과 + 사기 변동 + 폭주/이탈 연쇄 반응 표시
  */
+import { topSin } from '../game_logic/SinUtils.js';
 import { FONT } from '../constants.js';
 
 const MORALE_COLORS = {
@@ -63,7 +64,7 @@ class SettlementScene extends Phaser.Scene {
         y += 20;
 
         for (const hero of this.heroes) {
-            const sinColor = SIN_COLORS[hero.primarySin] || '#a0a0c0';
+            const sinColor = SIN_COLORS[topSin(hero.sinStats)] || '#a0a0c0';
             const moraleColor = hero.morale <= 30 ? '#f8b830' : hero.morale >= 90 ? '#e03030' : '#a0a0c0';
             const warning = hero.morale >= 90 ? ' ⚠ 폭주 임박' : hero.morale <= 10 ? ' ⚠ 이탈 임박' : '';
 

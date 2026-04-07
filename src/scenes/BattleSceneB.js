@@ -8,6 +8,7 @@
  * 모드: realtime (engine tick) / replay (log 재생)
  */
 import { BATTLE_MODES } from '../game_logic/BattleEngine.js';
+import { topSin } from '../game_logic/SinUtils.js';
 import { FONT } from '../constants.js';
 import {
     FRAME_SIZE, ANIM_FPS, SHEET_CONFIG, DIR_EAST, DIR_WEST,
@@ -354,7 +355,8 @@ class BattleSceneB extends Phaser.Scene {
         let spriteType;
         if (isHero) {
             const heroInfo = this.heroData.find(h => h.name === unitData.name);
-            spriteType = SIN_SPRITE_MAP[heroInfo?.primarySin || unitData.primarySin] || DEFAULT_SPRITE;
+            const sin = heroInfo ? topSin(heroInfo.sinStats) : (topSin(unitData.sinStats) || unitData.primarySin);
+            spriteType = SIN_SPRITE_MAP[sin] || DEFAULT_SPRITE;
         } else {
             spriteType = this._enemySpriteMap[unitData.name] || ENEMY_SPRITES[0];
         }

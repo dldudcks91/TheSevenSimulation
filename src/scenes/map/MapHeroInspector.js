@@ -13,6 +13,7 @@ import {
 import { FONT, FONT_BOLD } from '../../constants.js';
 import store from '../../store/Store.js';
 import SpriteRenderer from '../SpriteRenderer.js';
+import { topSin, SIN_NAMES_KO } from '../../game_logic/SinUtils.js';
 
 const STAT_MAX = 20;
 
@@ -98,7 +99,7 @@ class MapHeroInspector {
 
     _drawProfile(x, y, hero) {
         const s = this.scene;
-        const sinColorHex = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
+        const sinColorHex = SIN_COLOR_HEX[topSin(hero.sinStats)] || C.textMuted;
         const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
         const pw = INSP_PROFILE_W - 12;
         const panelH = INSP_H - 24;
@@ -158,7 +159,7 @@ class MapHeroInspector {
                 fontSize: '11px', pp: obj => this._p(obj), depth: INSP_DEPTH + 2
             });
         } else {
-            this._p(s.add.text(x + pw / 2 - 40, ty, hero.sinName, {
+            this._p(s.add.text(x + pw / 2 - 40, ty, SIN_NAMES_KO[topSin(hero.sinStats)], {
                 fontSize: '11px', fontFamily: FONT, color: sinColorHex
             }).setDepth(INSP_DEPTH + 2));
         }
@@ -209,7 +210,7 @@ class MapHeroInspector {
         ty += 24;
 
         // 스토리
-        this._p(s.add.text(x + 12, ty, this._getStory(hero.primarySin), {
+        this._p(s.add.text(x + 12, ty, this._getStory(topSin(hero.sinStats)), {
             fontSize: '10px', fontFamily: FONT, color: C.textMuted,
             lineSpacing: 3, wordWrap: { width: pw - 24 }
         }).setDepth(INSP_DEPTH + 2));

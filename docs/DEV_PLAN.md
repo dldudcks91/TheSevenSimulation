@@ -1,7 +1,7 @@
 # TheSevenSimulation 개발 계획서
 
 > 작성일: 2026-03-24
-> 마지막 업데이트: 2026-04-03
+> 마지막 업데이트: 2026-04-07
 
 ---
 
@@ -180,7 +180,7 @@ src/
 | 5 | **챕터별 환경 변조 적용** | 미구현 | CSV 로드+registry 등록까지 완료, 게임플레이 적용 코드 없음 |
 | 6 | **밸런싱 수치 적용** | 초안 완료 | balance_design.md 작성 완료. 수치 적용 미착수 |
 | 7 | **MapScene 분리** | ✅ 완료 | 2979줄 → 278줄 코디네이터 + 11개 모듈(map/) + game_logic 2개(DayActions/TurnProcessor). 백테스팅 가능 구조 |
-| 8 | **죄종 수치화 + 특성 시스템** | ✅ 1단계 완료 | 죄종 태그→죄종 7수치(sinStats)+primarySin 자동파생. 선천특성 1개 랜덤부여(traits.csv 55개). sinType→primarySin 전환 완료(20+파일). 2단계: sinType 의존 로직을 특성/sinStats 기반으로 재설계 |
+| 8 | **죄종 수치화 + 특성 시스템** | ✅ 2단계 완료 | 1단계: sinType→primarySin 전환(20+파일). 2단계: primarySin 라벨 제거, 특성 우선→sinStats 가중 확률→이력 누적 후천 고정. SinUtils.js 신규, 선천 특성 10개→행동강박 폭주/이탈 매핑, 후천 폭주 7종 추가(traits.csv 67개). game_logic 7파일+UI 14파일 전환 완료. |
 
 ---
 

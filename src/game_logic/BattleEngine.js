@@ -7,6 +7,7 @@
  *
  * 모든 밸런스 상수는 balance 데이터에서 주입
  */
+import { weightedSinRoll, sinIntensity, topSin, SIN_KEYS } from './SinUtils.js';
 
 const BATTLE_TYPES = { EXPEDITION: 'expedition', DEFENSE: 'defense' };
 const BATTLE_MODES = { MELEE: 'melee', TAG: 'tag', DUEL: 'duel' };
@@ -128,7 +129,8 @@ class BattleEngine {
             isHero: true,
             isSoldier: false,
             alive: true,
-            primarySin: h.primarySin || null
+            primarySin: topSin(h.sinStats),
+            sinStats: h.sinStats || null
         };
     }
 
@@ -199,7 +201,7 @@ class BattleEngine {
 
         // 죄종별 일기토 성향 (balance.csv에서 로드)
         const b = this.balance;
-        const duelChances = {
+        const duelChanceMap = {
             wrath: b.duel_chance_wrath ?? 0.5,
             pride: b.duel_chance_pride ?? 0.35,
             envy: b.duel_chance_envy ?? 0.25,
@@ -210,14 +212,23 @@ class BattleEngine {
         };
 
         for (const hero of aliveHeroes) {
-            const chance = duelChances[hero.primarySin] ?? this.DUEL_REQUEST_CHANCE;
+            // 7죄종 수치 가중 합산으로 일기토 확률 계산
+            let chance = 0;
+            if (hero.sinStats) {
+                for (const sin of SIN_KEYS) {
+                    chance += sinIntensity(hero.sinStats, sin) * (duelChanceMap[sin] ?? this.DUEL_REQUEST_CHANCE);
+                }
+            } else {
+                chance = this.DUEL_REQUEST_CHANCE;
+            }
             if (Math.random() < chance) {
-                // 타겟 선택
+                // 타겟 선택: weightedSinRoll로 죄종 뽑고 행동 결정
+                const rolledSin = hero.sinStats ? weightedSinRoll(hero.sinStats) : topSin(hero.sinStats);
                 let target;
-                if (hero.primarySin === 'pride') {
+                if (rolledSin === 'pride') {
                     // 교만: 가장 강한 적
                     target = aliveEnemies.reduce((a, b) => a.hp > b.hp ? a : b);
-                } else if (hero.primarySin === 'gluttony') {
+                } else if (rolledSin === 'gluttony') {
                     // 폭식: 가장 약한 적
                     target = aliveEnemies.reduce((a, b) => a.hp < b.hp ? a : b);
                 } else {
@@ -609,8 +620,11 @@ class BattleEngine {
 
         const events = [];
 
-        // 죄종 시너지 체크
-        const hasSinBonus = partySinTypes.includes(card.sin_bonus_type);
+        // 죄종 시너지 체크: 파티 내 해당 수치 10+ 영웅 존재 여부
+        const aliveHeroes = this._heroUnits.filter(u => u.alive && !u.isSoldier);
+        const hasSinBonus = card.sin_bonus_type
+            ? aliveHeroes.some(h => (h.sinStats?.[card.sin_bonus_type] || 0) >= 10)
+            : partySinTypes.includes(card.sin_bonus_type);
 
         switch (card.effect_type) {
             case 'atk_mult': {

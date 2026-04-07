@@ -5,6 +5,8 @@
  * 위험 영웅(사기 80+/25-)과 안정 영웅을 분류.
  */
 
+import { weightedSinRoll, topSin, sinIntensity, SIN_NAMES_KO, SIN_KEYS } from './SinUtils.js';
+
 const DANGER_HIGH = 80;
 const DANGER_LOW = 25;
 
@@ -183,12 +185,15 @@ class MorningReport {
         for (const hero of heroes) {
             if (hero.status === 'dead') continue;
 
+            const dominant = topSin(hero.sinStats);
+            const rolledSin = weightedSinRoll(hero.sinStats);
+
             const entry = {
                 id: hero.id,
                 name: hero.name,
                 epithet: hero.epithet || '',
-                primarySin: hero.primarySin,
-                sinName: hero.sinName,
+                dominantSin: dominant,
+                sinName: SIN_NAMES_KO[dominant],
                 morale: hero.morale,
                 status: hero.status,
                 condition: this._getCondition(hero),
@@ -198,19 +203,19 @@ class MorningReport {
                 entry.level = 'high';
                 entry.icon = '🔺';
                 entry.label = '폭주 위험';
-                entry.text = this._pickText(hero.primarySin, 'high');
+                entry.text = this._pickText(rolledSin, 'high');
                 alerts.push(entry);
             } else if (hero.morale <= this.dangerLow) {
                 entry.level = 'low';
                 entry.icon = '🔻';
                 entry.label = '이탈 위험';
-                entry.text = this._pickText(hero.primarySin, 'low');
+                entry.text = this._pickText(rolledSin, 'low');
                 alerts.push(entry);
             } else {
                 entry.level = 'stable';
                 entry.icon = '─';
                 entry.label = '안정';
-                entry.text = this._pickText(hero.primarySin, 'stable');
+                entry.text = this._pickText(rolledSin, 'stable');
                 stables.push(entry);
             }
         }
@@ -218,37 +223,51 @@ class MorningReport {
         return { alerts, stables, raidInfo };
     }
 
-    /** 죄종별 현재 진행 중인 조건 판정 */
+    /** 모든 죄종 조건 병렬 체크, 강도 높은 것 우선 */
     _getCondition(hero) {
-        const sin = hero.primarySin;
-        const texts = SIN_CONDITION_TEXTS[sin];
-        if (!texts) return null;
+        const candidates = [];
 
-        switch (sin) {
-            case 'wrath': {
-                const days = hero.daysIdle || 0;
-                if (days >= this.wrathIdleThreshold) return { type: 'unhappy', text: texts.unhappy(days) };
-                if (hero.status === 'expedition' || hero.status === 'hunt') return { type: 'happy', text: texts.happy() };
-                return null;
+        for (const sin of SIN_KEYS) {
+            const texts = SIN_CONDITION_TEXTS[sin];
+            if (!texts) continue;
+
+            const intensity = sinIntensity(hero.sinStats, sin);
+            let result = null;
+
+            switch (sin) {
+                case 'wrath': {
+                    const days = hero.daysIdle || 0;
+                    if (days >= this.wrathIdleThreshold) result = { type: 'unhappy', text: texts.unhappy(days) };
+                    else if (hero.status === 'expedition' || hero.status === 'hunt') result = { type: 'happy', text: texts.happy() };
+                    break;
+                }
+                case 'sloth': {
+                    if (hero.status !== 'idle' && hero.status !== 'injured') result = { type: 'unhappy', text: texts.unhappy() };
+                    else if (hero.status === 'idle') result = { type: 'happy', text: texts.happy() };
+                    break;
+                }
+                case 'pride': {
+                    if (hero._lastDefenseWin === true) result = { type: 'happy', text: texts.happy() };
+                    else if (hero._lastDefenseWin === false) result = { type: 'unhappy', text: texts.unhappy() };
+                    break;
+                }
+                default: {
+                    if (hero.morale <= 40) result = { type: 'unhappy', text: texts.unhappy() };
+                    else if (hero.morale >= 65) result = { type: 'happy', text: texts.happy() };
+                    break;
+                }
             }
-            case 'sloth': {
-                if (hero.status !== 'idle' && hero.status !== 'injured') return { type: 'unhappy', text: texts.unhappy() };
-                if (hero.status === 'idle') return { type: 'happy', text: texts.happy() };
-                return null;
-            }
-            case 'pride': {
-                // 최근 방어 결과 기반 (hero에 lastDefenseResult가 있으면)
-                if (hero._lastDefenseWin === true) return { type: 'happy', text: texts.happy() };
-                if (hero._lastDefenseWin === false) return { type: 'unhappy', text: texts.unhappy() };
-                return null;
-            }
-            default: {
-                // 사기 방향으로 간단 판정
-                if (hero.morale <= 40) return { type: 'unhappy', text: texts.unhappy() };
-                if (hero.morale >= 65) return { type: 'happy', text: texts.happy() };
-                return null;
+
+            if (result) {
+                candidates.push({ ...result, sin, intensity });
             }
         }
+
+        if (candidates.length === 0) return null;
+
+        // 강도 높은 죄종의 조건 우선
+        candidates.sort((a, b) => b.intensity - a.intensity);
+        return { type: candidates[0].type, text: candidates[0].text };
     }
 
     _pickText(primarySin, level) {

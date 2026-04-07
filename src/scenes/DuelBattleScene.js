@@ -11,6 +11,7 @@
  *   onClose  — 전투 종료 콜백 (result: { victory, heroResult })
  */
 import BattleEngine, { BATTLE_TYPES } from '../game_logic/BattleEngine.js';
+import { topSin } from '../game_logic/SinUtils.js';
 import { FONT } from '../constants.js';
 
 // ── 레이아웃 ──
@@ -232,7 +233,7 @@ class DuelBattleScene extends Phaser.Scene {
 
     _createHeroUnit() {
         const hero = this._heroData;
-        const spriteType = SIN_SPRITE_MAP[hero.primarySin] || DEFAULT_SPRITE;
+        const spriteType = SIN_SPRITE_MAP[topSin(hero.sinStats) || hero.primarySin] || DEFAULT_SPRITE;
         const units = this.engine.getUnits();
         const heroUnit = units.heroes[0];
 

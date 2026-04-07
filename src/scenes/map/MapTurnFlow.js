@@ -7,6 +7,7 @@ import MorningReport from '../../game_logic/MorningReport.js';
 import MorningReportPopup from '../MorningReportPopup.js';
 import MapDefenseMode from '../MapDefenseMode.js';
 import { BATTLE_MODES } from '../../game_logic/BattleEngine.js';
+import { topSin } from '../../game_logic/SinUtils.js';
 
 class MapTurnFlow {
     constructor(scene) {
@@ -125,7 +126,7 @@ class MapTurnFlow {
 
         const baseHeroes = s.turnProcessor.getDefenseParty();
         const soldiers = store.getState('soldiers') || 0;
-        const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, primarySin: h.primarySin, appearance: h.appearance || null }));
+        const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, primarySin: topSin(h.sinStats), appearance: h.appearance || null }));
 
         if (baseHeroes.length === 0 && soldiers === 0) {
             this._finishNightPhase(turn, { victory: false, reason: 'no_defenders', log: [], soldiersLost: 0 });

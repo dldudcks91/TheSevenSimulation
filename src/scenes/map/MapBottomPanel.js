@@ -5,6 +5,7 @@
 import { C, SIN_COLOR_HEX, MORALE_COLORS_HEX, PANEL_Y, PANEL_H, PANEL_TAB_H, PANEL_CONTENT_Y, TABS } from './MapConstants.js';
 import { FONT, FONT_BOLD } from '../../constants.js';
 import store from '../../store/Store.js';
+import { topSin, SIN_NAMES_KO } from '../../game_logic/SinUtils.js';
 
 class MapBottomPanel {
     constructor(scene) {
@@ -154,7 +155,7 @@ class MapBottomPanel {
             if (hero.trait) {
                 this.p(s.widgets.traitLabel(cx + 8, y + 22, hero.trait, { fontSize: '10px', pp: obj => this.p(obj) }));
             } else {
-                this.p(s.add.text(cx + 8, y + 22, hero.sinName, {
+                this.p(s.add.text(cx + 8, y + 22, SIN_NAMES_KO[topSin(hero.sinStats)], {
                     fontSize: '10px', fontFamily: FONT, color: C.textMuted
                 }));
             }

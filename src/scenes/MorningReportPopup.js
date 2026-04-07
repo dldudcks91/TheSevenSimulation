@@ -6,6 +6,7 @@
  * 감시탑 습격 예고 포함.
  */
 import { FONT } from '../constants.js';
+import { topSin, SIN_NAMES_KO } from '../game_logic/SinUtils.js';
 
 const POP_W = 620;
 const POP_MIN_H = 200;
@@ -161,7 +162,7 @@ class MorningReportPopup {
 
     _drawHeroEntry(ox, y, entry, isAlert, container) {
         const target = container || this._container;
-        const sinColor = SIN_COLORS[entry.primarySin] || '#a0a0c0';
+        const sinColor = SIN_COLORS[topSin(entry.sinStats)] || '#a0a0c0';
 
         // 아이콘 + 이름
         const icon = isAlert ? (entry.level === 'high' ? '⚠' : '⚠') : '·';
@@ -180,7 +181,7 @@ class MorningReportPopup {
         target.add(nameText);
 
         // 죄종 태그
-        const sinTag = this.scene.add.text(ox + 36 + nameText.width + 8, y + 3, `[${entry.sinName}]`, {
+        const sinTag = this.scene.add.text(ox + 36 + nameText.width + 8, y + 3, `[${SIN_NAMES_KO[topSin(entry.sinStats)]}]`, {
             fontSize: '9px', fontFamily: FONT, color: sinColor
         });
         target.add(sinTag);

@@ -12,6 +12,7 @@
  *   popup.start();
  *   // scene.update에서: popup.update(time, delta);
  */
+import { topSin } from '../game_logic/SinUtils.js';
 import SpriteRenderer from './SpriteRenderer.js';
 import { FONT } from '../constants.js';
 import {
@@ -192,7 +193,7 @@ class MapActionPopup {
             sprite.play(`${heroId}_idle`);
             this._container.add(sprite);
         } else {
-            const spriteType = SIN_SPRITE_MAP[this.heroData.primarySin] || DEFAULT_SPRITE;
+            const spriteType = SIN_SPRITE_MAP[topSin(this.heroData.sinStats)] || DEFAULT_SPRITE;
             const key = `${spriteType}_idle_east`;
             if (!this.scene.anims.exists(key)) {
                 const config = SHEET_CONFIG.idle;
@@ -321,7 +322,7 @@ class MapActionPopup {
         y += 28;
 
         // 죄종별 대사
-        const sinQuotes = SIN_QUOTES[this.heroData.primarySin] || SIN_QUOTES.sloth;
+        const sinQuotes = SIN_QUOTES[topSin(this.heroData.sinStats)] || SIN_QUOTES.sloth;
         const quote = sinQuotes[Math.floor(Math.random() * sinQuotes.length)];
         const quoteText = this.scene.add.text(cx, y, `\u{1F4AC} ${quote}`, {
             fontSize: '10px', fontFamily: FONT, color: '#808098',

@@ -4,6 +4,7 @@
 import { C, ACTION_STATS, SIN_COLOR_HEX, MORALE_COLORS_HEX } from '../MapConstants.js';
 import { FONT, FONT_BOLD } from '../../../constants.js';
 import store from '../../../store/Store.js';
+import { topSin, SIN_NAMES_KO } from '../../../game_logic/SinUtils.js';
 
 class PopupsHero {
     constructor(scene) {
@@ -40,7 +41,7 @@ class PopupsHero {
         } else {
             for (const hero of heroes) {
                 const stars = s.dayActions.calcFitness(hero, statConfig.primary);
-                const sinColor = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
+                const sinColor = SIN_COLOR_HEX[topSin(hero.sinStats)] || C.textMuted;
 
                 const ibg = pp(s.add.graphics());
                 ibg.fillStyle(C.bgSecondary, 1); ibg.fillRoundedRect(px + 20, y, iw, 32, 4);
@@ -52,7 +53,7 @@ class PopupsHero {
                 if (hero.trait) {
                     s.widgets.traitLabel(px + 200, y + 9, hero.trait, { pp });
                 } else {
-                    pp(s.add.text(px + 200, y + 9, hero.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
+                    pp(s.add.text(px + 200, y + 9, SIN_NAMES_KO[topSin(hero.sinStats)], { fontSize: '9px', fontFamily: FONT, color: sinColor }));
                 }
                 pp(s.add.text(px + 290, y + 9, `${statConfig.label}력 ${stars}`, {
                     fontSize: '9px', fontFamily: FONT, color: C.expYellow
@@ -107,7 +108,7 @@ class PopupsHero {
         const st = hero.stats;
         const sub = hero.subStats || {};
         const derived = s.heroManager.getDerivedStats(hero);
-        const sinColorHex = SIN_COLOR_HEX[hero.primarySin] || C.textMuted;
+        const sinColorHex = SIN_COLOR_HEX[topSin(hero.sinStats)] || C.textMuted;
         const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
 
         // ─── 상단 카드 ───
@@ -163,7 +164,7 @@ class PopupsHero {
         if (hero.trait) {
             s.widgets.traitLabel(infoX + nameObj.width + 10, ty + 6, hero.trait, { fontSize: '14px', pp });
         } else {
-            pp(s.add.text(infoX + nameObj.width + 10, ty + 4, hero.sinName, { fontSize: '16px', fontFamily: FONT_BOLD, color: sinColorHex }));
+            pp(s.add.text(infoX + nameObj.width + 10, ty + 4, SIN_NAMES_KO[topSin(hero.sinStats)], { fontSize: '16px', fontFamily: FONT_BOLD, color: sinColorHex }));
         }
         pp(s.add.text(infoX + nameObj.width + 10, ty + 22, `🌾${hero.foodCost ?? '?'}/턴`, {
             fontSize: '11px', fontFamily: FONT, color: '#a08040'
@@ -171,7 +172,7 @@ class PopupsHero {
         ty += 30;
 
         // 스토리
-        const storyText = this.getHeroStory(hero.primarySin);
+        const storyText = this.getHeroStory(topSin(hero.sinStats));
         pp(s.add.text(infoX, ty, storyText, {
             fontSize: '11px', fontFamily: FONT, color: C.textMuted,
             lineSpacing: 3,
@@ -369,7 +370,7 @@ class PopupsHero {
         } else {
             const recruits = s.heroManager.generateRecruits(3);
             for (const recruit of recruits) {
-                const sinColor = SIN_COLOR_HEX[recruit.primarySin] || C.textMuted;
+                const sinColor = SIN_COLOR_HEX[topSin(recruit.sinStats)] || C.textMuted;
 
                 const ibg = pp(s.add.graphics());
                 ibg.fillStyle(C.bgSecondary, 1); ibg.fillRect(px + 20, y, iw, 80);
@@ -381,7 +382,7 @@ class PopupsHero {
                 if (recruit.trait) {
                     s.widgets.traitLabel(px + 32, y + 26, recruit.trait, { pp });
                 } else {
-                    pp(s.add.text(px + 32, y + 26, recruit.sinName, { fontSize: '9px', fontFamily: FONT, color: sinColor }));
+                    pp(s.add.text(px + 32, y + 26, SIN_NAMES_KO[topSin(recruit.sinStats)], { fontSize: '9px', fontFamily: FONT, color: sinColor }));
                 }
                 pp(s.add.text(px + 32, y + 42, '스탯: 고용 후 확인', {
                     fontSize: '9px', fontFamily: FONT, color: C.textMuted

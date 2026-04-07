@@ -10,6 +10,7 @@
  *   // scene.update에서: popup.update(time, delta);
  */
 import BattleEngine, { BATTLE_TYPES } from '../game_logic/BattleEngine.js';
+import { topSin } from '../game_logic/SinUtils.js';
 import SpriteRenderer from './SpriteRenderer.js';
 import { FONT } from '../constants.js';
 import {
@@ -292,7 +293,7 @@ class MapHuntPopup {
         const useComposed = !!this._composedHero;
         const spriteType = useComposed
             ? this._composedHeroId
-            : (SIN_SPRITE_MAP[this.heroData.primarySin] || DEFAULT_SPRITE);
+            : (SIN_SPRITE_MAP[topSin(this.heroData.sinStats)] || DEFAULT_SPRITE);
 
         this._units.hero = this._createUnitDisplay(
             this.heroData.name, this._ox + HERO_X, this._oy + GROUND_Y,
@@ -652,7 +653,7 @@ class MapHuntPopup {
     _createAnimations() {
         // 합성 스프라이트 영웅은 SpriteRenderer.compose()에서 이미 애니메이션 생성됨
         if (!this._composedHero) {
-            const heroSprite = SIN_SPRITE_MAP[this.heroData.primarySin] || DEFAULT_SPRITE;
+            const heroSprite = SIN_SPRITE_MAP[topSin(this.heroData.sinStats)] || DEFAULT_SPRITE;
             this._ensureDirectionalIdle(heroSprite, 'east', DIR_EAST);
         }
 

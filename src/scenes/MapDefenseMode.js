@@ -11,6 +11,7 @@
  *   // 종료 시 onComplete 콜백 호출
  */
 import BattleEngine, { BATTLE_MODES } from '../game_logic/BattleEngine.js';
+import { topSin } from '../game_logic/SinUtils.js';
 import SpriteRenderer from './SpriteRenderer.js';
 import { FONT } from '../constants.js';
 import {
@@ -215,7 +216,8 @@ class MapDefenseMode {
             const heroInfo = this.heroData.find(h => h.name === u.name);
             const heroId = heroInfo ? `hero_${heroInfo.id}` : null;
             const composed = this._composedHeroes[u.name];
-            const spriteType = composed ? heroId : (SIN_SPRITE_MAP[u.primarySin] || DEFAULT_SPRITE);
+            const sin = topSin(u.sinStats) || u.primarySin;
+            const spriteType = composed ? heroId : (SIN_SPRITE_MAP[sin] || DEFAULT_SPRITE);
             const useComposed = !!composed;
 
             const fx = HERO_START_X + i * 40;
@@ -505,7 +507,7 @@ class MapDefenseMode {
             .filter(u => u.isHero && u.alive)
             .map(u => {
                 const heroInfo = this.heroData.find(h => h.name === u.name);
-                return heroInfo?.primarySin || null;
+                return heroInfo ? topSin(heroInfo.sinStats) : null;
             }).filter(Boolean);
 
         const events = this.engine.useCard(card, partySinTypes);

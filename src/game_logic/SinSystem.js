@@ -1,7 +1,14 @@
 /**
  * 죄종/사기 시스템 — 폭주, 이탈, 연쇄 반응, 타락/구원
  * 모든 상수는 balance + desertionEffects 데이터에서 주입
+ *
+ * 행동 결정 방식 (2단계 재설계):
+ *   1순위: 특성(선천/후천)에 rampage_action 정의 → 해당 행동 확정
+ *   2순위: 특성 없으면 → sinStats 가중 확률로 죄종 뽑기
+ *   3순위: 같은 행동 2회 반복 → 후천 폭주 특성 자동 부여 → 이후 고정
  */
+
+import { weightedSinRoll, sinIntensity, topSin, SIN_NAMES_KO, findRampageTrait, findDesertionTrait } from './SinUtils.js';
 
 class SinSystem {
     constructor(store, sinRelations, balance = {}, desertionEffects = []) {
@@ -43,19 +50,37 @@ class SinSystem {
         return results;
     }
 
-    /** 폭주 처리 */
+    /** 폭주 처리 — 특성 우선 → sinStats 확률 fallback → 이력 누적 */
     _processRampage(hero, heroes) {
-        const chain = this.sinRelations.rampage_chain[hero.primarySin];
+        // 1순위: 특성에 폭주 행동이 정의되어 있는가?
+        const traitAction = findRampageTrait(hero);
+        let triggerSin;
+        if (traitAction) {
+            triggerSin = traitAction.sin;
+        } else {
+            // 2순위: sinStats 가중 확률로 죄종 뽑기
+            triggerSin = weightedSinRoll(hero.sinStats);
+        }
+
+        const chain = this.sinRelations.rampage_chain[triggerSin];
+        const intensity = sinIntensity(hero.sinStats, triggerSin);
         const result = {
             type: 'rampage',
             heroId: hero.id,
             heroName: hero.name,
-            primarySin: hero.primarySin,
-            sinName: this.sinRelations.sin_names_ko[hero.primarySin],
+            triggerSin,
+            sinName: SIN_NAMES_KO[triggerSin],
+            fromTrait: traitAction ? traitAction.traitName : null,
+            intensity,
             description: chain ? chain.description : '폭주!',
             corruptionResult: null,
             affectedHeroes: []
         };
+
+        // 3순위: 이력 누적 → 후천 폭주 특성 자동 부여
+        if (!hero._rampageHistory) hero._rampageHistory = [];
+        hero._rampageHistory.push(triggerSin);
+        this._checkRampageAcquiredTrait(hero, triggerSin);
 
         // 타락/구원 판정
         if (Math.random() < this.CORRUPTION_CHANCE) {
@@ -66,27 +91,32 @@ class SinSystem {
             hero.morale = this.SALVATION_RESET;
         }
 
-        // 연쇄 반응
+        // 연쇄 반응 — 강도 스케일링 적용
         if (chain) {
+            const scaledDelta = Math.round(chain.morale_delta * (0.5 + intensity * 0.5));
             if (chain.target === 'all') {
                 for (const h of heroes) {
                     if (h.id !== hero.id) {
-                        h.morale = Math.max(0, Math.min(100, h.morale + chain.morale_delta));
-                        result.affectedHeroes.push({ id: h.id, name: h.name, delta: chain.morale_delta });
+                        h.morale = Math.max(0, Math.min(100, h.morale + scaledDelta));
+                        result.affectedHeroes.push({ id: h.id, name: h.name, delta: scaledDelta });
                     }
                 }
             } else if (chain.target === 'random_2') {
                 const others = heroes.filter(h => h.id !== hero.id);
                 const targets = this._pickRandom(others, 2);
                 for (const t of targets) {
-                    t.morale = Math.max(0, Math.min(100, t.morale + chain.morale_delta));
-                    result.affectedHeroes.push({ id: t.id, name: t.name, delta: chain.morale_delta });
+                    t.morale = Math.max(0, Math.min(100, t.morale + scaledDelta));
+                    result.affectedHeroes.push({ id: t.id, name: t.name, delta: scaledDelta });
                 }
             } else {
-                const target = heroes.find(h => h.primarySin === chain.target && h.id !== hero.id);
+                // 타겟: 해당 죄종 수치가 가장 높은 영웅 (primarySin 대신)
+                const candidates = heroes.filter(h => h.id !== hero.id);
+                const target = candidates.length > 0
+                    ? candidates.sort((a, b) => (b.sinStats?.[chain.target] || 0) - (a.sinStats?.[chain.target] || 0))[0]
+                    : null;
                 if (target) {
-                    target.morale = Math.max(0, Math.min(100, target.morale + chain.morale_delta));
-                    result.affectedHeroes.push({ id: target.id, name: target.name, delta: chain.morale_delta });
+                    target.morale = Math.max(0, Math.min(100, target.morale + scaledDelta));
+                    result.affectedHeroes.push({ id: target.id, name: target.name, delta: scaledDelta });
                 }
             }
         }
@@ -94,22 +124,49 @@ class SinSystem {
         return result;
     }
 
-    /** 이탈 처리 (사기 0) — CSV desertion_effects 기반 */
+    /** 폭주 이력 확인 → 같은 행동 N회 시 후천 폭주 특성 부여 */
+    _checkRampageAcquiredTrait(hero, triggerSin) {
+        const threshold = this.balance.rampage_history_threshold ?? 2;
+        const count = hero._rampageHistory.filter(s => s === triggerSin).length;
+        if (count < threshold) return;
+
+        // 이미 후천 폭주 특성이 있으면 무시
+        if (!hero.acquiredTraits) hero.acquiredTraits = [];
+        const hasRampageTrait = hero.acquiredTraits.some(t => t.rampage_action);
+        if (hasRampageTrait) return;
+
+        // 해당 죄종의 후천 폭주 특성 찾기 (traits.csv에서 category=후천폭주)
+        const allTraits = this.store.getState('traitsData') || [];
+        const rampageTrait = allTraits.find(t => t.category === '후천폭주' && t.rampage_sin === triggerSin);
+        if (rampageTrait) {
+            hero.acquiredTraits.push({ ...rampageTrait });
+        }
+    }
+
+    /** 이탈 처리 (사기 0) — 특성 우선 → sinStats 확률 fallback */
     _processDesertion(hero, heroes) {
-        const sinData = this.sinRelations.sin_names_ko;
+        // 특성 우선 → 확률 fallback
+        const traitAction = findDesertionTrait(hero);
+        let triggerSin;
+        if (traitAction) {
+            triggerSin = traitAction.sin;
+        } else {
+            triggerSin = weightedSinRoll(hero.sinStats);
+        }
+
         const result = {
             type: 'desertion',
             heroId: hero.id,
             heroName: hero.name,
-            primarySin: hero.primarySin,
-            sinName: sinData[hero.primarySin],
+            triggerSin,
+            sinName: SIN_NAMES_KO[triggerSin],
+            fromTrait: traitAction ? traitAction.traitName : null,
             description: '',
             affectedHeroes: []
         };
 
         // CSV에서 이탈 효과 조회
-        const effect = this.desertionEffects.find(e => e.sin === hero.primarySin);
-        const sinDef = this.sinRelations.sin_names_ko[hero.primarySin];
+        const effect = this.desertionEffects.find(e => e.sin === triggerSin);
 
         if (effect) {
             // 이탈 설명 (sin_types에서 desertion 필드)

@@ -8,6 +8,7 @@ import SpriteComposer from '../game_logic/SpriteComposer.js';
 import SpriteRenderer from './SpriteRenderer.js';
 import SaveManager from '../store/SaveManager.js';
 import { FONT, FONT_BOLD } from '../constants.js';
+import { topSin, SIN_NAMES_KO } from '../game_logic/SinUtils.js';
 
 const SIN_COLOR_HEX = {
     wrath: '#e03030', envy: '#30b050', greed: '#d0a020',
@@ -155,7 +156,7 @@ class HeroSelectScene extends Phaser.Scene {
         this._cardElements.push(bg);
 
         // 죄종 색상 상단 바
-        const sinColorHex = SIN_COLOR_HEX[hero.primarySin] || '#606080';
+        const sinColorHex = SIN_COLOR_HEX[topSin(hero.sinStats)] || '#606080';
         const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
         const sinBar = this.add.graphics();
         sinBar.fillStyle(sinColor, 0.6);
@@ -169,7 +170,7 @@ class HeroSelectScene extends Phaser.Scene {
             fontSize: '16px', fontFamily: FONT_BOLD, color: C.textPrimary,
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         }));
-        const traitName = hero.trait ? `[${hero.trait.name}]` : hero.sinName;
+        const traitName = hero.trait ? `[${hero.trait.name}]` : SIN_NAMES_KO[topSin(hero.sinStats)];
         const traitLabel = this.add.text(x + w - 12, ty + 2, traitName, {
             fontSize: '11px', fontFamily: FONT_BOLD, color: '#c0a0e0'
         }).setOrigin(1, 0);
@@ -204,7 +205,7 @@ class HeroSelectScene extends Phaser.Scene {
         ty += 48;
 
         // 짧은 배경 스토리
-        const storyText = this._getHeroStory(hero.primarySin);
+        const storyText = this._getHeroStory(topSin(hero.sinStats));
         const storyObj = this.add.text(x + 12, ty, storyText, {
             fontSize: '11px', fontFamily: FONT, color: C.textMuted,
             lineSpacing: 4,

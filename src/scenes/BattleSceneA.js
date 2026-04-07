@@ -8,6 +8,7 @@
  * 모드: realtime (engine tick) / replay (log 재생)
  */
 import { BATTLE_MODES } from '../game_logic/BattleEngine.js';
+import { topSin } from '../game_logic/SinUtils.js';
 import SpriteRenderer from './SpriteRenderer.js';
 import { FONT } from '../constants.js';
 import {
@@ -331,12 +332,13 @@ class BattleSceneA extends Phaser.Scene {
             const composed = this._composedHeroes[u.name];
 
             // 합성 텍스처가 있으면 사용, 없으면 기존 방식
-            const spriteType = composed ? heroId : (SIN_SPRITE_MAP[u.primarySin] || DEFAULT_SPRITE);
+            const sin = topSin(u.sinStats) || u.primarySin;
+            const spriteType = composed ? heroId : (SIN_SPRITE_MAP[sin] || DEFAULT_SPRITE);
             const useComposed = !!composed;
 
             const fx = HERO_START_X + i * 30;
             const fy = GROUND_Y + (Y_OFFSETS[i] || 0);
-            this._createUnit(u.name, fx, fy, spriteType, true, u.maxHp, useComposed, u.primarySin);
+            this._createUnit(u.name, fx, fy, spriteType, true, u.maxHp, useComposed, sin);
         });
 
         unitsData.enemies.forEach((u, i) => {
@@ -380,7 +382,7 @@ class BattleSceneA extends Phaser.Scene {
 
         startEntry.heroes.forEach((name, i) => {
             const heroInfo = this.heroData.find(h => h.name === name);
-            const spriteType = SIN_SPRITE_MAP[heroInfo?.primarySin] || DEFAULT_SPRITE;
+            const spriteType = SIN_SPRITE_MAP[heroInfo ? topSin(heroInfo.sinStats) : null] || DEFAULT_SPRITE;
             const fx = HERO_START_X + i * 30;
             const fy = GROUND_Y + (Y_OFFSETS[i] || 0);
             this._createUnit(name, fx, fy, spriteType, true, 100);
@@ -888,7 +890,7 @@ class BattleSceneA extends Phaser.Scene {
         const partySinTypes = this._heroUnits
             ? Object.values(this.units).filter(u => u.isHero && u.alive).map(u => {
                 const heroInfo = this.heroData.find(h => h.name === u.name);
-                return heroInfo?.primarySin || null;
+                return heroInfo ? topSin(heroInfo.sinStats) : null;
             }).filter(Boolean)
             : [];
 

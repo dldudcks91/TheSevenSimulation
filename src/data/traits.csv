@@ -1,4 +1,4 @@
-id,name,category,type,pro_effect,con_effect,earn_condition
+id,name,category,type,pro_effect,con_effect,earn_condition,rampage_sin,rampage_action,desertion_sin,desertion_action
 1,호전적,양면성,innate,전투 데미지 +15%,3일 미파견 시 사기↓↓,
 2,겁쟁이,양면성,innate,위험 감지(기습 방지) 정찰↑,방어전 배치 시 사기↓ 도주 확률↑,
 3,잔인한,양면성,innate,전투 승리 시 사기↑↑,동료 부상/사망에 무반응 (관계↓),
@@ -39,18 +39,30 @@ id,name,category,type,pro_effect,con_effect,earn_condition
 38,의심병,순단점,innate,,영웅 간 관계 보정 -15 치료 거부 확률,
 39,주정뱅이,순단점,innate,,연회 시 사고 확률 자원 낭비,
 40,유리멘탈,순단점,innate,,사기 하락폭 +30%,
-41,방화광,행동강박,innate,화염 전투↑,폭주 시 시설 방화,
-42,도벽,행동강박,innate,채집/전리품↑,자원 획득 시 일부 착복,
-43,파괴충동,행동강박,innate,전투 크리티컬↑,사기 불만 구간에서 시설 파손,
-44,중재자,행동강박,innate,영웅 간 대립 완화,분쟁 발생 시 강제 개입 (본인 사기 소모),
-45,과시욕,행동강박,innate,전투 성공 시 전체 사기↑,실패 시 전체 사기↓ (체면 손상),
-46,역전의 용사,후천,earned,원정 전투 데미지 +10% 전투 사기↑,,원정 5회 이상 승리
-47,수호자,후천,earned,방어전 스탯↑ 방어 배치 사기↑,,방어전 3회 이상 생존
-48,노동의 기쁨,후천,earned,자원 작업 효율↑ 작업 시 사기 소폭↑,,채집/벌목 10회 이상
-49,연구자,후천,earned,연구 속도↑,,연구 5회 이상 참여
-50,건축가,후천,earned,건설 속도↑ 건설 비용↓,,건설 5회 이상 참여
-51,사냥꾼,후천,earned,사냥 성공률↑ 전리품↑,,사냥 5회 이상 성공
-52,지옥 생존자,후천,earned,사기 변동폭↑↑ 전투력↑,,폭주 2회 경험
-53,개심자,후천,earned,사기 안정 고유 능력 해금,,구원 달성
-54,타락자,후천,earned,능력 강화,,타락 달성. 폭주 재발 확률↑
-55,전우,후천,earned,해당 영웅과 시너지↑,,같은 영웅과 원정 5회 이상. 사망 시 사기↓↓↓
+41,방화광,행동강박,innate,화염 전투↑,폭주 시 시설 방화,,wrath,rampage_arson,,,
+42,도벽,행동강박,innate,채집/전리품↑,자원 획득 시 일부 착복,,greed,rampage_steal,,greed,desertion_steal
+43,파괴충동,행동강박,innate,전투 크리티컬↑,사기 불만 구간에서 시설 파손,,wrath,rampage_destroy,,,
+44,중재자,행동강박,innate,영웅 간 대립 완화,분쟁 발생 시 강제 개입 (본인 사기 소모),,,,,,
+45,과시욕,행동강박,innate,전투 성공 시 전체 사기↑,실패 시 전체 사기↓ (체면 손상),,,,,,
+46,선동가,행동강박,innate,사교 보너스,폭주 시 반란 선동,,pride,rampage_rebel,,pride,desertion_declare
+47,뒷공작,행동강박,innate,정보 수집↑,폭주 시 장비 파괴/사보타주,,envy,rampage_sabotage,,envy,desertion_sabotage
+48,탐닉자,행동강박,innate,체력 회복↑,폭주 시 식량 폭식,,gluttony,rampage_devour,,,
+49,집착광,행동강박,innate,관계 형성 빠름,폭주 시 동료 분쟁 유발,,lust,rampage_seduce,,lust,desertion_lure
+50,체념자,행동강박,innate,혼자 작업↑,폭주 시 무기력 전염,,sloth,rampage_spread,,sloth,desertion_vanish
+51,역전의 용사,후천,earned,원정 전투 데미지 +10% 전투 사기↑,,원정 5회 이상 승리,,,,
+52,수호자,후천,earned,방어전 스탯↑ 방어 배치 사기↑,,방어전 3회 이상 생존,,,,
+53,노동의 기쁨,후천,earned,자원 작업 효율↑ 작업 시 사기 소폭↑,,채집/벌목 10회 이상,,,,
+54,연구자,후천,earned,연구 속도↑,,연구 5회 이상 참여,,,,
+55,건축가,후천,earned,건설 속도↑ 건설 비용↓,,건설 5회 이상 참여,,,,
+56,사냥꾼,후천,earned,사냥 성공률↑ 전리품↑,,사냥 5회 이상 성공,,,,
+57,지옥 생존자,후천,earned,사기 변동폭↑↑ 전투력↑,,폭주 2회 경험,,,,
+58,개심자,후천,earned,사기 안정 고유 능력 해금,,구원 달성,,,,
+59,타락자,후천,earned,능력 강화,,타락 달성. 폭주 재발 확률↑,,,,
+60,전우,후천,earned,해당 영웅과 시너지↑,,같은 영웅과 원정 5회 이상. 사망 시 사기↓↓↓,,,,
+61,파괴자,후천폭주,earned,폭주 시 항상 파괴,,파괴 계열 폭주 2회,wrath,rampage_destroy,,
+62,약탈자,후천폭주,earned,폭주 시 항상 도난+도주,,도난 계열 폭주 2회,greed,rampage_steal,greed,desertion_steal
+63,반역자,후천폭주,earned,폭주 시 항상 반란,,반란 계열 폭주 2회,pride,rampage_rebel,pride,desertion_declare
+64,방해꾼,후천폭주,earned,폭주 시 항상 장비 파괴,,사보타주 계열 폭주 2회,envy,rampage_sabotage,envy,desertion_sabotage
+65,탐식가,후천폭주,earned,폭주 시 항상 식량 폭식,,폭식 계열 폭주 2회,gluttony,rampage_devour,,
+66,분쟁꾼,후천폭주,earned,폭주 시 항상 동료 분쟁,,분쟁 계열 폭주 2회,lust,rampage_seduce,lust,desertion_lure
+67,전염자,후천폭주,earned,폭주 시 항상 무기력 전염,,전염 계열 폭주 2회,sloth,rampage_spread,sloth,desertion_vanish

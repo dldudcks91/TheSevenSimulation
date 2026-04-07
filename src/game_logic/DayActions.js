@@ -3,6 +3,8 @@
  * 채집/벌목/연회/안정화/사냥 보상 계산 + 적합도
  */
 
+import { sinIntensity } from './SinUtils.js';
+
 class DayActions {
     constructor(store, heroManager, balance = {}) {
         this.store = store;
@@ -54,10 +56,11 @@ class DayActions {
         this.store.setState('gold', gold - feastCost);
         const heroes = this.heroManager.getHeroes();
         for (const hero of heroes) {
-            let delta = b.feast_morale_normal ?? 15;
-            if (hero.primarySin === 'gluttony' || hero.primarySin === 'lust') {
-                delta = b.feast_morale_gluttony_lust ?? 25;
-            }
+            const baseDelta = b.feast_morale_normal ?? 15;
+            const gluttonyIntensity = sinIntensity(hero.sinStats, 'gluttony');
+            const lustIntensity = sinIntensity(hero.sinStats, 'lust');
+            const bonus = Math.round(Math.max(gluttonyIntensity, lustIntensity) * 10);
+            const delta = baseDelta + bonus;
             this.heroManager.updateMorale(hero.id, delta);
         }
         return { success: true, cost: feastCost };

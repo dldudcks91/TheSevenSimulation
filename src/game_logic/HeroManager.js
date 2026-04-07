@@ -3,6 +3,8 @@
  * 모든 상수는 balance 데이터에서 주입
  */
 
+import { topSin, topTwoSins, SIN_NAMES_KO } from './SinUtils.js';
+
 const STAT_KEYS = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
 const SIN_STAT_KEYS = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'pride'];
 
@@ -122,10 +124,11 @@ class HeroManager {
             id: this._nextId++,
             name,
             sinStats,
-            primarySin,
+            primarySin, // DEPRECATED: UI fallback only
             sinName: sinDef?.name_ko || '',
             sinFlaw: sinDef?.flaw || '',
             trait: trait ? { id: trait.id, name: trait.name, category: trait.category, pro_effect: trait.pro_effect, con_effect: trait.con_effect } : null,
+            acquiredTraits: [],
             morale: this.MORALE_DEFAULT,
             stats,
             subStats: sinStats,
@@ -135,7 +138,8 @@ class HeroManager {
             equipment: [null, null, null],
             appearance: this._spriteComposer ? this._spriteComposer.generateAppearance() : null,
             daysIdle: 0,
-            expeditionFailStreak: 0
+            expeditionFailStreak: 0,
+            _rampageHistory: []
         };
     }
 
@@ -170,17 +174,9 @@ class HeroManager {
         return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
-    /** sinStats에서 가장 높은 죄종 파생 */
+    /** sinStats에서 가장 높은 죄종 파생 — SinUtils.topSin() 위임 */
     _derivePrimarySin(sinStats) {
-        let max = -1;
-        let primary = SIN_STAT_KEYS[0];
-        for (const key of SIN_STAT_KEYS) {
-            if ((sinStats[key] || 0) > max) {
-                max = sinStats[key];
-                primary = key;
-            }
-        }
-        return primary;
+        return topSin(sinStats);
     }
 
     /** 선천 특성 1개 랜덤 선택 (innate 타입만) */

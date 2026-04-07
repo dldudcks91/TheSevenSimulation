@@ -114,3 +114,7 @@ raid_scale_divisor,4
 raid_scale_small,2
 raid_scale_medium,4
 recovery_default_turns,2
+sin_trigger_min_threshold,8
+sin_condition_min_threshold,8
+sin_card_bonus_threshold,10
+rampage_history_threshold,2

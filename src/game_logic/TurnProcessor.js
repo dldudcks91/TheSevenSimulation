@@ -5,6 +5,7 @@
  * UI 씬(MapTurnFlow)은 이 모듈의 결과를 받아서 연출만 담당
  */
 import BattleEngine, { BATTLE_MODES } from './BattleEngine.js';
+import { sinChance, sinIntensity } from './SinUtils.js';
 
 class TurnProcessor {
     constructor(store, { turnManager, heroManager, baseManager, sinSystem, expeditionManager, balance }) {
@@ -130,9 +131,9 @@ class TurnProcessor {
 
         const b = this.balance;
         if (defenseResult) {
-            // 교만 영웅 방어 결과 플래그
+            // 교만 수치 비례 방어 결과 플래그
             for (const h of this.heroManager.getHeroes()) {
-                if (h.primarySin === 'pride') h._lastDefenseWin = defenseResult.victory;
+                if (sinIntensity(h.sinStats, 'pride') > 0) h._lastDefenseWin = defenseResult.victory;
             }
 
             if (defenseResult.victory) {
@@ -140,12 +141,16 @@ class TurnProcessor {
                 this.store.setState('gold', (this.store.getState('gold') || 0) + goldReward);
                 for (const h of this.heroManager.getHeroes()) {
                     this.heroManager.updateMorale(h.id, b.defense_victory_morale ?? 5);
-                    if (h.primarySin === 'pride') this.heroManager.updateMorale(h.id, b.pride_defense_win_morale ?? 8);
+                    // 교만 수치 비례 추가 보너스
+                    const prideBonus = Math.round(sinIntensity(h.sinStats, 'pride') * (b.pride_defense_win_morale ?? 8));
+                    if (prideBonus > 0) this.heroManager.updateMorale(h.id, prideBonus);
                 }
             } else {
                 for (const h of this.heroManager.getHeroes()) {
                     this.heroManager.updateMorale(h.id, b.defense_defeat_morale ?? -10);
-                    if (h.primarySin === 'pride') this.heroManager.updateMorale(h.id, b.pride_defense_lose_morale ?? -12);
+                    // 교만 수치 비례 추가 페널티
+                    const pridePenalty = Math.round(sinIntensity(h.sinStats, 'pride') * (b.pride_defense_lose_morale ?? -12));
+                    if (pridePenalty !== 0) this.heroManager.updateMorale(h.id, pridePenalty);
                 }
                 // 패배 시 자원 약탈
                 const lootRatio = defenseResult.reason === 'no_defenders'
@@ -181,18 +186,28 @@ class TurnProcessor {
     checkSinConditions() {
         const b = this.balance;
         for (const hero of this.heroManager.getHeroes()) {
-            if (hero.primarySin === 'wrath' && hero.location === 'base') {
+            // 분노: sinChance 확률로 페널티 발동 + sinIntensity로 강도
+            if (hero.location === 'base') {
                 hero.daysIdle = (hero.daysIdle || 0) + 1;
                 if (hero.daysIdle >= (b.wrath_idle_threshold ?? 3)) {
-                    this.heroManager.updateMorale(hero.id, b.wrath_idle_morale ?? -5);
+                    if (Math.random() < sinChance(hero.sinStats, 'wrath')) {
+                        const penalty = Math.round(sinIntensity(hero.sinStats, 'wrath') * (b.wrath_idle_morale ?? -5));
+                        if (penalty !== 0) this.heroManager.updateMorale(hero.id, penalty);
+                    }
                 }
-            } else if (hero.primarySin === 'wrath') {
+            } else {
                 hero.daysIdle = 0;
             }
-            if (hero.primarySin === 'sloth' && hero.status !== 'idle') {
-                this.heroManager.updateMorale(hero.id, b.sloth_work_morale ?? -3);
-            } else if (hero.primarySin === 'sloth' && hero.status === 'idle') {
-                this.heroManager.updateMorale(hero.id, b.sloth_rest_morale ?? 3);
+            // 나태: 수치 비례 사기 변동
+            const slothInt = sinIntensity(hero.sinStats, 'sloth');
+            if (slothInt > 0) {
+                if (hero.status !== 'idle') {
+                    const workPenalty = Math.round(slothInt * (b.sloth_work_morale ?? -3));
+                    if (workPenalty !== 0) this.heroManager.updateMorale(hero.id, workPenalty);
+                } else {
+                    const restBonus = Math.round(slothInt * (b.sloth_rest_morale ?? 3));
+                    if (restBonus !== 0) this.heroManager.updateMorale(hero.id, restBonus);
+                }
             }
         }
     }
