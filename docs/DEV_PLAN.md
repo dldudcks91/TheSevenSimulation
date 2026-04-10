@@ -87,7 +87,7 @@ src/
     ├── events.csv             # 이벤트 30개 본체
     ├── event_choices.csv      # 선택지 105개
     ├── event_effects.csv      # 효과 140개
-    ├── facilities.csv         # 시설 9종
+    ├── facilities.csv         # 시설 23종 (Tier 0~3)
     ├── research.csv           # 연구 6종
     ├── chapters.csv           # 7챕터
     ├── stages.csv             # 스테이지
@@ -99,7 +99,7 @@ src/
     ├── morale_states.csv      # 사기 5단계
     ├── desertion_effects.csv  # 이탈 효과
     ├── stat_names.csv         # 스탯 한글명
-    └── traits.csv             # 특성 55개 (선천 45 + 후천 10)
+    └── traits.csv             # 특성 38개 (고유 21 장점전용 + 후천 행동 10 + 후천 폭주 7)
 ```
 
 > **핵심**: `game_logic/`는 Phaser 의존 없는 순수 JS. 모든 밸런스 상수는 CSV에서 로드하여 생성자로 주입. 하드코딩 금지.
@@ -180,7 +180,7 @@ src/
 | 5 | **챕터별 환경 변조 적용** | 미구현 | CSV 로드+registry 등록까지 완료, 게임플레이 적용 코드 없음 |
 | 6 | **밸런싱 수치 적용** | 초안 완료 | balance_design.md 작성 완료. 수치 적용 미착수 |
 | 7 | **MapScene 분리** | ✅ 완료 | 2979줄 → 278줄 코디네이터 + 11개 모듈(map/) + game_logic 2개(DayActions/TurnProcessor). 백테스팅 가능 구조 |
-| 8 | **죄종 수치화 + 특성 시스템** | ✅ 2단계 완료 | 1단계: sinType→primarySin 전환(20+파일). 2단계: primarySin 라벨 제거, 특성 우선→sinStats 가중 확률→이력 누적 후천 고정. SinUtils.js 신규, 선천 특성 10개→행동강박 폭주/이탈 매핑, 후천 폭주 7종 추가(traits.csv 67개). game_logic 7파일+UI 14파일 전환 완료. |
+| 8 | **죄종 수치화 + 특성 시스템** | 기획 확정, 구현 일부 잔여 | 죄종 7수치 + 주 성향 고정. 고유 특성 21종(장점 전용, 영웅별 고정) + 후천 폭주 7종. **미완료: hero_names.csv 21명 축소 + 매핑, traits.csv 정리, 배정 코드 변경** |
 
 ---
 
@@ -198,4 +198,4 @@ src/
 
 ---
 
-*마지막 업데이트: 2026-04-04 (채집/벌목 행동 팝업 MapActionPopup 추가)*
+*마지막 업데이트: 2026-04-10 (영웅 21명 풀 + 고유 특성 장점 전용, 사기 5구간 재설계, 행동강박 후천 통합, 세력 Phase 2)*
