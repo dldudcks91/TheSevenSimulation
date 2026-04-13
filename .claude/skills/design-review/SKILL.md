@@ -25,6 +25,9 @@ user-invocable: true
    - `docs/game_design/base_design.md`
    - `docs/game_design/equipment_design.md`
    - `docs/game_design/chapter_scenario.md`
+   - `docs/game_design/balance_design.md`
+   - `docs/game_design/ui_design.md`
+   - `docs/game_design/faction_design.md`
 2. 다음 관점으로 평가한다:
    - **재미**: 핵심 루프가 반복해도 재미있는가?
    - **정합성**: 문서 간 모순은 없는가?

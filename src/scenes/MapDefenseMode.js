@@ -59,8 +59,6 @@ class MapDefenseMode {
         this.reserveHeroes = config.reserveHeroes || [];
         this.stageName = config.stageName || '밤 습격';
         this.onComplete = config.onComplete || (() => {});
-        this.cards = config.cards || [];
-
         this.active = false;
         this.paused = false;
         this.speed = 1;
@@ -122,7 +120,6 @@ class MapDefenseMode {
         this._createAnimations();
         this._drawHeader(width);
         this._drawSPBar(width);
-        this._drawCardHand(width);
         this._drawLog(width, height);
         this._drawControls(width, height);
         this._initUnits();
@@ -426,105 +423,6 @@ class MapDefenseMode {
         this._spBar.width = this._spBarWidth * (sp / spMax);
         this._spText.setText(`${sp}/${spMax}`);
         this._updateCardStates();
-    }
-
-    _drawCardHand(width) {
-        this._cardButtons = [];
-        if (this.cards.length === 0) return;
-
-        const panelY = 472; // PANEL_Y 위치
-        const cardW = 110;
-        const cardH = 55;
-        const gap = 6;
-        const totalW = this.cards.length * (cardW + gap) - gap;
-        const fieldCenterX = ZONE_GATE_X + (width - ZONE_GATE_X) / 2;
-        const startX = fieldCenterX - totalW / 2;
-
-        // 카드 핸드 배경
-        const handBg = this.scene.add.graphics();
-        handBg.fillStyle(0x0e0e1a, 0.9);
-        handBg.fillRect(startX - 10, panelY, totalW + 20, cardH + 10);
-        handBg.lineStyle(1, 0x303048);
-        handBg.strokeRect(startX - 10, panelY, totalW + 20, cardH + 10);
-        this._container.add(handBg);
-
-        for (let i = 0; i < this.cards.length; i++) {
-            const card = this.cards[i];
-            const cx = startX + i * (cardW + gap);
-
-            const cardBg = this.scene.add.graphics();
-            cardBg.fillStyle(0x161624, 1);
-            cardBg.fillRect(cx, panelY + 5, cardW, cardH);
-            cardBg.lineStyle(1, 0x484868);
-            cardBg.strokeRect(cx, panelY + 5, cardW, cardH);
-            this._container.add(cardBg);
-
-            const nameText = this.scene.add.text(cx + cardW / 2, panelY + 18, card.name_ko, {
-                fontSize: '10px', fontFamily: FONT, color: '#e8e8f0'
-            }).setOrigin(0.5);
-            this._container.add(nameText);
-
-            const costText = this.scene.add.text(cx + cardW / 2, panelY + 33, `SP: ${card.sp_cost}`, {
-                fontSize: '8px', fontFamily: FONT, color: '#f8c830'
-            }).setOrigin(0.5);
-            this._container.add(costText);
-
-            const descText = this.scene.add.text(cx + cardW / 2, panelY + 48, card.description.substring(0, 12), {
-                fontSize: '7px', fontFamily: FONT, color: '#606080'
-            }).setOrigin(0.5);
-            this._container.add(descText);
-
-            const zone = this.scene.add.zone(cx + cardW / 2, panelY + 5 + cardH / 2, cardW, cardH)
-                .setInteractive({ useHandCursor: true }).setDepth(3001);
-            zone.on('pointerdown', () => this._onCardClick(card));
-            this._container.add(zone);
-
-            const disableOverlay = this.scene.add.rectangle(
-                cx + cardW / 2, panelY + 5 + cardH / 2, cardW, cardH, 0x000000, 0.5
-            );
-            disableOverlay.setVisible(true);
-            this._container.add(disableOverlay);
-
-            this._cardButtons.push({ card, disableOverlay });
-        }
-    }
-
-    _updateCardStates() {
-        if (!this.engine || !this._cardButtons) return;
-        const sp = this.engine.getSP();
-        for (const btn of this._cardButtons) {
-            const canUse = sp >= btn.card.sp_cost && !this._duelActive && !this._resultShown;
-            btn.disableOverlay.setVisible(!canUse);
-        }
-    }
-
-    _onCardClick(card) {
-        if (!this.engine) return;
-        if (this.engine.getSP() < card.sp_cost) return;
-        if (this._duelActive || this._resultShown) return;
-
-        const partySinTypes = Object.values(this.units)
-            .filter(u => u.isHero && u.alive)
-            .map(u => {
-                const heroInfo = this.heroData.find(h => h.name === u.name);
-                return heroInfo ? topSin(heroInfo.sinStats) : null;
-            }).filter(Boolean);
-
-        const events = this.engine.useCard(card, partySinTypes);
-        if (!events) return;
-        for (const evt of events) this._processEvent(evt);
-        this._updateSPDisplay();
-
-        if (card.effect_type === 'heal_percent') {
-            const unitsData = this.engine.getUnits();
-            for (const heroData of unitsData.heroes) {
-                const unit = this.units[heroData.name];
-                if (unit && unit.alive) {
-                    const hpPercent = heroData.hp / heroData.maxHp;
-                    unit.hpBar.width = Math.max(0, hpPercent * unit.maxHpBarWidth);
-                }
-            }
-        }
     }
 
     _drawLog(width, height) {

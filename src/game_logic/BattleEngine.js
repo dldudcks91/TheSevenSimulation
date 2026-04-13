@@ -21,9 +21,6 @@ class BattleEngine {
         this.SOLDIER_SPD = balance.soldier_spd ?? 3;
         this.DMG_VAR_MIN = balance.damage_variance_min ?? 0.8;
         this.DMG_VAR_MAX = balance.damage_variance_max ?? 1.2;
-        this.HP_BASE = balance.hp_base ?? 200;
-        this.HP_VIT = balance.hp_vitality_mult ?? 15;
-        this.HP_STR = balance.hp_strength_mult ?? 5;
         this.ATK_DEF_STR = balance.atk_defense_str_mult ?? 0.8;
         this.ATK_DEF_LEAD = balance.atk_defense_lead_mult ?? 0.4;
         this.ATK_EXP_STR = balance.atk_expedition_str_mult ?? 0.7;
@@ -122,8 +119,8 @@ class BattleEngine {
     _makeHeroUnit(h, type) {
         return {
             ...h,
-            hp: this._calcHP(h),
-            maxHp: this._calcHP(h),
+            hp: this.SOLDIER_HP,
+            maxHp: this.SOLDIER_HP,
             atk: this._calcATK(h, type),
             spd: h.stats?.agility || 10,
             isHero: true,
@@ -591,10 +588,6 @@ class BattleEngine {
         return null;
     }
 
-    _calcHP(hero) {
-        return this.HP_BASE + (hero.stats?.vitality || 10) * this.HP_VIT + (hero.stats?.strength || 10) * this.HP_STR;
-    }
-
     _calcATK(hero, type) {
         if (type === BATTLE_TYPES.DEFENSE) {
             return Math.floor((hero.stats?.strength || 10) * this.ATK_DEF_STR + (hero.stats?.leadership || 10) * this.ATK_DEF_LEAD);
@@ -612,91 +605,6 @@ class BattleEngine {
     getSP() { return this._sp; }
     getSPMax() { return this._spMax; }
     getActiveBuffs() { return [...this._activeBuffs]; }
-
-    /** 카드 사용 — 씬에서 호출 */
-    useCard(card, partySinTypes = []) {
-        if (this._sp < card.sp_cost) return null;
-        this._sp -= card.sp_cost;
-
-        const events = [];
-
-        // 죄종 시너지 체크: 파티 내 해당 수치 10+ 영웅 존재 여부
-        const aliveHeroes = this._heroUnits.filter(u => u.alive && !u.isSoldier);
-        const hasSinBonus = card.sin_bonus_type
-            ? aliveHeroes.some(h => (h.sinStats?.[card.sin_bonus_type] || 0) >= 10)
-            : partySinTypes.includes(card.sin_bonus_type);
-
-        switch (card.effect_type) {
-            case 'atk_mult': {
-                const value = hasSinBonus ? card.sin_bonus_value : card.effect_value;
-                const duration = (card.target === 'ally_all' && hasSinBonus && card.sin_bonus_type === 'sloth')
-                    ? 5 : card.duration;
-                this._activeBuffs.push({
-                    id: card.id, target: card.target, effect_type: card.effect_type,
-                    value, turnsLeft: duration
-                });
-                events.push({
-                    type: 'card_used', card: card.id, name: card.name_ko,
-                    sp: this._sp, sinBonus: hasSinBonus
-                });
-                break;
-            }
-            case 'dmg_reduce': {
-                const value = card.effect_value;
-                const duration = (hasSinBonus && card.sin_bonus_type === 'sloth') ? 5 : card.duration;
-                this._activeBuffs.push({
-                    id: card.id, target: card.target, effect_type: card.effect_type,
-                    value, turnsLeft: duration
-                });
-                events.push({
-                    type: 'card_used', card: card.id, name: card.name_ko,
-                    sp: this._sp, sinBonus: hasSinBonus
-                });
-                break;
-            }
-            case 'heal_percent': {
-                const percent = hasSinBonus ? card.sin_bonus_value : card.effect_value;
-                const healed = [];
-                for (const hero of this._heroUnits) {
-                    if (!hero.alive) continue;
-                    const amount = Math.floor(hero.maxHp * percent);
-                    hero.hp = Math.min(hero.maxHp, hero.hp + amount);
-                    healed.push({ name: hero.name, hp: hero.hp, maxHp: hero.maxHp, amount });
-                }
-                events.push({
-                    type: 'card_used', card: card.id, name: card.name_ko,
-                    sp: this._sp, sinBonus: hasSinBonus, healed
-                });
-                break;
-            }
-            case 'spd_mult': {
-                const value = hasSinBonus ? card.sin_bonus_value : card.effect_value;
-                this._activeBuffs.push({
-                    id: card.id, target: card.target, effect_type: card.effect_type,
-                    value, turnsLeft: card.duration
-                });
-                // 교만 보너스: 첫타 N배 (간단히 ATK 버프 1턴 추가)
-                if (hasSinBonus && card.sin_bonus_type === 'pride') {
-                    this._activeBuffs.push({
-                        id: card.id + '_pride', target: 'ally_all', effect_type: 'atk_mult',
-                        value: this.balance.pride_first_strike_mult ?? 2.0, turnsLeft: 1
-                    });
-                }
-                events.push({
-                    type: 'card_used', card: card.id, name: card.name_ko,
-                    sp: this._sp, sinBonus: hasSinBonus
-                });
-                break;
-            }
-            default:
-                events.push({
-                    type: 'card_used', card: card.id, name: card.name_ko,
-                    sp: this._sp, sinBonus: hasSinBonus
-                });
-        }
-
-        return events;
-    }
 
     /** 버프 턴 감소 */
     _tickBuffs() {

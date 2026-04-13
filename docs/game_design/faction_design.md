@@ -129,10 +129,9 @@ shadow_cult,그림자 교단,south,cult,hostile,poison
 ```
 의뢰소 클릭 → 의뢰 목록 팝업 (3개 상주)
   → [수락] → 영웅 선택 팝업 (적합도 ★ 표시)
-    → 영웅 배정 → status = "의뢰 중"
-      → 소요 턴 경과 후 저녁에 결과 보고
-        → 성공: 골드 + 세력 관계↑ + 영웅 사기↑
-        → 실패: 세력 관계↓ + 영웅 부상 가능
+    → 영웅 배정 → 그 턴 저녁에 즉시 결과 보고 (전 의뢰 1턴 소요)
+      → 성공: 골드 + 세력 관계↑ + 영웅 사기↑
+      → 실패: 세력 관계↓ + 영웅 부상 가능
 ```
 
 ### 의뢰 목록 UI (건물 클릭 시 중앙 팝업)
@@ -172,11 +171,11 @@ shadow_cult,그림자 교단,south,cult,hostile,poison
 
 ```csv
 quest_id,type,faction_type,name,desc,stat1,stat2,duration,gold_reward,relation_reward,risk,min_day
-q_escort,escort,village,호위 의뢰,상단 호위가 필요합니다,str,agi,2,80,10,injury,5
+q_escort,escort,village,호위 의뢰,상단 호위가 필요합니다,str,agi,1,80,10,injury,5
 q_hunt,hunt,warband,토벌 의뢰,산적 거점을 소탕해달라,str,lead,1,120,15,injury,8
 q_deliver,deliver,city,배달 의뢰,약재를 운반해주시오,agi,sense,1,50,5,none,3
 q_diplomat,diplomat,village,중재 의뢰,마을 분쟁을 해결해주시오,int,charm,1,60,20,none,10
-q_spy,spy,warband,정찰 의뢰,적 거점의 정보를 가져오시오,agi,sense,2,100,10,injury,15
+q_spy,spy,warband,정찰 의뢰,적 거점의 정보를 가져오시오,agi,sense,1,100,10,injury,15
 q_craft,craft,city,제작 의뢰,특수 무기를 만들어주시오,str,sense,1,90,10,none,12
 ```
 
@@ -702,7 +701,7 @@ q_craft,craft,city,제작 의뢰,특수 무기를 만들어주시오,str,sense,1
 - [ ] 챕터별 세력 이벤트 강조 수치
 - [ ] 속죄의 밤 죄종 수치 -1의 밸런스 검증
 - [ ] 과거 결산 추적 시스템 상세 (변론 대회 연동)
-- [ ] 의뢰소 건설 트리를 base_design.md에 반영
+- [x] 의뢰소 건설 트리를 base_design.md에 반영 (2026-04-13)
 - [ ] event_design.md에 F카테고리 추가 반영
 - [ ] GAME_DESIGN.md 세력 섹션 추가
 

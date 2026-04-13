@@ -178,10 +178,6 @@ class BattleSceneA extends Phaser.Scene {
         this._duelOverlay = null;
         this._duelActive = false;
 
-        // 카드 핸드 영역 (로그 위)
-        const cardY = height - 200;
-        this._drawCardHand(width, cardY);
-
         // 로그 패널
         const logY = height - 100;
         const logG = this.add.graphics();
@@ -470,11 +466,6 @@ class BattleSceneA extends Phaser.Scene {
                 }
                 break;
 
-            case 'card_used':
-                this._addLog(`🃏 [${evt.name}] 발동!${evt.sinBonus ? ' (죄종 시너지!)' : ''}`, '#f8c830');
-                this._flashCardEffect(evt);
-                break;
-
             case 'sp_gain':
                 this._updateSPDisplay();
                 break;
@@ -482,26 +473,6 @@ class BattleSceneA extends Phaser.Scene {
             case 'result':
                 break;
         }
-    }
-
-    _flashCardEffect(evt) {
-        const { width } = this.scale;
-        const flashText = this.add.text(width / 2, GROUND_Y - 100, evt.name, {
-            fontSize: '20px', fontFamily: FONT,
-            color: evt.sinBonus ? '#f8c830' : '#e8e8f0',
-            shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
-        }).setOrigin(0.5).setDepth(9999);
-
-        this.tweens.add({
-            targets: flashText,
-            y: flashText.y - 40,
-            alpha: 0,
-            scaleX: 1.5,
-            scaleY: 1.5,
-            duration: 1000,
-            ease: 'Power2',
-            onComplete: () => flashText.destroy()
-        });
     }
 
     // ═══════════════════════════════════
@@ -784,147 +755,6 @@ class BattleSceneA extends Phaser.Scene {
         this._spBar.width = this._spBarWidth * ratio;
         this._spText.setText(`${sp}/${spMax}`);
 
-        // 카드 활성화 상태 업데이트
-        this._updateCardStates();
-    }
-
-    // ═══════════════════════════════════
-    // 카드 핸드
-    // ═══════════════════════════════════
-
-    _drawCardHand(width, y) {
-        const SIN_CARD_COLORS = {
-            wrath: 0xe03030, envy: 0x30b050, greed: 0xd0a020,
-            sloth: 0x808898, gluttony: 0xe07020, lust: 0xe03080, pride: 0x8040e0
-        };
-
-        this._cardButtons = [];
-        const cards = this.registry.get('battleCards') || [];
-        if (cards.length === 0) return;
-
-        const cardW = 130;
-        const cardH = 80;
-        const gap = 10;
-        const totalW = cards.length * (cardW + gap) - gap;
-        const startX = (width - totalW) / 2;
-
-        // 카드 핸드 배경
-        const handBg = this.add.graphics();
-        handBg.fillStyle(0x0a0a14, 0.85);
-        handBg.fillRoundedRect(startX - 14, y - 8, totalW + 28, cardH + 16, 6);
-        handBg.lineStyle(1, 0x303048);
-        handBg.strokeRoundedRect(startX - 14, y - 8, totalW + 28, cardH + 16, 6);
-
-        for (let i = 0; i < cards.length; i++) {
-            const card = cards[i];
-            const cx = startX + i * (cardW + gap);
-            const sinColor = SIN_CARD_COLORS[card.sin_bonus_type] || 0x484868;
-
-            // 카드 배경 (그래픽)
-            const cardBg = this.add.graphics();
-            const drawCardBg = (hover) => {
-                cardBg.clear();
-                cardBg.fillStyle(hover ? 0x1e1e34 : 0x161624, 1);
-                cardBg.fillRoundedRect(cx, y, cardW, cardH, 4);
-                cardBg.lineStyle(hover ? 2 : 1, hover ? 0xf8c830 : 0x484868);
-                cardBg.strokeRoundedRect(cx, y, cardW, cardH, 4);
-                // 상단 죄종 악센트 라인
-                cardBg.fillStyle(sinColor, hover ? 0.9 : 0.6);
-                cardBg.fillRect(cx + 4, y + 1, cardW - 8, 3);
-            };
-            drawCardBg(false);
-
-            // 카드 이름
-            const nameText = this.add.text(cx + cardW / 2, y + 16, card.name_ko, {
-                fontSize: '12px', fontFamily: FONT, color: '#e8e8f0'
-            }).setOrigin(0.5);
-
-            // SP 코스트 (뱃지 스타일)
-            const costText = this.add.text(cx + cardW / 2, y + 36, `SP ${card.sp_cost}`, {
-                fontSize: '10px', fontFamily: FONT, color: '#f8c830'
-            }).setOrigin(0.5);
-
-            // 짧은 설명
-            const descText = this.add.text(cx + cardW / 2, y + 56, card.description.substring(0, 14), {
-                fontSize: '9px', fontFamily: FONT, color: '#707090'
-            }).setOrigin(0.5);
-
-            // 시너지 죄종
-            const sinLabel = this.add.text(cx + cardW / 2, y + cardH - 8, card.sin_bonus_type ? `${card.sin_bonus_type}` : '', {
-                fontSize: '8px', fontFamily: FONT, color: `#${(sinColor).toString(16).padStart(6, '0')}`
-            }).setOrigin(0.5);
-
-            // 인터랙션 영역
-            const zone = this.add.zone(cx + cardW / 2, y + cardH / 2, cardW, cardH)
-                .setInteractive({ useHandCursor: true });
-
-            zone.on('pointerover', () => drawCardBg(true));
-            zone.on('pointerout', () => drawCardBg(false));
-            zone.on('pointerdown', () => this._onCardClick(card));
-
-            // 비활성 오버레이
-            const disableOverlay = this.add.rectangle(cx + cardW / 2, y + cardH / 2, cardW, cardH, 0x000000, 0.6);
-            disableOverlay.setVisible(true);
-
-            this._cardButtons.push({
-                card, cardBg, nameText, costText, descText, zone, disableOverlay
-            });
-        }
-    }
-
-    _updateCardStates() {
-        if (!this.engine || !this._cardButtons) return;
-        const sp = this.engine.getSP();
-        for (const btn of this._cardButtons) {
-            const canUse = sp >= btn.card.sp_cost && !this._duelActive && !this._resultShown;
-            btn.disableOverlay.setVisible(!canUse);
-        }
-    }
-
-    _onCardClick(card) {
-        if (!this.engine || this._mode !== 'realtime') return;
-        if (this.engine.getSP() < card.sp_cost) return;
-        if (this._duelActive || this._resultShown) return;
-
-        // 파티 죄종 수집
-        const partySinTypes = this._heroUnits
-            ? Object.values(this.units).filter(u => u.isHero && u.alive).map(u => {
-                const heroInfo = this.heroData.find(h => h.name === u.name);
-                return heroInfo ? topSin(heroInfo.sinStats) : null;
-            }).filter(Boolean)
-            : [];
-
-        const events = this.engine.useCard(card, partySinTypes);
-        if (!events) return;
-
-        for (const evt of events) {
-            this._processEvent(evt);
-        }
-
-        this._updateSPDisplay();
-
-        // 회복 카드: HP 바 + 컬러 업데이트 + 녹색 힐 텍스트
-        if (card.effect_type === 'heal_percent') {
-            const units = this.engine.getUnits();
-            for (const heroData of units.heroes) {
-                const unit = this.units[heroData.name];
-                if (unit && unit.alive) {
-                    const hpPercent = heroData.hp / heroData.maxHp;
-                    unit.hpBar.width = Math.max(0, hpPercent * unit.maxHpBarWidth);
-                    unit.hpBar.setFillStyle(this._hpColor(hpPercent, true));
-
-                    // 녹색 회복 텍스트
-                    const healText = this.add.text(unit.fieldX, unit.fieldY - 50, '+HP', {
-                        fontSize: '12px', fontFamily: FONT, color: '#40d870',
-                        shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
-                    }).setOrigin(0.5).setDepth(9999);
-                    this.tweens.add({
-                        targets: healText, y: healText.y - 25, alpha: 0,
-                        duration: 600, onComplete: () => healText.destroy()
-                    });
-                }
-            }
-        }
     }
 
     _drawBackground(width, height) {

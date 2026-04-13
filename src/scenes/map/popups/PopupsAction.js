@@ -323,7 +323,6 @@ class PopupsAction {
             for (const hero of heroes) {
                 const sinColor = SIN_COLOR_HEX[topSin(hero.sinStats)] || C.textMuted;
                 const b = s.balance;
-                const hp = (b.hp_base ?? 200) + (hero.stats.vitality || 10) * (b.hp_vitality_mult ?? 15) + (hero.stats.strength || 10) * (b.hp_strength_mult ?? 5);
                 const atk = Math.floor((hero.stats.strength || 10) * (b.atk_expedition_str_mult ?? 0.7) + (hero.stats.agility || 10) * (b.atk_expedition_agi_mult ?? 0.4));
 
                 const rowBg = s.add.graphics();
@@ -337,7 +336,7 @@ class PopupsAction {
                     fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
                 }));
                 hero.trait ? s.widgets.traitLabel(listX + 180, y + 9, hero.trait, { pp }) : pp(s.add.text(listX + 180, y + 9, SIN_NAMES_KO[topSin(hero.sinStats)], { fontSize: '9px', fontFamily: FONT, color: sinColor }));
-                pp(s.add.text(listX + 240, y + 9, `HP ${hp}  ATK ${atk}`, {
+                pp(s.add.text(listX + 240, y + 9, `ATK ${atk}`, {
                     fontSize: '9px', fontFamily: FONT, color: C.expYellow
                 }));
 

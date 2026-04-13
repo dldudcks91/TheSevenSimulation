@@ -5,9 +5,9 @@
       "Edit(/.claude/skills/design-economy/**)",
       "Edit(/.claude/skills/design-narrative/**)",
       "Edit(/.claude/skills/design-system/**)",
-      "Read(//c/Users/82109/Desktop/LYC/git/TheSevenRPG/**)",
-      "Read(//c/Users/82109/Desktop/LYC/git/TheSevenRPGForge/**)",
-      "Read(//c/Users/82109/Desktop/LYC/git/TheSevenTactics/**)",
+      "Read(//c/Users/user/Desktop/python_text/git/TheSevenRPG/**)",
+      "Read(//c/Users/user/Desktop/python_text/git/TheSevenRPGForge/**)",
+      "Read(//c/Users/user/Desktop/python_text/git/TheSevenTactics/**)",
       "WebFetch(domain:namu.wiki)",
       "WebFetch(domain:thewiki.kr)",
       "WebFetch(domain:librewiki.net)",
@@ -34,7 +34,7 @@
       "WebFetch(domain:kingtoko.com)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\82109\\Desktop\\LYC\\git\\TheSevenSimulation\\.claude"
+      "C:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude"
     ]
   }
 }

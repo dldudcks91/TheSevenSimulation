@@ -1,6 +1,6 @@
 /**
  * 이벤트/선택지 화면 (오버레이 씬)
- * MainScene 위에 겹쳐서 표시, 선택 후 닫힘
+ * MapScene 위에 겹쳐서 표시, 선택 후 닫힘
  */
 import { FONT } from '../constants.js';
 const C = {

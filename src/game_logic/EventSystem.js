@@ -63,7 +63,7 @@ class EventSystem {
 
             switch (t.type) {
                 case 'sin_elevated': {
-                    const elevatedThreshold = t.min_morale || (this.balance.elevated_threshold ?? 71);
+                    const elevatedThreshold = t.min_morale || (this.balance.elevated_threshold ?? 76);
                     // 해당 죄종 수치 8+ 인 영웅 중 사기 조건 충족하는 후보
                     const hero = heroes.find(h =>
                         (h.sinStats?.[t.sin] || 0) >= 8 && h.morale >= elevatedThreshold
@@ -76,7 +76,7 @@ class EventSystem {
                     return true;
                 }
                 case 'sin_frustrated': {
-                    const frustratedThreshold = this.balance.frustrated_threshold ?? 30;
+                    const frustratedThreshold = this.balance.frustrated_threshold ?? 25;
                     const hero = heroes.find(h =>
                         (h.sinStats?.[t.sin] || 0) >= 8 && h.morale <= frustratedThreshold
                     );

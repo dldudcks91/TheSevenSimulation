@@ -22,9 +22,6 @@ soldier_atk,8
 soldier_spd,3
 damage_variance_min,0.8
 damage_variance_max,1.2
-hp_base,200
-hp_vitality_mult,15
-hp_strength_mult,5
 atk_defense_str_mult,0.8
 atk_defense_lead_mult,0.4
 atk_expedition_str_mult,0.7
@@ -42,8 +39,8 @@ greed_desertion_gold,-80
 lust_desertion_morale,-20
 event_second_chance,0.3
 event_cache_reset_interval,5
-frustrated_threshold,30
-elevated_threshold,71
+frustrated_threshold,25
+elevated_threshold,76
 default_periodic_interval,4
 default_random_chance,0.3
 default_chapter_progress_day,10
@@ -103,8 +100,8 @@ duel_skip_rounds,1
 duel_hero_default_spd,10
 duel_enemy_default_spd,5
 pride_first_strike_mult,2.0
-stat_main_min,2
-stat_main_max,18
+stat_main_min,1
+stat_main_max,20
 sensitivity_default,10
 event_double_chance,0.3
 event_cache_reset_interval,5

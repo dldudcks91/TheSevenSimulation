@@ -26,7 +26,7 @@ user-invocable: true
 - [ ] 이벤트 위임 (`data-action`) 사용
 
 ### 데이터 안전성
-- [ ] JSON 데이터 런타임 수정 없음
+- [ ] CSV 데이터 런타임 수정 없음
 - [ ] LocalStorage 세이브/로드 안전성
 
 ### 코드 품질

@@ -10,59 +10,54 @@
 - **빌드 도구 없음** — Vanilla JS, Phaser.js는 CDN 로드
 
 ### 디렉토리 구조
+프로젝트 전체 구조는 `CLAUDE.md`를 참조. 아래는 src/ 핵심 구조만 요약:
 ```
 src/
 ├── index.html
 ├── app.js                    # 진입점, CSV 전체 로드 + Phaser 초기화
-├── game_logic/               # 순수 게임 로직 (Phaser 의존 금지)
-│   ├── SinSystem.js          # 죄종/사기/폭주/이탈/연쇄반응
-│   ├── HeroManager.js        # 영웅 랜덤 생성, 사기 관리
+├── constants.js              # 공유 상수
+├── game_logic/               # 순수 게임 로직 (Phaser 의존 금지, 12개)
+│   ├── BaseManager.js        # 거점/건설/연구/포고령 (policies 주입)
+│   ├── BattleEngine.js       # 전투 계산 (balance 주입)
+│   ├── DayActions.js         # 낮 행동 순수 로직 (채집/벌목/연회/사냥)
 │   ├── EventSystem.js        # 이벤트/선택지
 │   ├── ExpeditionManager.js  # 원정/방어전 (stagesData 주입)
-│   ├── BattleEngine.js       # 전투 계산 (balance 주입)
-│   ├── BaseManager.js        # 거점/건설/연구/포고령 (policies 주입)
-│   └── TurnManager.js        # 턴 진행 (phases 주입)
-├── scenes/                   # Phaser 씬
-│   ├── TitleScene.js
-│   ├── HeroSelectScene.js
-│   ├── MainScene.js          # 영내/영외 전환 + 우측 패널 + 팝업 행동
-│   ├── EventScene.js
+│   ├── HeroManager.js        # 영웅 랜덤 생성, 사기 관리
+│   ├── MorningReport.js      # 아침 보고 생성
+│   ├── SinSystem.js          # 죄종/사기/폭주/이탈/연쇄반응
+│   ├── SinUtils.js           # 죄종 유틸리티 함수
+│   ├── SpriteComposer.js     # LPC 랜덤 외형 생성 (순수 JS)
+│   ├── TurnManager.js        # 턴 진행 (phases 주입)
+│   └── TurnProcessor.js      # 턴 전체 로직 조율 (낮→밤 처리)
+├── scenes/                   # Phaser 씬 (17개 + map/ 하위 모듈)
+│   ├── TitleScene.js         # 타이틀
+│   ├── IntroScene.js         # 인트로
+│   ├── HeroSelectScene.js    # 영웅 선택
+│   ├── MapScene.js           # 단일 맵 뷰 (코디네이터)
+│   ├── map/                  # MapScene 하위 모듈 (9개 + popups/)
+│   │   ├── MapConstants.js, MapWidgets.js, MapPopupSystem.js
+│   │   ├── MapHUD.js, MapWorld.js, MapBottomPanel.js
+│   │   ├── MapActions.js, MapTurnFlow.js, MapHeroInspector.js
+│   │   └── popups/ (PopupsBuild, PopupsHero, PopupsAction)
+│   ├── MapDefenseMode.js     # 방어전 오버레이
+│   ├── MapHuntPopup.js       # 사냥 1:1 팝업
+│   ├── MapActionPopup.js     # 채집/벌목 행동 결과 팝업
+│   ├── MorningReportPopup.js # 아침 보고 팝업
+│   ├── EventScene.js         # 이벤트 씬
 │   ├── BattleSceneA.js       # 돌진형 전투
 │   ├── BattleSceneB.js       # 필드 이동형 전투 (기본값)
 │   ├── DuelBattleScene.js    # 1:1 전투 (사냥)
-│   ├── ResultScene.js
-│   ├── SettlementScene.js
-│   └── GameOverScene.js
-├── ui/                       # UI 컴포넌트
-│   └── components/
+│   ├── ResultScene.js        # 결과
+│   ├── SettlementScene.js    # 정산
+│   ├── GameOverScene.js      # 게임오버
+│   ├── SpriteConstants.js    # 스프라이트 공유 상수/유틸
+│   └── SpriteRenderer.js     # LPC 스프라이트 런타임 합성
 ├── assets/                   # 게임 에셋
 │   └── sprites/
 ├── store/                    # 상태 관리
-│   └── Store.js
-└── data/                     # 게임 데이터 (CSV)
-    ├── CsvLoader.js          # CSV 파서 + 전체 로더 + 데이터 조립
-    ├── balance.csv            # 밸런스 상수 (전투/사기/보상)
-    ├── hero_names.csv         # 영웅 이름 풀
-    ├── sin_types.csv          # 7죄종 정의
-    ├── sin_relations.csv      # 죄종 간 관계 매트릭스
-    ├── sin_satisfaction.csv   # 죄종별 만족/불만 조건
-    ├── sin_rampage_chain.csv  # 폭주 연쇄 반응
-    ├── events.csv             # 이벤트 본체
-    ├── event_choices.csv      # 이벤트 선택지
-    ├── event_effects.csv      # 선택지 효과
-    ├── facilities.csv         # 시설 정보
-    ├── research.csv           # 연구 항목
-    ├── chapters.csv           # 7챕터 정보
-    ├── stages.csv             # 스테이지 정보
-    ├── stage_enemies.csv      # 스테이지별 적
-    ├── policies.csv           # 포고령 종류/효과
-    ├── hunt_enemies.csv       # 사냥 적
-    ├── phases.csv             # 턴 페이즈
-    ├── morale_states.csv      # 사기 5단계
-    ├── desertion_effects.csv  # 이탈 효과
-    ├── defense_scaling.csv    # 방어전 스케일링
-    ├── stat_names.csv         # 스탯 한글명
-    └── traits.csv             # 특성 55개 (선천 45 + 후천 10)
+│   ├── Store.js              # Central Store (pub/sub)
+│   └── SaveManager.js        # LocalStorage 세이브/로드
+└── data/                     # 게임 데이터 CSV (26개) + CsvLoader.js
 ```
 
 ---
