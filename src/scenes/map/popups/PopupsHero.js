@@ -5,6 +5,7 @@ import { C, ACTION_STATS, SIN_COLOR_HEX, MORALE_COLORS_HEX } from '../MapConstan
 import { FONT, FONT_BOLD } from '../../../constants.js';
 import store from '../../../store/Store.js';
 import { topSin, SIN_NAMES_KO } from '../../../game_logic/SinUtils.js';
+import SpriteRenderer from '../../SpriteRenderer.js';
 
 class PopupsHero {
     constructor(scene) {
@@ -358,7 +359,6 @@ class PopupsHero {
         }).setOrigin(0.5));
         y += 24;
 
-        const iw = pw - 40;
         if (currentCount >= 7) {
             pp(s.add.text(cx, y + 40, '로스터가 가득 찼습니다.', {
                 fontSize: '11px', fontFamily: FONT, color: C.textMuted
@@ -368,40 +368,191 @@ class PopupsHero {
                 fontSize: '11px', fontFamily: FONT, color: C.textMuted
             }).setOrigin(0.5));
         } else {
-            const recruits = s.heroManager.generateRecruits(3);
-            for (const recruit of recruits) {
-                const sinColor = SIN_COLOR_HEX[topSin(recruit.sinStats)] || C.textMuted;
+            const recruits = s.heroManager.generateRecruits(2);
+            const spriteRenderer = new SpriteRenderer(s);
 
-                const ibg = pp(s.add.graphics());
-                ibg.fillStyle(C.bgSecondary, 1); ibg.fillRect(px + 20, y, iw, 80);
-                ibg.lineStyle(1, C.borderSecondary); ibg.strokeRect(px + 20, y, iw, 80);
+            const CARD_W = 240;
+            const CARD_H = 380;
+            const GAP = 20;
+            const totalW = CARD_W * 2 + GAP;
+            const startX = cx - totalW / 2;
+            const cardY = y;
 
-                pp(s.add.text(px + 32, y + 8, recruit.name, {
-                    fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
+            const STAT_FULL = {
+                strength: '힘', agility: '민첩', intellect: '지능',
+                vitality: '체력', perception: '감각', leadership: '통솔', charisma: '매력'
+            };
+            const statKeys = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
+            const FRAME_SIZE = 64;
+
+            for (let i = 0; i < recruits.length; i++) {
+                const recruit = recruits[i];
+                const cardX = startX + i * (CARD_W + GAP);
+                const sinColorHex = SIN_COLOR_HEX[topSin(recruit.sinStats)] || C.textMuted;
+                const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
+
+                // 카드 배경
+                const bg = pp(s.add.graphics());
+                bg.fillStyle(C.bgSecondary, 1);
+                bg.fillRect(cardX, cardY, CARD_W, CARD_H);
+                bg.lineStyle(2, C.borderSecondary);
+                bg.strokeRect(cardX, cardY, CARD_W, CARD_H);
+                bg.lineStyle(1, C.borderHighlight, 0.25);
+                bg.lineBetween(cardX + 2, cardY + 2, cardX + CARD_W - 2, cardY + 2);
+                bg.lineStyle(1, C.borderDark, 0.5);
+                bg.lineBetween(cardX + 2, cardY + CARD_H - 2, cardX + CARD_W - 2, cardY + CARD_H - 2);
+
+                // 죄종 컬러 바
+                const sinBar = pp(s.add.graphics());
+                sinBar.fillStyle(sinColor, 0.6);
+                sinBar.fillRect(cardX + 2, cardY + 2, CARD_W - 4, 4);
+
+                let ty = cardY + 14;
+
+                // 이름
+                pp(s.add.text(cardX + 10, ty, recruit.name, {
+                    fontSize: '14px', fontFamily: FONT_BOLD, color: C.textPrimary,
+                    shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
                 }));
+                // 특성
+                const traitName = recruit.trait ? `[${recruit.trait.name}]` : SIN_NAMES_KO[topSin(recruit.sinStats)];
+                const traitLabel = pp(s.add.text(cardX + CARD_W - 10, ty + 2, traitName, {
+                    fontSize: '10px', fontFamily: FONT_BOLD, color: '#c0a0e0'
+                }).setOrigin(1, 0));
                 if (recruit.trait) {
-                    s.widgets.traitLabel(px + 32, y + 26, recruit.trait, { pp });
-                } else {
-                    pp(s.add.text(px + 32, y + 26, SIN_NAMES_KO[topSin(recruit.sinStats)], { fontSize: '9px', fontFamily: FONT, color: sinColor }));
+                    traitLabel.setInteractive({ useHandCursor: true });
+                    let tip = null;
+                    traitLabel.on('pointerover', (pointer) => {
+                        traitLabel.setColor('#ffffff');
+                        const lines = [];
+                        if (recruit.trait.pro_effect) lines.push(`▲ ${recruit.trait.pro_effect}`);
+                        if (recruit.trait.con_effect) lines.push(`▼ ${recruit.trait.con_effect}`);
+                        const tipW = 200, tipH = 14 * lines.length + 16;
+                        const tx = Math.min(pointer.x, 1280 - tipW - 8);
+                        tip = s.add.container(0, 0).setDepth(9999);
+                        const tbg = s.add.graphics();
+                        tbg.fillStyle(0x1a1a2e, 0.95); tbg.fillRoundedRect(tx, pointer.y - tipH - 8, tipW, tipH, 4);
+                        tbg.lineStyle(1, 0xc0a0e0); tbg.strokeRoundedRect(tx, pointer.y - tipH - 8, tipW, tipH, 4);
+                        tip.add(tbg);
+                        tip.add(s.add.text(tx + 8, pointer.y - tipH - 2, lines.join('\n'), {
+                            fontSize: '10px', fontFamily: FONT, color: '#e0e0f0', lineSpacing: 2, wordWrap: { width: tipW - 16 }
+                        }));
+                    });
+                    traitLabel.on('pointerout', () => {
+                        traitLabel.setColor('#c0a0e0');
+                        if (tip) { tip.destroy(); tip = null; }
+                    });
                 }
-                pp(s.add.text(px + 32, y + 42, '스탯: 고용 후 확인', {
-                    fontSize: '9px', fontFamily: FONT, color: C.textMuted
-                }));
-                pp(s.add.text(px + 32, y + 58, `${recruit.sinFlaw || ''}`, {
-                    fontSize: '9px', fontFamily: FONT, color: C.textMuted,
-                    wordWrap: { width: iw - 100 }
-                }));
+                pp(s.add.text(cardX + CARD_W - 10, ty + 16, `비용 ${recruit.foodCost ?? '?'}/턴`, {
+                    fontSize: '9px', fontFamily: FONT, color: '#a08040'
+                }).setOrigin(1, 0));
+                ty += 40;
 
-                pp(s.popupSystem.popupSmallBtn(px + iw - 10, y + 30, '고용', () => {
+                // 배경 스토리
+                const storyText = this.getHeroStory(topSin(recruit.sinStats));
+                const storyObj = pp(s.add.text(cardX + 10, ty, storyText, {
+                    fontSize: '10px', fontFamily: FONT, color: C.textMuted,
+                    lineSpacing: 3,
+                    wordWrap: { width: CARD_W - 20 }
+                }));
+                ty += storyObj.height + 10;
+
+                // 구분선
+                const divG1 = pp(s.add.graphics());
+                divG1.lineStyle(1, C.borderPrimary);
+                divG1.lineBetween(cardX + 8, ty, cardX + CARD_W - 8, ty);
+                ty += 6;
+
+                // LPC 스프라이트
+                const sprW = CARD_W - 20;
+                const sprH = 80;
+                const sprG = pp(s.add.graphics());
+                sprG.fillStyle(0x0e0e1a, 1);
+                sprG.fillRect(cardX + 10, ty, sprW, sprH);
+                sprG.lineStyle(1, C.borderPrimary);
+                sprG.strokeRect(cardX + 10, ty, sprW, sprH);
+
+                if (recruit.appearance && recruit.appearance.layers) {
+                    const heroId = `recruit_${recruit.id}`;
+                    const textures = spriteRenderer.compose(recruit.appearance, heroId);
+                    if (textures && textures.idle) {
+                        const sprCX = cardX + 10 + sprW / 2;
+                        const sprCY = ty + sprH / 2 + 4;
+                        const scale = (sprH - 12) / FRAME_SIZE;
+                        const spr = pp(s.add.sprite(sprCX, sprCY, textures.idle, 0));
+                        spr.setScale(scale);
+                        if (s.anims.exists(`${heroId}_idle`)) spr.play(`${heroId}_idle`);
+                    }
+                }
+                ty += sprH + 6;
+
+                // 구분선
+                const divG2 = pp(s.add.graphics());
+                divG2.lineStyle(1, C.borderPrimary);
+                divG2.lineBetween(cardX + 8, ty, cardX + CARD_W - 8, ty);
+                ty += 6;
+
+                // 스탯 바
+                const barH = 12;
+                const barW = CARD_W - 80;
+                for (const key of statKeys) {
+                    const val = recruit.stats[key];
+                    const label = STAT_FULL[key];
+
+                    pp(s.add.text(cardX + 10, ty, label, {
+                        fontSize: '10px', fontFamily: FONT, color: C.textSecondary
+                    }));
+
+                    const bx = cardX + 46;
+                    const barBg = pp(s.add.graphics());
+                    barBg.fillStyle(0x0e0e1a, 1);
+                    barBg.fillRect(bx, ty, barW, barH);
+                    barBg.lineStyle(1, C.borderPrimary);
+                    barBg.strokeRect(bx, ty, barW, barH);
+
+                    const fillW = Math.max(0, (val / 20) * (barW - 2));
+                    const barColor = val >= 15 ? 0x40d870 : val >= 10 ? 0x40a0f8 : val >= 7 ? 0xf8c830 : 0xf04040;
+                    const barFill = pp(s.add.graphics());
+                    barFill.fillStyle(barColor, 0.8);
+                    barFill.fillRect(bx + 1, ty + 1, fillW, barH - 2);
+
+                    pp(s.add.text(cardX + CARD_W - 10, ty, `${val}`, {
+                        fontSize: '10px', fontFamily: FONT_BOLD, color: C.textPrimary
+                    }).setOrigin(1, 0));
+
+                    ty += barH + 3;
+                }
+
+                // 고용 버튼
+                const btnY = cardY + CARD_H - 28;
+                const btnW = CARD_W - 20;
+                const btnX = cardX + 10;
+                const btnBg = pp(s.add.graphics());
+                btnBg.fillStyle(0x2a0808, 1); btnBg.fillRect(btnX, btnY, btnW, 22);
+                btnBg.lineStyle(1, 0xe03030); btnBg.strokeRect(btnX, btnY, btnW, 22);
+                const btnText = pp(s.add.text(btnX + btnW / 2, btnY + 11, '💰100 고용', {
+                    fontSize: '11px', fontFamily: FONT_BOLD, color: '#e8e8f0'
+                }).setOrigin(0.5));
+                const btnZone = pp(s.add.zone(btnX + btnW / 2, btnY + 11, btnW, 22).setInteractive({ useHandCursor: true }));
+                btnZone.on('pointerover', () => { btnBg.clear(); btnBg.fillStyle(0x401010, 1); btnBg.fillRect(btnX, btnY, btnW, 22); btnBg.lineStyle(1, 0xe04040); btnBg.strokeRect(btnX, btnY, btnW, 22); });
+                btnZone.on('pointerout', () => { btnBg.clear(); btnBg.fillStyle(0x2a0808, 1); btnBg.fillRect(btnX, btnY, btnW, 22); btnBg.lineStyle(1, 0xe03030); btnBg.strokeRect(btnX, btnY, btnW, 22); });
+                btnZone.on('pointerdown', () => {
                     if ((store.getState('gold') || 0) >= 100 && s.heroManager.getHeroes().length < 7) {
                         store.setState('gold', (store.getState('gold') || 0) - 100);
                         s.heroManager.recruitHero(recruit);
                         s._showPopup('recruit');
                     }
-                }));
-
-                y += 86;
+                });
             }
+
+            // 다시 뽑기 버튼
+            pp(s.popupSystem.popupButton(cx - 80, py + ph - 40, '🎲 다시 뽑기', () => {
+                s._showPopup('recruit');
+            }));
+            pp(s.popupSystem.popupButton(cx + 80, py + ph - 40, '닫기', () => {
+                s.popupSystem.closeAllPopups();
+            }));
+            return;
         }
 
         s.popupSystem.popupCloseBtn(px, py, pw, ph);

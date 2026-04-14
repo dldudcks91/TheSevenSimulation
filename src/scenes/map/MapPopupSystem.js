@@ -24,8 +24,8 @@ class MapPopupSystem {
         if (level > 0) overlay.on('pointerdown', () => this.closePopup());
         layer.elements.push(overlay);
 
-        const PW = (mode === '_confirm' || mode === 'buildingInfo') ? 400 : 560;
-        const PH = mode === 'heroDetail' ? 680 : (mode === '_confirm' || mode === 'buildingInfo') ? 220 : 520;
+        const PW = (mode === '_confirm' || mode === 'buildingInfo') ? 400 : mode === 'recruit' ? 560 : 560;
+        const PH = mode === 'heroDetail' ? 680 : mode === 'recruit' ? 560 : (mode === '_confirm' || mode === 'buildingInfo') ? 220 : 520;
         const px = (width - PW) / 2;
         const py = (height - PH) / 2;
 

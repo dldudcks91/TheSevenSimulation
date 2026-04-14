@@ -210,8 +210,6 @@ class PopupsBuild {
 
         if (facility.id === 'tavern') {
             pp(s.popupSystem.popupButton(cx, y, '🍺 영웅 고용', () => s._showPopup('recruit')));
-            y += 40;
-            pp(s.popupSystem.popupButton(cx, y, '🎉 연회 개최', () => s.actions.doFeast()));
         } else if (facility.id === 'hospital') {
             pp(s.popupSystem.popupButton(cx, y, '💊 사기 안정화', () => s.actions.doStabilize()));
         }

@@ -5,7 +5,70 @@
 import { C, SIN_COLOR_HEX, MORALE_COLORS_HEX, PANEL_Y, PANEL_H, PANEL_TAB_H, PANEL_CONTENT_Y, TABS } from './MapConstants.js';
 import { FONT, FONT_BOLD } from '../../constants.js';
 import store from '../../store/Store.js';
-import { topSin, SIN_NAMES_KO } from '../../game_logic/SinUtils.js';
+import { topSin, weightedSinRoll, SIN_NAMES_KO } from '../../game_logic/SinUtils.js';
+
+const SIN_THOUGHTS = {
+    wrath: {
+        stable: ['훈련장에서 허수아비를 박살내고 있습니다', '칼날에 기름칠을 하며 콧노래를 부릅니다', '아무한테나 팔씨름을 걸고 있습니다'],
+        high: ['이를 갈며 무기를 만지작거립니다', '주먹으로 벽을 치기 시작했습니다', '눈이 충혈되어 있습니다'],
+        low: ['벽만 바라보며 아무 말도 하지 않습니다', '무기를 내려놓고 멍하니 앉아 있습니다', '싸울 이유를 잃은 눈빛입니다'],
+    },
+    envy: {
+        stable: ['다른 영웅의 장비를 흘끔흘끔 쳐다봅니다', '누군가의 전공 기록을 뒤적이고 있습니다', '거울을 보며 한숨을 쉽니다'],
+        high: ['다른 영웅들을 노려보고 있습니다', '누군가의 소지품을 만지다 들켰습니다', '"왜 항상 저 사람만..." 중얼거립니다'],
+        low: ['자기 방에서 나오지 않습니다', '아무도 자기를 필요로 하지 않는다고 생각합니다', '존재감을 지우려는 듯 구석에 앉아 있습니다'],
+    },
+    greed: {
+        stable: ['자기 소지품을 세고 또 세고 있습니다', '빈 주머니를 뒤지며 혀를 찹니다', '전리품 분배표를 혼자 작성하고 있습니다'],
+        high: ['창고 근처를 서성이고 있습니다', '자원 장부를 자기 멋대로 고치려 합니다', '"이건 내 거야" 라는 말을 자주 합니다'],
+        low: ['짐을 싸기 시작했습니다', '여기 있으면 손해라는 계산이 끝난 모양입니다', '가치 없는 것들을 하나씩 버리고 있습니다'],
+    },
+    sloth: {
+        stable: ['양지바른 곳에서 낮잠 중입니다', '하품을 하며 구름을 세고 있습니다', '해먹을 만들어 달라고 요청했습니다'],
+        high: ['모두에게 "그만두자"고 말하고 다닙니다', '"뭘 해도 소용없다"는 분위기를 퍼뜨립니다', '다른 영웅의 의욕까지 빨아들이고 있습니다'],
+        low: ['며칠째 잠만 자고 있습니다', '숨소리조차 귀찮은 듯합니다', '존재를 잊힐 정도로 조용합니다'],
+    },
+    gluttony: {
+        stable: ['주방에서 뭔가 만들어 먹고 있습니다', '간식을 주머니에 잔뜩 넣고 다닙니다', '오늘 저녁 메뉴를 벌써 세 번 물어봤습니다'],
+        high: ['식량을 혼자 끌어안고 있습니다', '배급량을 두 배로 달라고 고함칩니다', '비상 식량에 손을 대기 시작했습니다'],
+        low: ['아무것도 먹지 않습니다', '음식을 보고도 손을 뻗지 않습니다', '식욕을 잃었습니다'],
+    },
+    lust: {
+        stable: ['누군가에게 꽃을 꺾어주고 있습니다', '동료에게 노래를 불러주고 있습니다', '손편지를 쓰다 숨기고 있습니다'],
+        high: ['특정 동료에게 집착하고 있습니다', '"떨어지면 안 돼"를 반복하고 있습니다', '동료의 일거수일투족을 따라다닙니다'],
+        low: ['아무도 만나려 하지 않습니다', '혼자 있으면서도 외로워 보입니다', '관계를 포기한 듯 벽을 세우고 있습니다'],
+    },
+    pride: {
+        stable: ['거울 앞에서 자세를 교정하고 있습니다', '후배 영웅에게 일장 연설 중입니다', '자기 전공 기록을 다듬고 있습니다'],
+        high: ['명령을 무시하기 시작했습니다', '"내가 이끌어야 한다"고 주장합니다', '바알의 판단에 공개적으로 이의를 제기합니다'],
+        low: ['자존심이 무너져 침묵합니다', '고개를 숙이고 다닙니다', '누구도 자기를 인정하지 않는다고 느낍니다'],
+    },
+};
+
+const STATUS_ACTIVITY = {
+    idle: { location: '거점', activity: '대기 중' },
+    expedition: { location: '영외', activity: '원정 중' },
+    hunt: { location: '영외', activity: '사냥 중' },
+    gather: { location: '영외', activity: '채집 중' },
+    lumber: { location: '영외', activity: '벌목 중' },
+    construction: { location: '거점', activity: '건설 중' },
+    research: { location: '거점', activity: '연구 중' },
+    injured: { location: '거점', activity: '부상 치료 중' },
+    defense: { location: '거점', activity: '방어 배치' },
+};
+
+function getHeroThought(hero) {
+    const sin = weightedSinRoll(hero.sinStats);
+    const level = hero.morale >= 80 ? 'high' : hero.morale <= 25 ? 'low' : 'stable';
+    const pool = SIN_THOUGHTS[sin]?.[level];
+    if (!pool || pool.length === 0) return '특이사항 없음';
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getHeroActivity(hero) {
+    const info = STATUS_ACTIVITY[hero.status] || STATUS_ACTIVITY.idle;
+    return `📍${info.location} — ${info.activity}`;
+}
 
 class MapBottomPanel {
     constructor(scene) {
@@ -160,17 +223,20 @@ class MapBottomPanel {
                 }));
             }
 
-            const statusMap = { expedition: '원정', injured: '부상', construction: '건설', research: '연구', idle: '대기' };
-            this.p(s.add.text(cx + CARD_W - 8, y + 22, statusMap[hero.status] || '대기', {
-                fontSize: '10px', fontFamily: FONT, color: C.textMuted
-            }).setOrigin(1, 0));
-
-            const st = hero.stats;
-            this.p(s.add.text(cx + 8, y + 40, `힘${st.strength} 민${st.agility} 지${st.intellect} 체${st.vitality}`, {
-                fontSize: '9px', fontFamily: FONT, color: C.textMuted
+            // 현재 위치 + 활동
+            const activityText = getHeroActivity(hero);
+            const actColor = hero.status === 'injured' ? '#f04040' : hero.status === 'idle' ? C.textMuted : '#40a0f8';
+            this.p(s.add.text(cx + 8, y + 38, activityText, {
+                fontSize: '9px', fontFamily: FONT_BOLD, color: actColor
             }));
-            this.p(s.add.text(cx + 8, y + 54, `감${st.perception} 솔${st.leadership} 매${st.charisma}`, {
-                fontSize: '9px', fontFamily: FONT, color: C.textMuted
+
+            // 현재 생각 (말풍선 느낌)
+            const thought = getHeroThought(hero);
+            this.p(s.add.text(cx + 8, y + 54, `"${thought}"`, {
+                fontSize: '8px', fontFamily: FONT, color: '#a0a0c0',
+                fontStyle: 'italic',
+                wordWrap: { width: CARD_W - 16 },
+                lineSpacing: 1
             }));
 
             // 사기 바
