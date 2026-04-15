@@ -4,7 +4,7 @@ import HeroSelectScene from './scenes/HeroSelectScene.js';
 import MapScene from './scenes/MapScene.js';
 import EventScene from './scenes/EventScene.js';
 import BattleSceneA from './scenes/BattleSceneA.js';
-import BattleSceneB from './scenes/BattleSceneB.js';
+import BattleFormationPopup from './scenes/BattleFormationPopup.js';
 import ResultScene from './scenes/ResultScene.js';
 import SettlementScene from './scenes/SettlementScene.js';
 import DuelBattleScene from './scenes/DuelBattleScene.js';
@@ -12,11 +12,6 @@ import GameOverScene from './scenes/GameOverScene.js';
 import ExpeditionScene from './scenes/ExpeditionScene.js';
 import { loadAllCsv, buildGameData } from './data/CsvLoader.js';
 
-/**
- * 전투씬 A/B 전환
- * 'BattleSceneA' = X축 오토배틀 + 일기토 (MELEE 모드)
- * 'BattleSceneB' = X축 태그매치 (TAG 모드)
- */
 const BATTLE_SCENE = 'BattleSceneA';
 
 /**
@@ -34,7 +29,7 @@ async function boot() {
         height: 720,
         parent: 'game-container',
         backgroundColor: '#0a0a12',
-        scene: [TitleScene, IntroScene, HeroSelectScene, MapScene, EventScene, BattleSceneA, BattleSceneB, DuelBattleScene, ResultScene, SettlementScene, GameOverScene, ExpeditionScene],
+        scene: [TitleScene, IntroScene, HeroSelectScene, MapScene, EventScene, BattleFormationPopup, BattleSceneA, DuelBattleScene, ResultScene, SettlementScene, GameOverScene, ExpeditionScene],
         scale: {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,

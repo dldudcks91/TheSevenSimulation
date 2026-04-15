@@ -66,20 +66,6 @@ class MapHUD {
         this._drawNavButton(width - 200, 4, 65, HUD_H - 8, '턴 종료', C.accentRed, () => s._onEndTurn());
         this._drawNavButton(width - 128, 4, 45, HUD_H - 8, '저장', C.textMuted, () => { SaveManager.save(store); });
 
-        // 전투씬 A/B 전환
-        const currentScene = s.registry.get('battleScene') || 'BattleSceneA';
-        const btnLabel = currentScene === 'BattleSceneA' ? '전투:A' : '전투:B';
-        s._battleToggleBtn = s.add.text(width - 68, HUD_H / 2, `[${btnLabel}]`, {
-            fontSize: '10px', fontFamily: FONT, color: '#f8c830'
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(201);
-        s._battleToggleBtn.on('pointerdown', () => {
-            const cur = s.registry.get('battleScene') || 'BattleSceneA';
-            const next = cur === 'BattleSceneA' ? 'BattleSceneB' : 'BattleSceneA';
-            s.registry.set('battleScene', next);
-            s.expeditionManager.setBattleMode(next === 'BattleSceneA' ? 'melee' : 'tag');
-            s._battleToggleBtn.setText(`[${next === 'BattleSceneA' ? '전투:A' : '전투:B'}]`);
-        });
-
         // 원정 모드 토글 레이블
         const expModeLabel = s.add.text(width - 95, HUD_H / 2, '', {
             fontSize: '10px', fontFamily: FONT, color: C.infoCyan

@@ -100,8 +100,8 @@ TheSevenSimulation/
     │   ├── MapActionPopup.js  # 채집/벌목 행동 결과 팝업 (MapScene 위)
     │   ├── MorningReportPopup.js # 아침 보고 팝업
     │   ├── EventScene.js      # 이벤트 씬
-    │   ├── BattleSceneA.js    # 돌진형 전투
-    │   ├── BattleSceneB.js    # 필드 이동형 전투 (기본값)
+    │   ├── BattleFormationPopup.js # 출정 전 배치 팝업 (4×3 드래그 + 병사 배분)
+    │   ├── BattleSceneA.js    # 4×3 격자 오토배틀 (기본값)
     │   ├── DuelBattleScene.js # 1:1 전투 (사냥)
     │   ├── ResultScene.js     # 결과
     │   ├── SettlementScene.js # 정산

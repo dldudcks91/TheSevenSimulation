@@ -61,9 +61,9 @@ src/
 │   ├── MapHuntPopup.js       # 사냥 1:1 팝업 (MapScene 위)
 │   ├── MapActionPopup.js     # 채집/벌목 행동 결과 팝업 (MapScene 위)
 │   ├── EventScene.js         # 이벤트/선택지 (오버레이)
-│   ├── BattleSceneA.js       # X축 오토배틀 (원정 리플레이용)
-│   ├── BattleSceneB.js       # 태그매치 (프로토 보관)
-│   ├── DuelBattleScene.js    # 1:1 전투 (레거시)
+│   ├── BattleFormationPopup.js # 출정 전 배치 팝업 (드래그+병사 배분)
+│   ├── BattleSceneA.js       # 4×3 격자 오토배틀 (기본값)
+│   ├── DuelBattleScene.js    # 1:1 전투 (사냥)
 │   ├── SpriteConstants.js    # 스프라이트 공유 상수/유틸
 │   ├── SpriteRenderer.js     # LPC 스프라이트 런타임 합성
 │   ├── ResultScene.js        # 원정 결과 (오버레이)

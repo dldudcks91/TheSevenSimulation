@@ -73,8 +73,7 @@ class ResultScene extends Phaser.Scene {
         // 리플레이 버튼
         if (r.log && r.log.length > 0) {
             this._smallBtn(width / 2, y + 10, '전투 리플레이', () => {
-                const battleSceneKey = this.registry.get('battleScene') || 'BattleSceneB';
-                this.scene.launch(battleSceneKey, {
+                this.scene.launch('BattleSceneA', {
                     log: r.log,
                     victory: r.victory,
                     stageName: r.stageName,

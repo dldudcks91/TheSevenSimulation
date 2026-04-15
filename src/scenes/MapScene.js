@@ -110,8 +110,7 @@ class MapScene extends Phaser.Scene {
         this.sinSystem = new SinSystem(store, this.registry.get('sinRelations'), balance, desertionEffects);
         this.expeditionManager = new ExpeditionManager(store, balance);
         this.expeditionManager.setStagesData(stagesData);
-        const battleSceneKey = this.registry.get('battleScene') || 'BattleSceneB';
-        this.expeditionManager.setBattleMode(battleSceneKey === 'BattleSceneA' ? 'melee' : 'tag');
+        this.expeditionManager.setBattleMode('melee');
 
         // game_logic 순수 로직 (백테스팅 가능)
         this.dayActions = new DayActions(store, this.heroManager, balance);

@@ -1,7 +1,7 @@
 /**
  * 스프라이트 관련 공유 상수/유틸
  *
- * BattleSceneA, BattleSceneB, MapDefenseMode, MapHuntPopup에서
+ * BattleSceneA, MapDefenseMode, MapHuntPopup에서
  * 중복 선언되던 상수들을 한 곳에서 관리.
  */
 

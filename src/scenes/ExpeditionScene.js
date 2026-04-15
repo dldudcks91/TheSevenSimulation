@@ -384,7 +384,7 @@ class ExpeditionScene extends Phaser.Scene {
     }
 
     // ═══════════════════════════════════
-    // 전투 해결 (인라인 BattleEngine)
+    // 전투 해결 — BattleFormationPopup → BattleSceneA
     // ═══════════════════════════════════
     _resolveCombat(isBoss, onDone) {
         const heroes = (store.getState('heroes') || [])
@@ -395,10 +395,23 @@ class ExpeditionScene extends Phaser.Scene {
             ? [{ name: '보스', hp: 180, atk: 22, spd: 4 }, { name: '근위병', hp: 60, atk: 14, spd: 6 }]
             : [{ name: '전위병', hp: 70, atk: 11, spd: 5 }, { name: '궁수', hp: 55, atk: 13, spd: 7 }];
 
-        const engine = new BattleEngine(this._bal);
-        const result = engine.simulate(heroes, enemies, BATTLE_TYPES.EXPEDITION, this._soldierCount, BATTLE_MODES.MELEE);
+        const stageName = isBoss ? '보스 전투' : '전투';
 
-        this._showCombatResult(result, isBoss, onDone);
+        // BattleFormationPopup 실행
+        // onClose: BattleSceneA 종료 시 → onDone 호출
+        // BattleFormationPopup의 onClose는 '취소' 버튼 전용
+        // BattleSceneA의 onClose는 _confirm()에서 별도로 주입
+        this.scene.launch('BattleFormationPopup', {
+            stageName,
+            heroes,
+            totalSoldiers: this._soldierCount,
+            enemies,
+            balance: this._bal,
+            // 취소 시: 아무것도 하지 않음 (노드 클리어 없이 복귀)
+            onClose: () => {},
+            // BattleSceneA 닫기 버튼 → onDone 연결
+            onBattleEnd: () => onDone({ victory: true }),
+        });
     }
 
     _showCombatResult(result, isBoss, onDone) {

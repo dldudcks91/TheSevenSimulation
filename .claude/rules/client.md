@@ -44,8 +44,7 @@ src/
 │   ├── MapActionPopup.js     # 채집/벌목 행동 결과 팝업
 │   ├── MorningReportPopup.js # 아침 보고 팝업
 │   ├── EventScene.js         # 이벤트 씬
-│   ├── BattleSceneA.js       # 돌진형 전투
-│   ├── BattleSceneB.js       # 필드 이동형 전투 (기본값)
+│   ├── BattleSceneA.js       # 돌진형 전투 (기본값)
 │   ├── DuelBattleScene.js    # 1:1 전투 (사냥)
 │   ├── ResultScene.js        # 결과
 │   ├── SettlementScene.js    # 정산
