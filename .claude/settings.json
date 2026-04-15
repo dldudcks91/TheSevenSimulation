@@ -31,10 +31,28 @@
       "WebFetch(domain:postmasterinterest.blogspot.com)",
       "WebFetch(domain:battlebrothers.fandom.com)",
       "WebFetch(domain:battlebrothersgame.com)",
-      "WebFetch(domain:kingtoko.com)"
+      "WebFetch(domain:kingtoko.com)",
+      "Edit(/.claude/skills/design-ux/**)",
+      "Edit(/.claude/skills/client-implement/**)",
+      "Edit(/.claude/skills/client-review/**)",
+      "Edit(/.claude/skills/client-debug/**)",
+      "Edit(/.claude/skills/design-review/**)",
+      "Edit(/.claude/skills/sprite-compose/**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-start.sh"
+          }
+        ]
+      }
     ]
   }
 }

@@ -80,11 +80,26 @@ class MapHUD {
             s._battleToggleBtn.setText(`[${next === 'BattleSceneA' ? '전투:A' : '전투:B'}]`);
         });
 
+        // 원정 모드 토글 레이블
+        const expModeLabel = s.add.text(width - 95, HUD_H / 2, '', {
+            fontSize: '10px', fontFamily: FONT, color: C.infoCyan
+        }).setOrigin(0.5).setDepth(201);
+        const updateExpLabel = () => {
+            const mode = s.registry.get('expeditionMode') || 'node';
+            expModeLabel.setText(mode === 'node' ? '[원정:노드]' : '[원정:주사위]');
+        };
+        updateExpLabel();
+
         const settingsIcon = s.add.text(width - 24, HUD_H / 2, '⚙', {
             fontSize: '18px', fontFamily: FONT, color: C.textMuted
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(201);
         settingsIcon.on('pointerover', () => settingsIcon.setColor(C.textPrimary));
         settingsIcon.on('pointerout', () => settingsIcon.setColor(C.textMuted));
+        settingsIcon.on('pointerdown', () => {
+            const cur = s.registry.get('expeditionMode') || 'node';
+            s.registry.set('expeditionMode', cur === 'node' ? 'dice' : 'node');
+            updateExpLabel();
+        });
     }
 
     _drawNavButton(x, y, w, h, label, accentColor, callback) {

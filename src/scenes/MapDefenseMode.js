@@ -50,7 +50,6 @@ class MapDefenseMode {
      * @param {Array} config.reserveHeroes - 증원 가능 영웅
      * @param {string} config.stageName - 전투 이름
      * @param {Function} config.onComplete - 전투 종료 콜백 (victory: boolean)
-     * @param {Array} config.cards - battle_cards 데이터
      */
     constructor(scene, config) {
         this.scene = scene;
@@ -119,7 +118,6 @@ class MapDefenseMode {
 
         this._createAnimations();
         this._drawHeader(width);
-        this._drawSPBar(width);
         this._drawLog(width, height);
         this._drawControls(width, height);
         this._initUnits();
@@ -199,7 +197,6 @@ class MapDefenseMode {
         if (!events) return;
         const eventArray = Array.isArray(events) ? events : [events];
         for (const evt of eventArray) this._processEvent(evt);
-        this._updateSPDisplay();
     }
 
     // ═══════════════════════════════════
@@ -359,9 +356,6 @@ class MapDefenseMode {
                 this._flashCardEffect(evt);
                 break;
 
-            case 'sp_gain':
-                this._updateSPDisplay();
-                break;
 
             case 'result': break;
         }
@@ -390,39 +384,6 @@ class MapDefenseMode {
             fontSize: '11px', fontFamily: FONT, color: '#a0a0c0'
         }).setOrigin(0.5);
         this._container.add(this._soldierText);
-    }
-
-    _drawSPBar(width) {
-        const spX = ZONE_GATE_X + 20;
-        const spY = MAP_TOP + 42;
-        const spW = 180;
-        const spH = 8;
-
-        const spLabel = this.scene.add.text(spX, spY - 10, 'SP', {
-            fontSize: '9px', fontFamily: FONT, color: '#f8c830'
-        });
-        this._container.add(spLabel);
-
-        const spBg = this.scene.add.rectangle(spX, spY, spW, spH, 0x1a1a2a).setOrigin(0, 0.5);
-        this._container.add(spBg);
-
-        this._spBar = this.scene.add.rectangle(spX, spY, 0, spH, 0xf8c830).setOrigin(0, 0.5);
-        this._container.add(this._spBar);
-        this._spBarWidth = spW;
-
-        this._spText = this.scene.add.text(spX + spW + 8, spY, '0/100', {
-            fontSize: '9px', fontFamily: FONT, color: '#f8c830'
-        }).setOrigin(0, 0.5);
-        this._container.add(this._spText);
-    }
-
-    _updateSPDisplay() {
-        if (!this.engine) return;
-        const sp = this.engine.getSP();
-        const spMax = this.engine.getSPMax();
-        this._spBar.width = this._spBarWidth * (sp / spMax);
-        this._spText.setText(`${sp}/${spMax}`);
-        this._updateCardStates();
     }
 
     _drawLog(width, height) {

@@ -41,4 +41,10 @@ user-invocable: true
 4. **문제점 + 수정 방안**을 구체적으로 제시한다
 5. 수정은 사용자가 요청할 때만 진행한다
 
+## 다음 추천 행동
+
+- **`/client-debug`** — 리뷰에서 버그 발견 시 원인 분석 및 최소 범위 수정
+- **`/client-implement`** — 리뷰 통과 후 다음 기능 구현
+- **세션 상태** — 리뷰 결과를 `docs/session-state.md`에 기록
+
 ## 사용자 요청: $ARGUMENTS

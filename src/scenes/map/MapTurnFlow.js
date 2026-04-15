@@ -135,14 +135,11 @@ class MapTurnFlow {
 
         const enemies = s.turnProcessor.generateRaidEnemies(turn.day);
         const engine = s.turnProcessor.createDefenseEngine(baseHeroes, enemies, soldiers);
-        const cards = s.registry.get('battleCards') || [];
-
         s._defenseMode = new MapDefenseMode(s, {
             engine,
             heroData,
             reserveHeroes: [],
             stageName: `밤 습격 — ${turn.day}일차`,
-            cards,
             onComplete: (victory) => {
                 s._defenseMode = null;
 

@@ -408,6 +408,16 @@ class MapBottomPanel {
         const turn = s.turnManager.getCurrentTurn();
         const raidInfo = s.baseManager.getRaidInfo(turn.day);
         this.p(s.add.text(px + 200, y, `감시탑: ${raidInfo.text}`, { fontSize: '11px', fontFamily: FONT, color: C.warningOrange }));
+
+        y += 30;
+        const mode = s.registry.get('expeditionMode') || 'node';
+        const modeLabel = mode === 'node' ? 'STS 노드' : '주사위';
+        if (heroes.length > 0 && !(expedition && expedition.active)) {
+            this.p(w.panelButton(px + 120, y, `⚔ 원정 맵 열기 (${modeLabel})`, () => {
+                const partyIds = heroes.slice(0, 3).map(h => h.id);
+                s.scene.launch('ExpeditionScene', { heroIds: partyIds, soldierCount: store.getState('soldiers') || 0 });
+            }));
+        }
     }
 
     // ═══════════════════════════════════

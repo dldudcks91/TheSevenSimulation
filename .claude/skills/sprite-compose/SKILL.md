@@ -81,3 +81,8 @@ python tools/lpc_composer.py preview hero_wrath   # 특정 영웅
    - 결과 이미지를 Read 도구로 확인하여 사용자에게 보여줌
 3. 파츠가 PARTIAL이면 해당 파츠의 해당 액션이 없는 것 — 다른 파츠로 교체 제안
 4. 스프라이트 생성 후 반드시 결과 이미지를 Read로 확인
+
+## 다음 추천 행동
+
+- **`/client-implement`** — 스프라이트 생성 후 `SpriteRenderer.js` 또는 `HeroManager.js`에서 참조 경로 확인 및 연동
+- **세션 상태** — 생성/수정한 영웅 스프라이트 목록을 `docs/session-state.md`에 기록

@@ -166,6 +166,7 @@ src/
 | 56 | BattleSceneA UI/연출 보강 (배경/HP바/일기토/결과/로그/라운드) — 카드 UI 제거 (2026-04-13) | [x] |
 | 57 | 새 게임 초기 아이템 랜덤 지급 + 세이브/로드 인벤토리·식량·나무 연동 | [x] |
 | 58 | 채집/벌목 행동 팝업 (MapActionPopup — 프로그레스 바 + 결과 + 죄종 대사) | [x] |
+| 59 | **원정 맵 탐색 프로토타입** (ExpeditionScene + ExpeditionNodeManager) — STS 노드 방식 / 주사위 방식, HUD ⚙ 토글 | [x] |
 
 ---
 
@@ -194,7 +195,7 @@ src/
 | **미정의 상수 수정** | ZONE_GATE_END/ZONE_OUTSIDE_END → ZONE_OUTSIDE_START/MAP_WORLD_W |
 | **depth 충돌 해소** | MapDefenseMode 유닛 depth 3000+fy → fy (카드 UI 3001 아래로) |
 | **합성 텍스처 정리** | MapDefenseMode, MapHuntPopup, BattleSceneA에서 textures.remove() 추가 |
-| **하드코딩 이관** | SP, 일기토 확률, 스탯 범위 등 25개 키를 balance.csv로 이관 (총 108개) |
+| **하드코딩 이관** | 일기토 확률, 스탯 범위 등 수치를 balance.csv로 이관 (총 108개) |
 
 ---
 

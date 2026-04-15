@@ -381,7 +381,6 @@ function buildGameData(csvData) {
         atk_speed: r.atk_speed,
         crit: r.crit,
         range: r.range,
-        sp_cost_reduce: r.sp_cost_reduce,
         // 특수
         sin_type: r.sin_type,
         morale_per_turn: r.morale_per_turn,

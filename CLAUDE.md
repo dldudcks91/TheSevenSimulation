@@ -136,6 +136,7 @@ TheSevenSimulation/
 | `client-` | `client-debug` | 버그 수정 (버그, 에러, 안 돼) |
 | `design-` | `design-battle` | 전투/밸런스 기획 |
 | `design-` | `design-economy` | 경제/거점 기획 |
+| `design-` | `design-hero` | 영웅 설계 (랜덤 생성, 죄종/성격, 특성, 성장) |
 | `design-` | `design-narrative` | 내러티브/이벤트 기획 |
 | `design-` | `design-system` | 시스템 디자인 (사기, 연쇄반응) |
 | `design-` | `design-ux` | UX/UI 설계 |

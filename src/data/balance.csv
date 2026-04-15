@@ -86,9 +86,6 @@ raid_interval_min,3
 raid_interval_max,5
 pioneer_cost_wood,30
 pioneer_build_cost,30
-sp_max,100
-sp_per_tick,2
-sp_per_kill,10
 duel_chance_wrath,0.5
 duel_chance_pride,0.35
 duel_chance_envy,0.25

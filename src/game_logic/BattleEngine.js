@@ -55,11 +55,6 @@ class BattleEngine {
         this._duelHero = null;
         this._duelEnemy = null;
 
-        // SP/카드 시스템
-        this._sp = 0;
-        this._spMax = this.balance.sp_max ?? 100;
-        this._spPerTick = this.balance.sp_per_tick ?? 2;
-        this._spPerKill = this.balance.sp_per_kill ?? 10;
         this._activeBuffs = []; // { target, effect_type, value, turnsLeft, id }
     }
 
@@ -158,9 +153,6 @@ class BattleEngine {
             }
 
             this._prepareNextRound();
-
-            // SP 획득 (라운드마다)
-            this._sp = Math.min(this._spMax, this._sp + this._spPerTick);
 
             // 버프 턴 감소
             this._tickBuffs();
@@ -509,12 +501,6 @@ class BattleEngine {
                 isSoldier: defender.isSoldier
             });
 
-            // SP 획득 (적 처치 시)
-            if (!defender.isHero) {
-                this._sp = Math.min(this._spMax, this._sp + this._spPerKill);
-                events.push({ type: 'sp_gain', sp: this._sp, gained: this._spPerKill, reason: 'kill' });
-            }
-
             const result = this._checkResult();
             if (result) events.push(result);
         }
@@ -602,8 +588,6 @@ class BattleEngine {
     isFinished() { return this._finished; }
     isDuelActive() { return this._duelActive; }
     getMode() { return this._mode; }
-    getSP() { return this._sp; }
-    getSPMax() { return this._spMax; }
     getActiveBuffs() { return [...this._activeBuffs]; }
 
     /** 버프 턴 감소 */

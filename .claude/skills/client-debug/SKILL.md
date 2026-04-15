@@ -42,4 +42,10 @@ user-invocable: true
 - 원인을 모르면 추측하지 말고 추가 정보를 요청
 - 최소 변경으로 최대 효과
 
+## 다음 추천 행동
+
+- **`/client-review`** — 수정 후 아키텍처 규칙 준수 여부 재검증
+- **`/client-implement`** — 버그 수정 완료 후 다음 기능 구현으로 복귀
+- **세션 상태** — 버그 원인과 수정 내용을 `docs/session-state.md`에 기록
+
 ## 사용자 요청: $ARGUMENTS

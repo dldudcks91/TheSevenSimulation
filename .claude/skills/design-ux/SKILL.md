@@ -39,4 +39,10 @@ user-invocable: true
 - 영웅 행동별 적합도(★)를 UI에서 자동 표시
 - 연쇄 반응 발생 시 시각적 피드백이 극적이어야 함
 
+## 다음 추천 행동
+
+- **`/client-implement`** — 화면 설계 확정 후 구현. 씬 변경 시 `docs/game_design/ui_design.md` 먼저 업데이트
+- **`/design-review`** — UI/화면 설계가 다른 시스템의 정보 요구사항을 모두 충족하는지 교차 검토
+- **세션 상태** — 주요 결정 사항을 `docs/session-state.md`에 기록
+
 ## 사용자 요청: $ARGUMENTS

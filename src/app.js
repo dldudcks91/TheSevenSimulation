@@ -9,6 +9,7 @@ import ResultScene from './scenes/ResultScene.js';
 import SettlementScene from './scenes/SettlementScene.js';
 import DuelBattleScene from './scenes/DuelBattleScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
+import ExpeditionScene from './scenes/ExpeditionScene.js';
 import { loadAllCsv, buildGameData } from './data/CsvLoader.js';
 
 /**
@@ -33,7 +34,7 @@ async function boot() {
         height: 720,
         parent: 'game-container',
         backgroundColor: '#0a0a12',
-        scene: [TitleScene, IntroScene, HeroSelectScene, MapScene, EventScene, BattleSceneA, BattleSceneB, DuelBattleScene, ResultScene, SettlementScene, GameOverScene],
+        scene: [TitleScene, IntroScene, HeroSelectScene, MapScene, EventScene, BattleSceneA, BattleSceneB, DuelBattleScene, ResultScene, SettlementScene, GameOverScene, ExpeditionScene],
         scale: {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -64,6 +65,7 @@ async function boot() {
     game.registry.set('moraleStates', gameData.moraleStates);
     game.registry.set('desertionEffects', gameData.desertionEffects);
     game.registry.set('battleScene', BATTLE_SCENE);
+    game.registry.set('expeditionMode', 'node');
     game.registry.set('lpcParts', gameData.lpcParts || []);
     game.registry.set('heroEpithets', gameData.heroEpithets || []);
     game.registry.set('itemsData', gameData.itemsData || []);

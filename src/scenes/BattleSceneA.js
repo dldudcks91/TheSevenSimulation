@@ -171,9 +171,6 @@ class BattleSceneA extends Phaser.Scene {
             }
         }
 
-        // SP 게이지
-        this._drawSPBar(width);
-
         // 일기토 오버레이 (초기 숨김)
         this._duelOverlay = null;
         this._duelActive = false;
@@ -363,8 +360,6 @@ class BattleSceneA extends Phaser.Scene {
         const eventArray = Array.isArray(events) ? events : [events];
         for (const evt of eventArray) this._processEvent(evt);
 
-        // SP 게이지 업데이트
-        this._updateSPDisplay();
     }
 
     // ═══════════════════════════════════
@@ -464,10 +459,6 @@ class BattleSceneA extends Phaser.Scene {
                 } else {
                     this._addLog(`⚔ 일기토 패배... ${evt.winner} 승`, '#f04040');
                 }
-                break;
-
-            case 'sp_gain':
-                this._updateSPDisplay();
                 break;
 
             case 'result':
@@ -714,48 +705,6 @@ class BattleSceneA extends Phaser.Scene {
     // ═══════════════════════════════════
     // 유닛 생성 / 지면
     // ═══════════════════════════════════
-
-    // ═══════════════════════════════════
-    // SP 게이지
-    // ═══════════════════════════════════
-
-    _drawSPBar(width) {
-        const spBarX = 30;
-        const spBarY = 52;
-        const spBarW = 200;
-        const spBarH = 10;
-
-        this.add.text(spBarX, spBarY - 13, 'SP', {
-            fontSize: '10px', fontFamily: FONT, color: '#f8c830',
-            shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
-        });
-
-        // 테두리
-        const spBorder = this.add.graphics();
-        spBorder.lineStyle(1, 0x606080, 0.5);
-        spBorder.strokeRoundedRect(spBarX - 1, spBarY - spBarH / 2 - 1, spBarW + 2, spBarH + 2, 3);
-
-        const spBg = this.add.rectangle(spBarX, spBarY, spBarW, spBarH, 0x1a1a2a);
-        spBg.setOrigin(0, 0.5);
-
-        this._spBar = this.add.rectangle(spBarX, spBarY, 0, spBarH, 0xf8c830);
-        this._spBar.setOrigin(0, 0.5);
-        this._spBarWidth = spBarW;
-
-        this._spText = this.add.text(spBarX + spBarW + 8, spBarY, '0/100', {
-            fontSize: '10px', fontFamily: FONT, color: '#f8c830'
-        }).setOrigin(0, 0.5);
-    }
-
-    _updateSPDisplay() {
-        if (!this.engine || this._mode !== 'realtime') return;
-        const sp = this.engine.getSP();
-        const spMax = this.engine.getSPMax();
-        const ratio = sp / spMax;
-        this._spBar.width = this._spBarWidth * ratio;
-        this._spText.setText(`${sp}/${spMax}`);
-
-    }
 
     _drawBackground(width, height) {
         const bg = this.add.graphics();
