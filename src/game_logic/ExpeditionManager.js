@@ -51,19 +51,15 @@ class ExpeditionManager {
         return true;
     }
 
-    /** 원정 파견 (병사 배정 포함) */
-    dispatch(heroIds, stageIndex, soldierCount = 0) {
+    /** 원정 파견 — 영웅 파티 */
+    dispatch(heroIds, stageIndex) {
         const heroes = this.store.getState('heroes') || [];
         const expedition = this.store.getState('expedition');
-        const soldiers = this.store.getState('soldiers') || 0;
 
         const maxParty = this.balance.max_party_size ?? 3;
-        const minSoldiers = this.balance.min_soldiers ?? 1;
 
         if (expedition.active) return { success: false, reason: '이미 원정 중' };
         if (heroIds.length === 0 || heroIds.length > maxParty) return { success: false, reason: `1~${maxParty}명 선택` };
-        if (soldierCount < minSoldiers) return { success: false, reason: `최소 병사 ${minSoldiers}명 필요` };
-        if (soldierCount > soldiers) return { success: false, reason: '병사 부족' };
 
         const chapter = `ch${expedition.chapter}`;
         const stages = this._stagesData[chapter];
@@ -77,9 +73,8 @@ class ExpeditionManager {
             }
         }
         this.store.setState('heroes', [...heroes]);
-        this.store.setState('soldiers', soldiers - soldierCount);
 
-        expedition.active = { heroIds, stageIndex, chapter, soldierCount };
+        expedition.active = { heroIds, stageIndex, chapter };
         this.store.setState('expedition', { ...expedition });
 
         return { success: true, stage: stages[stageIndex] };
@@ -91,7 +86,7 @@ class ExpeditionManager {
         if (!expedition.active) return null;
 
         const heroes = this.store.getState('heroes') || [];
-        const { heroIds, stageIndex, chapter, soldierCount } = expedition.active;
+        const { heroIds, stageIndex, chapter } = expedition.active;
         const stages = this._stagesData[chapter];
         const stage = stages[stageIndex];
 
@@ -99,7 +94,7 @@ class ExpeditionManager {
 
         const battleResult = this.battleEngine.simulate(
             partyHeroes, [...stage.enemies],
-            BATTLE_TYPES.EXPEDITION, soldierCount || 0,
+            BATTLE_TYPES.EXPEDITION,
             this._battleMode
         );
 
@@ -108,12 +103,8 @@ class ExpeditionManager {
             if (!hero) continue;
             hero.status = hr.alive ? 'idle' : 'injured';
             hero.location = 'base';
-        }
-
-        const soldiersSurvived = battleResult.soldiersSurvived || 0;
-        if (soldiersSurvived > 0) {
-            const currentSoldiers = this.store.getState('soldiers') || 0;
-            this.store.setState('soldiers', currentSoldiers + soldiersSurvived);
+            if (hr.hp !== undefined) hero.hp = hr.hp;
+            if (hr.maxHp !== undefined) hero.maxHp = hr.maxHp;
         }
 
         let goldReward = 0;
@@ -138,9 +129,6 @@ class ExpeditionManager {
             isBoss: stage.isBoss || false,
             goldReward,
             heroResults: battleResult.heroResults,
-            soldiersDeployed: battleResult.soldiersDeployed || 0,
-            soldiersSurvived: battleResult.soldiersSurvived || 0,
-            soldiersLost: battleResult.soldiersLost || 0,
             log: battleResult.log,
             rounds: battleResult.rounds
         };
@@ -178,10 +166,9 @@ class ExpeditionManager {
         const baseHeroes = heroes.filter(h =>
             defenseHeroIds.includes(h.id) && h.status !== 'injured'
         );
-        const soldiers = this.store.getState('soldiers') || 0;
 
-        if (baseHeroes.length === 0 && soldiers === 0) {
-            return { victory: false, reason: 'no_defenders', log: [], soldiersLost: 0 };
+        if (baseHeroes.length === 0) {
+            return { victory: false, reason: 'no_defenders', log: [] };
         }
 
         // balance에서 방어전 스케일링 로드
@@ -197,28 +184,27 @@ class ExpeditionManager {
         const enemies = [];
         for (let i = 0; i < scale + 1; i++) {
             enemies.push({
-                name: `습격병 ${i + 1}`,
+                name: `습격자 ${i + 1}`,
                 hp: defHpBase + day * defHpPerDay,
                 atk: defAtkBase + day * defAtkPerDay,
                 spd: defSpd
             });
         }
 
-        const result = this.battleEngine.simulate(baseHeroes, enemies, BATTLE_TYPES.DEFENSE, soldiers, this._battleMode);
+        const result = this.battleEngine.simulate(baseHeroes, enemies, BATTLE_TYPES.DEFENSE, this._battleMode);
 
         for (const hr of result.heroResults) {
             const hero = heroes.find(h => h.id === hr.id);
-            if (hero && !hr.alive) hero.status = 'injured';
+            if (!hero) continue;
+            if (!hr.alive) hero.status = 'injured';
+            if (hr.hp !== undefined) hero.hp = hr.hp;
+            if (hr.maxHp !== undefined) hero.maxHp = hr.maxHp;
         }
         this.store.setState('heroes', [...heroes]);
-        this.store.setState('soldiers', result.soldiersSurvived || 0);
 
         return {
             victory: result.victory,
             heroResults: result.heroResults,
-            soldiersDeployed: result.soldiersDeployed || 0,
-            soldiersSurvived: result.soldiersSurvived || 0,
-            soldiersLost: result.soldiersLost || 0,
             rounds: result.rounds,
             log: result.log,
             enemyCount: enemies.length

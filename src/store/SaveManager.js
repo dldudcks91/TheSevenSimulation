@@ -15,6 +15,7 @@ const SaveManager = {
             inventory: store.getState('inventory'),
             base: store.getState('base'),
             expedition: store.getState('expedition'),
+            playerSins: store.getState('playerSins'),
             savedAt: new Date().toISOString()
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -43,6 +44,7 @@ const SaveManager = {
         if (saveData.food !== undefined) store.setState('food', saveData.food);
         if (saveData.wood !== undefined) store.setState('wood', saveData.wood);
         if (saveData.inventory) store.setState('inventory', saveData.inventory);
+        if (saveData.playerSins) store.setState('playerSins', saveData.playerSins);
         return true;
     },
 

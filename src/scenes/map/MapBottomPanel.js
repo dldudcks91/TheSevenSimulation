@@ -415,7 +415,7 @@ class MapBottomPanel {
         if (heroes.length > 0 && !(expedition && expedition.active)) {
             this.p(w.panelButton(px + 120, y, `⚔ 원정 맵 열기 (${modeLabel})`, () => {
                 const partyIds = heroes.slice(0, 3).map(h => h.id);
-                s.scene.launch('ExpeditionScene', { heroIds: partyIds, soldierCount: store.getState('soldiers') || 0 });
+                s.scene.launch('ExpeditionScene', { heroIds: partyIds });
             }));
         }
     }
@@ -607,8 +607,7 @@ class MapBottomPanel {
         }
 
         const heroes = s.heroManager.getBaseHeroes().filter(h => h.status === 'idle');
-        const soldiers = store.getState('soldiers') || 0;
-        this.p(s.add.text(px + 8, y, `영웅: ${heroes.length}명 | 병사: ${soldiers}명`, {
+        this.p(s.add.text(px + 8, y, `영웅: ${heroes.length}명`, {
             fontSize: '11px', fontFamily: FONT, color: C.textSecondary
         }));
         y += 22;
@@ -652,28 +651,30 @@ class MapBottomPanel {
         const progress = s.expeditionManager.getProgress();
         const stage = progress.stages[stageIndex];
         const heroes = s.heroManager.getBaseHeroes().filter(h => h.status === 'idle');
-        const soldiers = store.getState('soldiers') || 0;
 
         this.p(w.sectionTitle(px, y, `원정: ${stage.name}`));
         y += 22;
 
-        this.p(s.add.text(px + 8, y, `영웅: ${heroes.length}명 | 병사: ${soldiers}명`, {
+        this.p(s.add.text(px + 8, y, `영웅: ${heroes.length}명`, {
             fontSize: '11px', fontFamily: FONT, color: C.textSecondary
         }));
         y += 20;
 
         if (heroes.length === 0) {
             this.p(s.add.text(px + 8, y, '파견 가능한 영웅 없음', { fontSize: '11px', fontFamily: FONT, color: C.textMuted }));
-        } else if (soldiers === 0) {
-            this.p(s.add.text(px + 8, y, '병사가 없습니다', { fontSize: '11px', fontFamily: FONT, color: C.textMuted }));
         } else {
             const party = heroes.slice(0, Math.min(3, heroes.length));
             this.p(s.add.text(px + 8, y, `파티: ${party.map(h => h.name).join(', ')}`, {
                 fontSize: '11px', fontFamily: FONT, color: C.infoCyan
             }));
             y += 20;
-            this.p(w.panelButton(px + pw / 2, y, '병사 배정 →', () => {
-                s._showPanelAction('soldierSelect', { stageIndex, party });
+            this.p(w.panelButton(px + pw / 2, y, '⚔️ 파견 출발', () => {
+                const partyIds = party.map(h => h.id);
+                const result = s.expeditionManager.dispatch(partyIds, stageIndex);
+                if (result.success) {
+                    this.refreshActiveTab();
+                    s._closePanelAction();
+                }
             }));
         }
 
@@ -681,60 +682,6 @@ class MapBottomPanel {
         this.p(w.panelButton(px + pw / 2, y, '← 돌아가기', () => s._closePanelAction()));
     }
 
-    // ═══════════════════════════════════
-    // 패널 액션: 병사 배정
-    // ═══════════════════════════════════
-    renderSoldierSelectAction(data) {
-        const { stageIndex, party } = data;
-        const s = this.scene;
-        const w = s.widgets;
-        const px = 16;
-        const pw = 600;
-        let y = PANEL_CONTENT_Y + 8;
-
-        const progress = s.expeditionManager.getProgress();
-        const stage = progress.stages[stageIndex];
-        const soldiers = store.getState('soldiers') || 0;
-
-        this.p(w.sectionTitle(px, y, '병사 배정'));
-        y += 22;
-
-        this.p(s.add.text(px + 8, y, `목표: ${stage.name} | 사용 가능: ${soldiers}명`, {
-            fontSize: '11px', fontFamily: FONT, color: C.textSecondary
-        }));
-        y += 24;
-
-        let selectedCount = Math.min(10, soldiers);
-        const countText = this.p(s.add.text(px + 150, y, `${selectedCount}명`, {
-            fontSize: '20px', fontFamily: FONT_BOLD, color: C.textPrimary,
-            shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
-        }).setOrigin(0.5));
-        y += 28;
-
-        const btnCx = px + 150;
-        this.p(w.smallPanelBtn(btnCx - 80, y, '-10', () => { selectedCount = Math.max(1, selectedCount - 10); countText.setText(`${selectedCount}명`); }));
-        this.p(w.smallPanelBtn(btnCx - 30, y, '-1', () => { selectedCount = Math.max(1, selectedCount - 1); countText.setText(`${selectedCount}명`); }));
-        this.p(w.smallPanelBtn(btnCx + 30, y, '+1', () => { selectedCount = Math.min(soldiers, selectedCount + 1); countText.setText(`${selectedCount}명`); }));
-        this.p(w.smallPanelBtn(btnCx + 80, y, '+10', () => { selectedCount = Math.min(soldiers, selectedCount + 10); countText.setText(`${selectedCount}명`); }));
-        y += 26;
-        this.p(w.smallPanelBtn(btnCx, y, '전체', () => { selectedCount = soldiers; countText.setText(`${selectedCount}명`); }));
-        y += 34;
-
-        this.p(w.panelButton(btnCx, y, '⚔️ 파견 출발', () => {
-            const partyIds = party.map(h => h.id);
-            const result = s.expeditionManager.dispatch(partyIds, stageIndex, selectedCount);
-            if (result.success) {
-                this.refreshActiveTab();
-                s.hud.updateSoldiers();
-                s._closePanelAction();
-            }
-        }));
-
-        y += 40;
-        this.p(w.panelButton(btnCx, y, '← 돌아가기', () => {
-            s._showPanelAction('expedition', { stageIndex });
-        }));
-    }
 }
 
 export default MapBottomPanel;

@@ -52,7 +52,8 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 ```
 
 - **구름 가리기(Fog of war)**: 현재 노드의 연결 노드만 공개. 나머지는 '???' 로 표시
-- **미래 확장**: 감시탑 건물로 추가 노드 미리보기 가능
+- **감시탑 연동** (2026-04-16 구현): 감시탑 레벨에 따라 START에서 N스텝 앞까지 미리 공개
+  - Lv.1 → +1 스텝, Lv.2 → +2 스텝, Lv.3 → 전체 공개
 - **선택 전략**: 현재 파티 상태(사기/HP)에 따라 전투 vs 야영 선택
 
 #### 노드 유형
@@ -128,19 +129,44 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 | 포탈 체크포인트 | ✅ 구현 완료 |
 | 인라인 전투 해결 (BattleEngine) | ✅ 구현 완료 |
 | 인게임 모드 전환 (HUD ⚙) | ✅ 구현 완료 |
-| 조우 이벤트 연동 (EventScene) | ⬜ 미구현 |
-| 원정 결과 → Store 반영 (자원/부상) | ⬜ 미구현 |
-| 챕터별 노드 구성 다양화 | ⬜ 미구현 |
-| 감시탑 ↔ 구름 해제 연동 | ⬜ 미구현 |
+| 원정 결과 → Store 반영 (자원/부상/사기/HP) | ✅ 구현 완료 (2026-04-16) |
+| 보스 격파 시 다음 챕터 해금 | ✅ 구현 완료 (2026-04-16) |
+| 조우 이벤트 연동 (EventScene) | ✅ 구현 완료 (2026-04-16) |
+| 감시탑 ↔ 구름 해제 연동 | ✅ 구현 완료 (2026-04-16) |
+| 챕터별 노드 구성 다양화 | ✅ 구현 완료 (2026-04-16) — `expedition_nodes.csv` / `expedition_dice.csv` |
+
+### 원정 결과 Store 반영 공식 (2026-04-16 구현)
+
+| 노드 | 효과 | balance.csv 키 |
+|------|------|---------------|
+| combat 승리 | 골드 `base + day×per_day`, 파티 사기 +3 | `exp_node_combat_gold_base`(40) / `exp_node_combat_gold_per_day`(4) / `exp_node_victory_morale` |
+| combat 패배 | 파티 사기 -8, 쓰러진 영웅 `status='injured'` | `exp_node_defeat_morale` |
+| boss 승리 | 골드 `120 + day×10`, 챕터 +1, 맵 리셋 | `exp_node_boss_gold_base` / `exp_node_boss_gold_per_day` |
+| rest | 파티 사기 +10 | `exp_node_rest_morale` |
+| 영웅 HP | 전투별 피해 누적, 귀환 후 매 턴 자연 회복 | `hero_hp_regen_per_turn` |
+
+### 조우 이벤트 (encounter) — 2026-04-16 구현
+
+- 이벤트 노드 클릭 시 `EventSystem.pickEncounterEvent(partyHeroIds)` 호출 → `category='encounter'` 이벤트 풀에서 랜덤 선택
+- EventScene을 오버레이로 띄움, 파티 영웅만 대상으로 효과 적용 (`target='party'`)
+- 초기 이벤트 3종: **부상당한 순례자**(F1) / **낡은 제단**(F2) / **버려진 보물상자**(F3)
+- 후속: 챕터/지역별 전용 조우 이벤트 추가 예정
 
 ---
+
+### 챕터별 노드 구성 (2026-04-16 CSV화)
+
+- `expedition_nodes.csv` — STS 노드 모드, 챕터별 7노드 (start/전투·조우·야영 2개/포탈/전투·조우·야영 2개/보스)
+- `expedition_dice.csv` — 주사위 모드, 챕터별 25칸 시퀀스 (pipe-separated)
+- 챕터별 테마 반영: 분노=combat, 시기=매복, 탐욕=event, 나태=rest, 폭식=혼합, 색욕=event, 교만=combat-heavy
+- 보스명도 챕터별 실명 (사탄/레비아탄/맘몬/벨페고르/바알제붑/아스모데우스/루시퍼)
 
 ## 미확정 항목
 
 - [ ] 스테이지별 난이도 수치
 - [ ] 보상 테이블
-- [ ] 감시탑 레벨별 공개 노드 수
+- [ ] 감시탑 레벨별 공개 노드 수 (현재 Lv별 +1/+2/전체 공개, 밸런스 미정)
 
 ---
 
-*마지막 업데이트: 2026-04-15*
+*마지막 업데이트: 2026-04-16*

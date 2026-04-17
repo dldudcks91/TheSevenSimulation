@@ -12,14 +12,18 @@ class DayActions {
         this.balance = balance;
     }
 
-    /** 채집 실행 → 식량 획득 + 사기 변동 */
+    /** 채집 실행 → 식량 획득 + 사기 변동 + 체력 소모 */
     doGather(hero) {
         const turn = this.store.getState('turn');
         const day = (turn && turn.day) || 1;
         const b = this.balance;
-        const foodReward = (b.gather_base_food ?? 8) + Math.floor(Math.random() * day);
+        const baseReward = (b.gather_base_food ?? 8) + Math.floor(Math.random() * day);
+        // 피로/과로 시 효율 감소
+        const effMult = this._efficiencyMult(hero);
+        const foodReward = Math.max(1, Math.round(baseReward * effMult));
 
         hero.status = 'gather';
+        this.heroManager.consumeStamina(hero.id, b.stamina_cost_gather ?? 10);
         this.store.setState('heroes', [...this.heroManager.getHeroes()]);
 
         const food = this.store.getState('food') || 0;
@@ -29,14 +33,17 @@ class DayActions {
         return { foodReward };
     }
 
-    /** 벌목 실행 → 나무 획득 + 사기 변동 */
+    /** 벌목 실행 → 나무 획득 + 사기 변동 + 체력 소모 */
     doLumber(hero) {
         const turn = this.store.getState('turn');
         const day = (turn && turn.day) || 1;
         const b = this.balance;
-        const woodReward = (b.lumber_base_wood ?? 6) + Math.floor(Math.random() * day);
+        const baseReward = (b.lumber_base_wood ?? 6) + Math.floor(Math.random() * day);
+        const effMult = this._efficiencyMult(hero);
+        const woodReward = Math.max(1, Math.round(baseReward * effMult));
 
         hero.status = 'lumber';
+        this.heroManager.consumeStamina(hero.id, b.stamina_cost_lumber ?? 10);
         this.store.setState('heroes', [...this.heroManager.getHeroes()]);
 
         const wood = this.store.getState('wood') || 0;
@@ -44,6 +51,15 @@ class DayActions {
         this.heroManager.updateMorale(hero.id, b.lumber_morale ?? 1);
 
         return { woodReward };
+    }
+
+    /** 체력 구간별 효율 배수 */
+    _efficiencyMult(hero) {
+        const b = this.balance;
+        const stam = hero.stamina ?? (b.stamina_max ?? 100);
+        if (stam <= (b.stamina_overwork_threshold ?? 25)) return 0.6;
+        if (stam <= (b.stamina_tired_threshold ?? 50)) return 0.8;
+        return 1.0;
     }
 
     /** 연회 실행 → 골드 소비 + 전체 사기 증가 */
@@ -101,6 +117,7 @@ class DayActions {
     /** 사냥 결과 반영 */
     applyHuntResult(hero, victory, goldReward) {
         const b = this.balance;
+        this.heroManager.consumeStamina(hero.id, b.stamina_cost_hunt ?? 15);
         if (victory) {
             hero.status = 'hunt';
             const gold = this.store.getState('gold') || 0;

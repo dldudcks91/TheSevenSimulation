@@ -119,6 +119,7 @@ class HeroManager {
         const epithet = this._pickEpithet(sinStats);
         const firstName = this._randomFirstName();
         const name = epithet ? `"${epithet}" ${firstName}` : firstName;
+        const maxHp = this._calcMaxHp(stats);
 
         return {
             id: this._nextId++,
@@ -139,8 +140,25 @@ class HeroManager {
             appearance: this._spriteComposer ? this._spriteComposer.generateAppearance() : null,
             daysIdle: 0,
             expeditionFailStreak: 0,
-            _rampageHistory: []
+            _rampageHistory: [],
+            hp: maxHp,
+            maxHp,
+            stamina: this.balance.stamina_max ?? 100,
+            sickTurns: 0,
         };
+    }
+
+    /** HP 최대치 계산 — base + vitality × per_vit */
+    _calcMaxHp(stats) {
+        const base = this.balance.hero_hp_base ?? 50;
+        const perVit = this.balance.hero_hp_per_vitality ?? 5;
+        const vitality = stats?.vitality ?? 10;
+        return base + vitality * perVit;
+    }
+
+    /** 외부 API — 영웅의 최대 HP */
+    calcMaxHp(hero) {
+        return this._calcMaxHp(hero?.stats);
     }
 
     /** 이름(first name)만 랜덤 */
@@ -217,6 +235,113 @@ class HeroManager {
         const stats = {};
         STAT_KEYS.forEach((key, i) => { stats[key] = values[i]; });
         return stats;
+    }
+
+    /**
+     * 체력 소모 (행동 시 호출)
+     * @returns {number} 소모된 실제 양 (음수 보정 후)
+     */
+    consumeStamina(heroId, amount) {
+        const hero = this.getHero(heroId);
+        if (!hero) return 0;
+        if (!amount) return 0;
+        const max = this.balance.stamina_max ?? 100;
+        const mult = this._getStaminaCostMult(hero);
+        const adjusted = Math.round(amount * mult);
+        const cur = hero.stamina ?? max;
+        const next = Math.max(0, Math.min(max, cur - adjusted));
+        const actualUsed = cur - next;
+        hero.stamina = next;
+        this.store.setState('heroes', [...(this.store.getState('heroes') || [])]);
+        return actualUsed;
+    }
+
+    /**
+     * 매 턴 체력(Stamina) 회복 (TurnProcessor에서 호출)
+     * 회복량 = base + vitality × bonus, 죄종 보정 적용
+     */
+    recoverStaminaTurn(heroId) {
+        const hero = this.getHero(heroId);
+        if (!hero) return 0;
+        const max = this.balance.stamina_max ?? 100;
+        const base = this.balance.stamina_recovery_base ?? 4;
+        const bonus = this.balance.stamina_recovery_health_bonus ?? 0.5;
+        const vitality = hero.stats?.vitality ?? 5;
+        const mult = this._getStaminaRecoverMult(hero);
+        const recover = Math.round((base + vitality * bonus) * mult);
+        const cur = hero.stamina ?? max;
+        hero.stamina = Math.min(max, cur + recover);
+        return hero.stamina - cur;
+    }
+
+    /**
+     * 매 턴 HP 자연 회복 (TurnProcessor에서 호출)
+     * 회복량 = hero_hp_regen_per_turn
+     */
+    regenHeroHpTurn(heroId) {
+        const hero = this.getHero(heroId);
+        if (!hero) return 0;
+        const regen = this.balance.hero_hp_regen_per_turn ?? 10;
+        const maxHp = hero.maxHp ?? this._calcMaxHp(hero.stats);
+        const cur = hero.hp ?? maxHp;
+        const next = Math.min(maxHp, cur + regen);
+        hero.hp = next;
+        hero.maxHp = maxHp;
+        return next - cur;
+    }
+
+    /** 주 성향(topSin) 기반 Stamina 소모 배율 */
+    _getStaminaCostMult(hero) {
+        const sin = topSin(hero?.sinStats);
+        if (!sin) return 1.0;
+        const key = `stamina_mult_${sin}_cost`;
+        return this.balance[key] ?? 1.0;
+    }
+
+    /** 주 성향(topSin) 기반 Stamina 회복 배율 */
+    _getStaminaRecoverMult(hero) {
+        const sin = topSin(hero?.sinStats);
+        if (!sin) return 1.0;
+        const key = `stamina_mult_${sin}_recover`;
+        return this.balance[key] ?? 1.0;
+    }
+
+    /**
+     * 과로 상태 발병 판정 (TurnProcessor에서 매턴 호출)
+     * @returns {boolean} 발병 여부
+     */
+    checkSicknessTick(heroId) {
+        const hero = this.getHero(heroId);
+        if (!hero) return false;
+        const overwork = this.balance.stamina_overwork_threshold ?? 25;
+        const stamina = hero.stamina ?? 100;
+        if (stamina > overwork) return false;
+
+        const baseChance = this.balance.sickness_chance_base ?? 0.15;
+        const healthRed = this.balance.sickness_health_reduction ?? 0.01;
+        const vitality = hero.stats?.vitality ?? 5;
+        const chance = Math.max(0.02, baseChance - vitality * healthRed);
+        if (Math.random() >= chance) return false;
+
+        const minT = this.balance.sickness_min_turns ?? 2;
+        const maxT = this.balance.sickness_max_turns ?? 3;
+        hero.sickTurns = minT + Math.floor(Math.random() * (maxT - minT + 1));
+        hero.status = 'sick';
+        const moraleDelta = this.balance.sickness_morale_delta ?? -8;
+        hero.morale = Math.max(0, (hero.morale ?? 50) + moraleDelta);
+        return true;
+    }
+
+    /** 발병 회복 진행 (매 턴 turn counter -1) */
+    tickSickness(heroId) {
+        const hero = this.getHero(heroId);
+        if (!hero) return;
+        if (hero.status !== 'sick' || !hero.sickTurns) return;
+        hero.sickTurns -= 1;
+        if (hero.sickTurns <= 0) {
+            hero.sickTurns = 0;
+            hero.status = 'idle';
+        }
     }
 
     /** 영웅 식량 비용 계산 (스탯 총합 기반) */

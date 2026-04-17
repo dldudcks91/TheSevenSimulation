@@ -1,0 +1,8 @@
+chapter,sequence
+1,start|combat|event|combat|rest|combat|event|combat|rest|combat|event|rest|portal|combat|event|combat|rest|combat|event|combat|rest|combat|event|combat|boss
+2,start|combat|combat|event|rest|combat|event|combat|combat|rest|event|combat|portal|combat|combat|event|rest|combat|combat|event|rest|combat|event|combat|boss
+3,start|event|combat|event|rest|event|combat|event|rest|event|combat|rest|portal|event|combat|event|rest|event|combat|event|rest|event|combat|event|boss
+4,start|rest|combat|rest|event|combat|rest|event|combat|rest|event|rest|portal|rest|combat|rest|event|combat|rest|event|combat|rest|event|combat|boss
+5,start|combat|event|rest|combat|event|combat|event|rest|combat|event|rest|portal|combat|event|combat|rest|event|combat|event|rest|combat|event|combat|boss
+6,start|event|combat|event|rest|event|event|combat|rest|event|combat|rest|portal|event|combat|event|rest|event|event|combat|rest|event|combat|event|boss
+7,start|combat|combat|event|combat|rest|combat|combat|event|rest|combat|event|portal|combat|combat|event|rest|combat|combat|event|rest|combat|combat|event|boss

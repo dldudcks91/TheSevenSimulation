@@ -16,9 +16,8 @@ class BattleEngine {
     constructor(balance = {}) {
         this.balance = balance;
         this.MAX_ROUNDS = balance.max_battle_rounds ?? 50;
-        this.SOLDIER_HP = balance.soldier_hp ?? 80;
-        this.SOLDIER_ATK = balance.soldier_atk ?? 8;
-        this.SOLDIER_SPD = balance.soldier_spd ?? 3;
+        this.HERO_HP_BASE = balance.hero_hp_base ?? 50;
+        this.HERO_HP_PER_VIT = balance.hero_hp_per_vitality ?? 5;
         this.DMG_VAR_MIN = balance.damage_variance_min ?? 0.8;
         this.DMG_VAR_MAX = balance.damage_variance_max ?? 1.2;
         this.ATK_DEF_STR = balance.atk_defense_str_mult ?? 0.8;
@@ -33,7 +32,6 @@ class BattleEngine {
 
     _reset() {
         this._heroUnits = [];
-        this._soldierUnits = [];
         this._enemyUnits = [];
         this._round = 0;
         this._turnQueue = [];
@@ -42,10 +40,9 @@ class BattleEngine {
         this._victory = null;
         this._type = BATTLE_TYPES.EXPEDITION;
         this._mode = BATTLE_MODES.MELEE;
-        this._hasSoldiers = false;
 
         // 태그매치 전용
-        this._tagHeroIndex = 0;
+        this._tagAllyIndex = 0;
         this._tagEnemyIndex = 0;
         this._tagCurrentHero = null;
         this._tagCurrentEnemy = null;
@@ -62,27 +59,12 @@ class BattleEngine {
     // 초기화
     // ═══════════════════════════════════
 
-    init(heroes, enemies, type = BATTLE_TYPES.EXPEDITION, soldierCount = 0, mode = BATTLE_MODES.MELEE) {
+    init(heroes, enemies, type = BATTLE_TYPES.EXPEDITION, mode = BATTLE_MODES.MELEE) {
         this._reset();
         this._type = type;
         this._mode = mode;
 
         this._heroUnits = heroes.map(h => this._makeHeroUnit(h, type));
-
-        this._soldierUnits = [];
-        for (let i = 0; i < soldierCount; i++) {
-            this._soldierUnits.push({
-                name: `민병 ${i + 1}`,
-                hp: this.SOLDIER_HP,
-                maxHp: this.SOLDIER_HP,
-                atk: this.SOLDIER_ATK,
-                spd: this.SOLDIER_SPD,
-                isHero: true,
-                isSoldier: true,
-                alive: true
-            });
-        }
-        this._hasSoldiers = soldierCount > 0;
 
         this._enemyUnits = enemies.map((e, i) => ({
             ...e,
@@ -92,7 +74,6 @@ class BattleEngine {
             hp: e.hp,
             maxHp: e.hp,
             isHero: false,
-            isSoldier: false,
             alive: true
         }));
 
@@ -106,20 +87,21 @@ class BattleEngine {
             type: 'start',
             mode: this._mode,
             heroes: this._heroUnits.map(u => ({ name: u.name, hp: u.hp, maxHp: u.maxHp, primarySin: u.primarySin })),
-            soldiers: this._soldierUnits.length,
             enemies: this._enemyUnits.map(u => ({ name: u.name, hp: u.hp, maxHp: u.maxHp }))
         };
     }
 
     _makeHeroUnit(h, type) {
+        const vitality = h.stats?.vitality ?? 10;
+        const maxHp = this.HERO_HP_BASE + vitality * this.HERO_HP_PER_VIT;
+        const curHp = h.hp ?? maxHp;
         return {
             ...h,
-            hp: this.SOLDIER_HP,
-            maxHp: this.SOLDIER_HP,
+            hp: Math.min(maxHp, Math.max(1, curHp)),
+            maxHp,
             atk: this._calcATK(h, type),
             spd: h.stats?.agility || 10,
             isHero: true,
-            isSoldier: false,
             alive: true,
             primarySin: topSin(h.sinStats),
             sinStats: h.sinStats || null
@@ -184,7 +166,7 @@ class BattleEngine {
     _checkDuelRequest() {
         if (this._round <= (this.balance.duel_skip_rounds ?? 1)) return null;
 
-        const aliveHeroes = this._heroUnits.filter(u => u.alive && !u.isSoldier);
+        const aliveHeroes = this._heroUnits.filter(u => u.alive);
         const aliveEnemies = this._enemyUnits.filter(u => u.alive);
         if (aliveHeroes.length === 0 || aliveEnemies.length === 0) return null;
 
@@ -322,8 +304,8 @@ class BattleEngine {
     // ═══════════════════════════════════
 
     _initTag() {
-        // 태그매치: 병사가 먼저, 영웅 순서대로
-        this._tagAllyQueue = [...this._soldierUnits, ...this._heroUnits];
+        // 태그매치: 영웅 순서대로
+        this._tagAllyQueue = [...this._heroUnits];
         this._tagEnemyQueue = [...this._enemyUnits];
         this._tagAllyIndex = 0;
         this._tagEnemyIndex = 0;
@@ -417,8 +399,7 @@ class BattleEngine {
                     ally: this._tagCurrentHero ? {
                         name: this._tagCurrentHero.name,
                         hp: this._tagCurrentHero.hp,
-                        maxHp: this._tagCurrentHero.maxHp,
-                        isSoldier: this._tagCurrentHero.isSoldier
+                        maxHp: this._tagCurrentHero.maxHp
                     } : null,
                     enemy: this._tagCurrentEnemy ? {
                         name: this._tagCurrentEnemy.name,
@@ -475,10 +456,8 @@ class BattleEngine {
             type: 'attack',
             round: this._round,
             attacker: attacker.name,
-            attackerIsSoldier: attacker.isSoldier,
             attackerIsHero: attacker.isHero,
             defender: defender.name,
-            defenderIsSoldier: defender.isSoldier,
             defenderIsHero: defender.isHero,
             damage: dmg,
             remainHp: Math.max(0, defender.hp),
@@ -489,7 +468,7 @@ class BattleEngine {
             defender.alive = false;
             defender.hp = 0;
 
-            if (defender.isHero && !defender.isSoldier) {
+            if (defender.isHero) {
                 defender.status = 'knocked_out';
             }
 
@@ -497,8 +476,7 @@ class BattleEngine {
                 type: 'defeat',
                 round: this._round,
                 name: defender.name,
-                isHero: defender.isHero,
-                isSoldier: defender.isSoldier
+                isHero: defender.isHero
             });
 
             const result = this._checkResult();
@@ -514,13 +492,7 @@ class BattleEngine {
             if (targets.length === 0) return null;
             return targets[Math.floor(Math.random() * targets.length)];
         }
-        // 적 → 병사 우선
-        if (this._hasSoldiers) {
-            const soldiers = this._soldierUnits.filter(u => u.alive);
-            if (soldiers.length > 0) {
-                return soldiers[Math.floor(Math.random() * soldiers.length)];
-            }
-        }
+        // 적 → 영웅 직격
         const heroes = this._heroUnits.filter(u => u.alive);
         if (heroes.length === 0) return null;
         return heroes[Math.floor(Math.random() * heroes.length)];
@@ -531,7 +503,6 @@ class BattleEngine {
         this._turnIndex = 0;
         const allAlive = [
             ...this._heroUnits.filter(u => u.alive),
-            ...this._soldierUnits.filter(u => u.alive),
             ...this._enemyUnits.filter(u => u.alive)
         ];
         allAlive.sort((a, b) => {
@@ -550,23 +521,8 @@ class BattleEngine {
             return { type: 'result', winner: 'heroes', rounds: this._round };
         }
 
-        if (this._hasSoldiers) {
-            const soldiersAlive = this._soldierUnits.filter(u => u.alive);
-            if (soldiersAlive.length === 0) {
-                // 병사 전멸 → 영웅도 체크
-                const heroesAlive = this._heroUnits.filter(u => u.alive);
-                if (heroesAlive.length === 0) {
-                    this._finished = true;
-                    this._victory = false;
-                    return { type: 'result', winner: 'enemies', rounds: this._round };
-                }
-                // 병사 전멸 but 영웅 생존 → 영웅이 직접 싸움 (hasSoldiers 해제)
-                this._hasSoldiers = false;
-            }
-        }
-
-        const alliesAlive = [...this._heroUnits.filter(u => u.alive), ...this._soldierUnits.filter(u => u.alive)];
-        if (alliesAlive.length === 0) {
+        const heroesAlive = this._heroUnits.filter(u => u.alive);
+        if (heroesAlive.length === 0) {
             this._finished = true;
             this._victory = false;
             return { type: 'result', winner: 'enemies', rounds: this._round };
@@ -603,18 +559,15 @@ class BattleEngine {
     }
 
     getResult() {
-        const soldiersAlive = this._soldierUnits.filter(u => u.alive).length;
-        const soldiersDead = this._soldierUnits.length - soldiersAlive;
         return {
             victory: this._victory,
             heroResults: this._heroUnits.map(u => ({
                 id: u.id, name: u.name, alive: u.alive,
+                hp: Math.max(0, u.hp),
+                maxHp: u.maxHp,
                 hpPercent: Math.max(0, Math.floor((u.hp / u.maxHp) * 100)),
                 status: u.alive ? 'ok' : 'knocked_out'
             })),
-            soldiersDeployed: this._soldierUnits.length,
-            soldiersSurvived: soldiersAlive,
-            soldiersLost: soldiersDead,
             rounds: this._round
         };
     }
@@ -625,7 +578,6 @@ class BattleEngine {
                 name: u.name, hp: u.hp, maxHp: u.maxHp, alive: u.alive,
                 isHero: true, primarySin: u.primarySin
             })),
-            soldiers: { total: this._soldierUnits.length, alive: this._soldierUnits.filter(u => u.alive).length },
             enemies: this._enemyUnits.map(u => ({
                 name: u.name, hp: u.hp, maxHp: u.maxHp, alive: u.alive, isHero: false
             }))
@@ -641,14 +593,13 @@ class BattleEngine {
     }
 
     /** 전투 일괄 실행 (리플레이용) */
-    simulate(heroes, enemies, type = BATTLE_TYPES.EXPEDITION, soldierCount = 0, mode = BATTLE_MODES.MELEE) {
-        const startEvent = this.init(heroes, enemies, type, soldierCount, mode);
+    simulate(heroes, enemies, type = BATTLE_TYPES.EXPEDITION, mode = BATTLE_MODES.MELEE) {
+        const startEvent = this.init(heroes, enemies, type, mode);
         const log = [];
         log.push({
             type: 'start',
             mode,
             heroes: startEvent.heroes.map(u => u.name),
-            soldiers: startEvent.soldiers,
             enemies: startEvent.enemies.map(u => u.name)
         });
 
@@ -662,9 +613,6 @@ class BattleEngine {
         const result = this.getResult();
         return {
             victory: result.victory, log, heroResults: result.heroResults,
-            soldiersDeployed: result.soldiersDeployed,
-            soldiersSurvived: result.soldiersSurvived,
-            soldiersLost: result.soldiersLost,
             rounds: result.rounds
         };
     }

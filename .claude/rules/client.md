@@ -57,7 +57,7 @@ src/
 ├── store/                    # 상태 관리
 │   ├── Store.js              # Central Store (pub/sub)
 │   └── SaveManager.js        # LocalStorage 세이브/로드
-└── data/                     # 게임 데이터 CSV (26개) + CsvLoader.js
+└── data/                     # 게임 데이터 CSV (28개) + CsvLoader.js
 ```
 
 ---

@@ -74,10 +74,6 @@ class MapDefenseMode {
         this._composedHeroes = {};
         this._cardButtons = [];
         this._reinforcePanel = null;
-
-        // 병사 카운터
-        this._soldierAlive = 0;
-        this._soldierTotal = 0;
     }
 
     // ═══════════════════════════════════
@@ -226,11 +222,6 @@ class MapDefenseMode {
             this._createUnit(u.name, fx, fy, spriteType, false, u.maxHp);
         });
 
-        if (unitsData.soldiers) {
-            this._soldierTotal = unitsData.soldiers.total;
-            this._soldierAlive = unitsData.soldiers.alive;
-            this._updateSoldierDisplay();
-        }
     }
 
     // ═══════════════════════════════════
@@ -313,20 +304,12 @@ class MapDefenseMode {
             case 'start': break;
 
             case 'attack':
-                if (evt.attackerIsSoldier || evt.defenderIsSoldier) {
-                    this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`);
-                } else {
-                    this._animateAttack(evt);
-                    this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`);
-                }
+                this._animateAttack(evt);
+                this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`);
                 break;
 
             case 'defeat':
-                if (evt.isSoldier) {
-                    this._soldierAlive = Math.max(0, this._soldierAlive - 1);
-                    this._updateSoldierDisplay();
-                    this._addLog(`▼ ${evt.name} 전사 (잔여: ${this._soldierAlive})`);
-                } else if (evt.isHero) {
+                if (evt.isHero) {
                     this._animateDefeat(evt);
                     this._addLog(`▼ ${evt.name} 쓰러졌다!`);
                 } else {
@@ -378,12 +361,6 @@ class MapDefenseMode {
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5);
         this._container.add(this._headerText);
-
-        // 병사 카운터
-        this._soldierText = this.scene.add.text(fieldCenterX + 180, MAP_TOP + 18, '', {
-            fontSize: '11px', fontFamily: FONT, color: '#a0a0c0'
-        }).setOrigin(0.5);
-        this._container.add(this._soldierText);
     }
 
     _drawLog(width, height) {
@@ -709,17 +686,6 @@ class MapDefenseMode {
             target: null, name,
             engageRange: ENGAGE_RANGE_MELEE
         };
-    }
-
-    _updateSoldierDisplay() {
-        if (!this._soldierText) return;
-        if (this._soldierTotal > 0) {
-            const color = this._soldierAlive > 0 ? '#40d870' : '#e03030';
-            this._soldierText.setText(`민병: ${this._soldierAlive}/${this._soldierTotal}`);
-            this._soldierText.setColor(color);
-        } else {
-            this._soldierText.setText('');
-        }
     }
 
     // ═══════════════════════════════════

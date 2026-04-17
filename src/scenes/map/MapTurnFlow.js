@@ -125,16 +125,15 @@ class MapTurnFlow {
         }
 
         const baseHeroes = s.turnProcessor.getDefenseParty();
-        const soldiers = store.getState('soldiers') || 0;
         const heroData = baseHeroes.map(h => ({ id: h.id, name: h.name, primarySin: topSin(h.sinStats), appearance: h.appearance || null }));
 
-        if (baseHeroes.length === 0 && soldiers === 0) {
-            this._finishNightPhase(turn, { victory: false, reason: 'no_defenders', log: [], soldiersLost: 0 });
+        if (baseHeroes.length === 0) {
+            this._finishNightPhase(turn, { victory: false, reason: 'no_defenders', log: [] });
             return;
         }
 
         const enemies = s.turnProcessor.generateRaidEnemies(turn.day);
-        const engine = s.turnProcessor.createDefenseEngine(baseHeroes, enemies, soldiers);
+        const engine = s.turnProcessor.createDefenseEngine(baseHeroes, enemies);
         s._defenseMode = new MapDefenseMode(s, {
             engine,
             heroData,
@@ -147,17 +146,16 @@ class MapTurnFlow {
                 const heroes = s.heroManager.store.getState('heroes') || [];
                 for (const hr of result.heroResults) {
                     const hero = heroes.find(h => h.id === hr.id);
-                    if (hero && !hr.alive) hero.status = 'injured';
+                    if (!hero) continue;
+                    if (!hr.alive) hero.status = 'injured';
+                    if (hr.hp !== undefined) hero.hp = hr.hp;
+                    if (hr.maxHp !== undefined) hero.maxHp = hr.maxHp;
                 }
                 s.heroManager.store.setState('heroes', [...heroes]);
-                store.setState('soldiers', result.soldiersSurvived || 0);
 
                 const defenseResult = {
                     victory,
                     heroResults: result.heroResults,
-                    soldiersDeployed: result.soldiersDeployed || 0,
-                    soldiersSurvived: result.soldiersSurvived || 0,
-                    soldiersLost: result.soldiersLost || 0,
                     rounds: result.rounds,
                     log: result.log,
                     enemyCount: enemies.length

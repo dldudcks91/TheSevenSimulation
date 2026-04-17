@@ -40,7 +40,8 @@
       "Edit(/.claude/skills/sprite-compose/**)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude"
+      "C:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude",
+      "c:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude\\rules"
     ]
   },
   "hooks": {

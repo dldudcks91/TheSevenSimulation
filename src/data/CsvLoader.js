@@ -126,7 +126,9 @@ async function loadAllCsv(basePath = './data/') {
         'lpc_parts',
         'hero_epithets',
         'items',
-        'traits'
+        'traits',
+        'expedition_nodes',
+        'expedition_dice'
     ];
 
     const results = {};
@@ -276,6 +278,32 @@ function buildGameData(csvData) {
         if (fRow.trade_available) fObj.effects.trade_available = true;
         if (fRow.alchemy_available) fObj.effects.alchemy_available = true;
         if (fRow.gold_per_turn) fObj.effects.gold_per_turn = fRow.gold_per_turn;
+    }
+
+    // ─── expeditionNodesData (ExpeditionNodeManager용) ───
+    data.expeditionNodesData = {};
+    for (const r of (csvData.expedition_nodes || [])) {
+        const ch = r.chapter;
+        if (!data.expeditionNodesData[ch]) data.expeditionNodesData[ch] = [];
+        data.expeditionNodesData[ch].push({
+            id: r.id, type: r.type, row: r.row, col: r.col,
+            label: r.label, icon: r.icon,
+            connections: r.connections ? String(r.connections).split('|').filter(Boolean) : [],
+        });
+    }
+
+    // ─── expeditionDiceData (ExpeditionNodeManager용) ───
+    data.expeditionDiceData = {};
+    const DICE_LABELS = { start: '출발', combat: '전투', event: '조우', rest: '야영', portal: '포탈', boss: '보스' };
+    const DICE_ICONS  = { start: '★', combat: '⚔', event: '?', rest: '🏕', portal: '🌀', boss: '💀' };
+    for (const r of (csvData.expedition_dice || [])) {
+        const ch = r.chapter;
+        const seq = String(r.sequence || '').split('|').filter(Boolean);
+        data.expeditionDiceData[ch] = seq.map((type, i) => ({
+            id: `tile_${i}`, type, index: i,
+            label: DICE_LABELS[type] || type,
+            icon: DICE_ICONS[type] || '·',
+        }));
     }
 
     // ─── stagesData (ExpeditionManager용) ───

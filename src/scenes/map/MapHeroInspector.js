@@ -172,7 +172,7 @@ class MapHeroInspector {
         const statusMap = {
             expedition: '원정', injured: '부상', construction: '건설',
             research: '연구', idle: '대기', hunt: '사냥',
-            gather: '채집', lumber: '벌목'
+            gather: '채집', lumber: '벌목', sick: '발병'
         };
         this._p(s.add.text(x + pw / 2, ty, `상태: ${statusMap[hero.status] || '대기'}`, {
             fontSize: '10px', fontFamily: FONT, color: C.textMuted
@@ -206,6 +206,37 @@ class MapHeroInspector {
 
         this._p(s.add.text(x + pw / 2, ty, `${hero.morale} (${moraleName})`, {
             fontSize: '11px', fontFamily: FONT_BOLD, color: moraleColor
+        }).setOrigin(0.5, 0).setDepth(INSP_DEPTH + 2));
+        ty += 20;
+
+        // 체력(stamina) 바
+        const stam = hero.stamina ?? 100;
+        const stamMax = 100;
+        const tiredTh = 50, overworkTh = 25;
+        const stamLabel = stam <= 0 ? '탈진'
+            : stam <= overworkTh ? '과로'
+            : stam <= tiredTh ? '피로' : '정상';
+        const stamColorHex = stam <= overworkTh ? '#e03030'
+            : stam <= tiredTh ? '#f8b830' : '#40c870';
+
+        this._p(s.add.text(mBarX, ty, '체력', {
+            fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
+        }).setDepth(INSP_DEPTH + 2));
+
+        const sBg = this._p(s.add.graphics().setDepth(INSP_DEPTH + 2));
+        sBg.fillStyle(0x0e0e1a, 1);
+        sBg.fillRect(mBarStartX, ty + 2, mBarRealW, 10);
+        sBg.lineStyle(1, C.borderPrimary);
+        sBg.strokeRect(mBarStartX, ty + 2, mBarRealW, 10);
+
+        const sFill = this._p(s.add.graphics().setDepth(INSP_DEPTH + 2));
+        const sfw = Math.max(0, (stam / stamMax) * (mBarRealW - 2));
+        sFill.fillStyle(Phaser.Display.Color.HexStringToColor(stamColorHex).color, 1);
+        sFill.fillRect(mBarStartX + 1, ty + 3, sfw, 8);
+        ty += 16;
+
+        this._p(s.add.text(x + pw / 2, ty, `${stam} (${stamLabel})`, {
+            fontSize: '11px', fontFamily: FONT_BOLD, color: stamColorHex
         }).setOrigin(0.5, 0).setDepth(INSP_DEPTH + 2));
         ty += 24;
 

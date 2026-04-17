@@ -1,7 +1,8 @@
 # 이벤트/선택지 시스템 설계
 
-> 상태: 이벤트 30개 초안 완성, 수치 밸런싱 미확정
+> 상태: 이벤트 30개 초안 완성 + 조우(encounter) 이벤트 3개 (2026-04-16), 수치 밸런싱 미확정
 > 작성일: 2026-03-24
+> 마지막 업데이트: 2026-04-16
 
 ---
 
@@ -43,6 +44,28 @@
 | 폭주 대응 | 사기 100 | [탐욕]이 창고 털기 시도 |
 | 외부 사건 | 턴/챕터 기반 | 상인 방문, 떠도는 영웅 |
 | 밤 습격 후유증 | 밤 방어전 결과에 따라 | 부상자 발생, 시설 파손 |
+| **조우 (encounter)** | 원정 중 event 노드 도달 | 부상당한 순례자, 낡은 제단, 버려진 보물상자 (2026-04-16 추가) |
+
+### 조우 이벤트 (encounter) — 원정 전용
+
+- **트리거**: `trigger_type='encounter'`, 아침 페이즈에서는 **발생하지 않음**
+- **발생 방식**: ExpeditionScene에서 event 노드 클릭 → `EventSystem.pickEncounterEvent(partyHeroIds)` 호출
+- **효과 범위**: `target='party'` — 원정 파티 영웅만 사기 변동 (`all`이 아님)
+- **바알 죄종 변동**: `target='player_sin_<sin>'` — 예: `player_sin_lust` +2 (치료해주기 선택)
+- **현재 풀**: F1(부상당한 순례자), F2(낡은 제단), F3(버려진 보물상자) — 각 3선택지
+
+### Effect target 타입 (event_effects.csv)
+
+| target | 의미 | 사용 필드 |
+|--------|------|---------|
+| `all` | 모든 영웅 사기 변동 | morale |
+| `party` | 파티(원정 파견) 영웅만 (2026-04-16) | morale |
+| `others` | 주인공 영웅 제외 | morale |
+| `gold` | 골드 변동 | amount |
+| `recruit` | 영입 액션 | action |
+| `player_sin_<sin>` | 바알 죄종 수치 변동 (2026-04-16) | amount |
+| `<sin>` (wrath 등) | 해당 죄종 최고 영웅 개별 | morale (음수 -999 = 제거) |
+| `strongest`, `other`, `injured`, `heroA`, `heroB` | 특정 역할 영웅 | morale |
 
 ## 3. 설계 원칙
 

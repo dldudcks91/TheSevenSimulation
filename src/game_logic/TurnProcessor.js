@@ -42,10 +42,11 @@ class TurnProcessor {
             this.store.setState('wood', (this.store.getState('wood') || 0) + millWood);
         }
 
-        // 영웅 상태 복원 (원정/부상/기절 제외)
+        // 영웅 상태 복원 (원정/부상/기절/발병 제외)
         const heroes = this.heroManager.getHeroes();
         for (const h of heroes) {
-            if (h.status !== 'expedition' && h.status !== 'injured' && h.status !== 'knocked_out') {
+            if (h.status !== 'expedition' && h.status !== 'injured'
+                && h.status !== 'knocked_out' && h.status !== 'sick') {
                 h.status = 'idle';
             }
         }
@@ -55,6 +56,36 @@ class TurnProcessor {
         if (this.baseManager.processHeroRecovery(heroes).length > 0) {
             this.store.setState('heroes', [...heroes]);
         }
+
+        // 체력(Stamina) 회복 + HP 자연 회복 + 발병 진행/판정 + Stamina 사기 페널티
+        const b = this.balance;
+        const overwork = b.stamina_overwork_threshold ?? 25;
+        const exhaustedDelta = b.morale_penalty_exhausted ?? -10;
+        const overworkTickDelta = b.morale_penalty_overwork_tick ?? -2;
+
+        for (const h of heroes) {
+            if (h.status === 'dead') continue;
+            // 발병 중이면 타이머 진행
+            if (h.status === 'sick') {
+                this.heroManager.tickSickness(h.id);
+            }
+            this.heroManager.recoverStaminaTurn(h.id);
+            this.heroManager.regenHeroHpTurn(h.id);
+
+            // Stamina 사기 페널티
+            const stamina = h.stamina ?? 100;
+            if (stamina <= 0) {
+                this.heroManager.updateMorale(h.id, exhaustedDelta);
+            } else if (stamina <= overwork) {
+                this.heroManager.updateMorale(h.id, overworkTickDelta);
+            }
+
+            // 발병 판정 (과로일 때만)
+            if (h.status !== 'sick' && h.status !== 'injured') {
+                this.heroManager.checkSicknessTick(h.id);
+            }
+        }
+        this.store.setState('heroes', [...heroes]);
     }
 
     // ─── 저녁 페이즈 처리 ───
@@ -99,9 +130,9 @@ class TurnProcessor {
     }
 
     /** 방어전 BattleEngine 초기화 (씬에서 시각화용으로 사용) */
-    createDefenseEngine(baseHeroes, enemies, soldiers) {
+    createDefenseEngine(baseHeroes, enemies) {
         const engine = new BattleEngine(this.balance);
-        engine.init(baseHeroes, enemies, 'defense', soldiers, BATTLE_MODES.MELEE);
+        engine.init(baseHeroes, enemies, 'defense', BATTLE_MODES.MELEE);
         return engine;
     }
 

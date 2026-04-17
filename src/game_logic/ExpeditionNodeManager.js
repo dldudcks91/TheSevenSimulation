@@ -11,8 +11,10 @@
  *   포탈 미도달 귀환 → 다음 원정에서 처음부터 (포탈 이전 영구 클리어 유지)
  */
 class ExpeditionNodeManager {
-    constructor(store) {
+    constructor(store, nodesData = null, diceData = null) {
         this.store = store;
+        this._nodesData = nodesData || null; // { [chapter]: [nodes...] }
+        this._diceData  = diceData  || null; // { [chapter]: [tiles...] }
     }
 
     // ═══════════════════════════════════
@@ -20,11 +22,18 @@ class ExpeditionNodeManager {
     // ═══════════════════════════════════
 
     /**
-     * 챕터별 노드 맵 생성 (고정 구조)
-     * row 0 = 상단(보스), row 4 = 하단(시작점)
-     * col 0/1/2 = 좌/중/우
+     * 챕터별 노드 맵 생성
+     * CSV(expedition_nodes.csv) 우선, 없으면 기본 구조로 폴백
+     * row 0 = 상단(보스), row 4 = 하단(시작점) / col 0/1/2 = 좌/중/우
      */
     generateNodeMap(chapter) {
+        if (this._nodesData && this._nodesData[chapter]) {
+            // 깊은 복제 (connections 배열 공유 방지)
+            return this._nodesData[chapter].map(n => ({
+                ...n,
+                connections: [...(n.connections || [])],
+            }));
+        }
         return [
             { id: 'start',   type: 'start',  row: 4, col: 1, label: '출발',   icon: '★',  connections: ['n1a', 'n1b'] },
             { id: 'n1a',     type: 'combat', row: 3, col: 0, label: '전투',   icon: '⚔',  connections: ['portal1'] },
@@ -40,18 +49,44 @@ class ExpeditionNodeManager {
     // 주사위 경로 생성
     // ═══════════════════════════════════
 
-    /** 챕터별 직선 8칸 경로 생성 */
+    /**
+     * 챕터별 25칸 스네이크 경로 생성 (포탈 1개, 보스 마지막)
+     * CSV(expedition_dice.csv) 우선, 없으면 기본 시퀀스로 폴백
+     */
     generateDicePath(chapter) {
-        return [
-            { id: 'tile_0', type: 'start',  index: 0, label: '출발', icon: '★' },
-            { id: 'tile_1', type: 'combat', index: 1, label: '전투', icon: '⚔' },
-            { id: 'tile_2', type: 'event',  index: 2, label: '조우', icon: '?' },
-            { id: 'tile_3', type: 'rest',   index: 3, label: '야영', icon: '🏕' },
-            { id: 'tile_4', type: 'portal', index: 4, label: '포탈', icon: '🌀' },
-            { id: 'tile_5', type: 'combat', index: 5, label: '전투', icon: '⚔' },
-            { id: 'tile_6', type: 'event',  index: 6, label: '조우', icon: '?' },
-            { id: 'tile_7', type: 'boss',   index: 7, label: '보스', icon: '💀' },
+        if (this._diceData && this._diceData[chapter]) {
+            return this._diceData[chapter].map(t => ({ ...t }));
+        }
+        const SEQ = [
+            ['start',  '출발', '★'],
+            ['combat', '전투', '⚔'],
+            ['event',  '조우', '?'],
+            ['combat', '전투', '⚔'],
+            ['rest',   '야영', '🏕'],
+            ['combat', '전투', '⚔'],
+            ['event',  '조우', '?'],
+            ['combat', '전투', '⚔'],
+            ['rest',   '야영', '🏕'],
+            ['combat', '전투', '⚔'],
+            ['event',  '조우', '?'],
+            ['rest',   '야영', '🏕'],
+            ['portal', '포탈', '🌀'],
+            ['combat', '전투', '⚔'],
+            ['event',  '조우', '?'],
+            ['combat', '전투', '⚔'],
+            ['rest',   '야영', '🏕'],
+            ['combat', '전투', '⚔'],
+            ['event',  '조우', '?'],
+            ['combat', '전투', '⚔'],
+            ['rest',   '야영', '🏕'],
+            ['combat', '전투', '⚔'],
+            ['event',  '조우', '?'],
+            ['combat', '전투', '⚔'],
+            ['boss',   '보스', '💀'],
         ];
+        return SEQ.map(([type, label, icon], i) => ({
+            id: `tile_${i}`, type, index: i, label, icon,
+        }));
     }
 
     /** 1~3 주사위 굴리기 */
@@ -133,6 +168,44 @@ class ExpeditionNodeManager {
         this.store.setState('expedition', { ...exp, revealedNodes: [...revealed] });
     }
 
+    /**
+     * 감시탑 레벨에 따라 START에서 N스텝 앞까지 미리 공개 (STS 노드 모드)
+     *   Lv.0: 효과 없음
+     *   Lv.1: +1 스텝
+     *   Lv.2: +2 스텝
+     *   Lv.3: 전체 공개
+     */
+    revealByWatchtower(level, allNodes) {
+        if (!level || level <= 0) return;
+        const exp = this.store.getState('expedition') || {};
+        const revealed = new Set(exp.revealedNodes || ['start']);
+
+        if (level >= 3) {
+            for (const n of allNodes) revealed.add(n.id);
+        } else {
+            // BFS level-by-level from 'start'
+            let frontier = ['start'];
+            revealed.add('start');
+            for (let step = 0; step < level; step++) {
+                const next = [];
+                for (const id of frontier) {
+                    const node = allNodes.find(n => n.id === id);
+                    if (!node) continue;
+                    for (const cId of (node.connections || [])) {
+                        if (!revealed.has(cId)) {
+                            revealed.add(cId);
+                            next.push(cId);
+                        }
+                    }
+                }
+                frontier = next;
+                if (frontier.length === 0) break;
+            }
+        }
+
+        this.store.setState('expedition', { ...exp, revealedNodes: [...revealed] });
+    }
+
     // ═══════════════════════════════════
     // 주사위 모드 현재 위치
     // ═══════════════════════════════════
@@ -157,6 +230,115 @@ class ExpeditionNodeManager {
             if (other.connections.includes(node.id) && clearedSet.has(other.id)) return true;
         }
         return false;
+    }
+
+    // ═══════════════════════════════════
+    // 노드 결과 Store 반영
+    // ═══════════════════════════════════
+
+    /**
+     * 전투 결과 Store 반영
+     * - 영웅 부상 상태 (alive=false → status='injured')
+     * - 영웅 HP 반영
+     * - 승리 시 골드 보상, 전 영웅 사기 +α
+     * - 패배 시 전 영웅 사기 -α
+     * @returns {object} { goldReward, moraleDelta, injuredIds[] }
+     */
+    applyCombatResult(heroIds, battleResult, isBoss, balance = {}) {
+        const heroes = this.store.getState('heroes') || [];
+        const day = this.store.getState('turn')?.day ?? 1;
+
+        const injuredIds = [];
+        for (const hr of (battleResult.heroResults || [])) {
+            const hero = heroes.find(h => h.id === hr.id);
+            if (!hero) continue;
+            if (hr.hp !== undefined) hero.hp = hr.hp;
+            if (hr.maxHp !== undefined) hero.maxHp = hr.maxHp;
+            if (!hr.alive) {
+                hero.status = 'injured';
+                injuredIds.push(hero.id);
+            }
+        }
+        this.store.setState('heroes', [...heroes]);
+
+        // 골드 보상 + 사기 변동
+        let goldReward = 0;
+        let moraleDelta = 0;
+        if (battleResult.victory) {
+            const base = isBoss
+                ? (balance.exp_node_boss_gold_base ?? 120)
+                : (balance.exp_node_combat_gold_base ?? 40);
+            const perDay = isBoss
+                ? (balance.exp_node_boss_gold_per_day ?? 10)
+                : (balance.exp_node_combat_gold_per_day ?? 4);
+            goldReward = base + day * perDay;
+
+            const gold = this.store.getState('gold') || 0;
+            this.store.setState('gold', gold + goldReward);
+
+            moraleDelta = balance.exp_node_victory_morale ?? 3;
+        } else {
+            moraleDelta = balance.exp_node_defeat_morale ?? -8;
+        }
+
+        this._applyMoraleToParty(heroIds, moraleDelta);
+
+        return { goldReward, moraleDelta, injuredIds };
+    }
+
+    /** 야영 노드 — 파티 영웅 사기 +α */
+    applyRestNode(heroIds, balance = {}) {
+        const delta = balance.exp_node_rest_morale ?? 10;
+        this._applyMoraleToParty(heroIds, delta);
+        return { moraleDelta: delta };
+    }
+
+    /** 보스 격파 시 다음 챕터 해금 */
+    advanceChapterOnBoss(balance = {}) {
+        const exp = this.store.getState('expedition') || {};
+        const maxChapters = balance.max_chapters ?? 7;
+        const nextChapter = Math.min(maxChapters, (exp.chapter || 1) + 1);
+        this.store.setState('expedition', {
+            ...exp,
+            chapter: nextChapter,
+            progress: 0,
+            clearedNodes: [],
+            revealedNodes: [],
+            nodeCheckpoint: null,
+            dicePosition: 0,
+        });
+        return { newChapter: nextChapter };
+    }
+
+    /**
+     * 귀환 — 원정 영웅을 거점 상태로 복구
+     * @param {string[]} heroIds  원정 파티 영웅 id
+     */
+    finalizeReturn(heroIds) {
+        const heroes = this.store.getState('heroes') || [];
+        for (const id of heroIds) {
+            const hero = heroes.find(h => h.id === id);
+            if (!hero) continue;
+            // 이미 injured면 유지, 아니면 idle 복귀
+            if (hero.status === 'expedition') hero.status = 'idle';
+            hero.location = 'base';
+        }
+        this.store.setState('heroes', [...heroes]);
+    }
+
+    /** 내부 헬퍼 — 파티 전원 사기 변동 */
+    _applyMoraleToParty(heroIds, delta) {
+        if (!delta) return;
+        const heroes = this.store.getState('heroes') || [];
+        const moraleMin = 0;
+        const moraleMax = 100;
+        for (const id of heroIds) {
+            const hero = heroes.find(h => h.id === id);
+            if (!hero) continue;
+            const cur = hero.morale ?? 50;
+            hero.morale = Math.max(moraleMin, Math.min(moraleMax, cur + delta));
+        }
+        this.store.setState('heroes', [...heroes]);
     }
 }
 

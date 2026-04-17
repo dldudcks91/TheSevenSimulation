@@ -2,8 +2,7 @@
  * BattleSceneB — X축 태그매치
  *
  * 1:1 순차 교전. DuelBattleScene과 동일한 좌우 구도.
- * 대기열에서 다음 유닛 투입. 병사→영웅 순서로 출전.
- * 병사는 카운터 표시, 영웅만 스프라이트.
+ * 대기열에서 다음 영웅 투입.
  *
  * 모드: realtime (engine tick) / replay (log 재생)
  */
@@ -93,13 +92,6 @@ class BattleSceneB extends Phaser.Scene {
             shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5).setAlpha(0.3);
 
-        // 병사 카운터
-        this._soldierAlive = 0;
-        this._soldierTotal = 0;
-        this.soldierText = this.add.text(140, 50, '', {
-            fontSize: '11px', fontFamily: FONT, color: '#a0a0c0'
-        }).setOrigin(0.5);
-
         // 대기열 텍스트
         this._allyQueueText = this.add.text(80, QUEUE_Y, '', {
             fontSize: '10px', fontFamily: FONT, color: '#a0c0f0',
@@ -182,12 +174,6 @@ class BattleSceneB extends Phaser.Scene {
             this._enemySpriteMap[u.name] = pickEnemySprite(u.name, i);
         });
 
-        if (unitsData.soldiers) {
-            this._soldierTotal = unitsData.soldiers.total;
-            this._soldierAlive = unitsData.soldiers.alive;
-            this._updateSoldierDisplay();
-        }
-
         // 첫 교전자 표시
         const fighters = this.engine.getTagFighters();
         if (fighters.ally) {
@@ -228,17 +214,9 @@ class BattleSceneB extends Phaser.Scene {
             this._enemySpriteMap[name] = pickEnemySprite(name, i);
         });
 
-        if (startEntry.soldiers) {
-            this._soldierTotal = startEntry.soldiers;
-            this._soldierAlive = startEntry.soldiers;
-            this._updateSoldierDisplay();
-        }
-
         // 첫 교전자
-        if (this._soldierAlive > 0) {
-            this._showFighter('ally', { name: '민병', isSoldier: true, hp: 80, maxHp: 80 });
-        } else if (this._allyNames.length > 0) {
-            this._showFighter('ally', { name: this._allyNames[0], isSoldier: false, hp: 100, maxHp: 100 });
+        if (this._allyNames.length > 0) {
+            this._showFighter('ally', { name: this._allyNames[0], hp: 100, maxHp: 100 });
         }
         if (this._enemyNames.length > 0) {
             this._showFighter('enemy', { name: this._enemyNames[0], hp: 100, maxHp: 100 });
@@ -268,21 +246,12 @@ class BattleSceneB extends Phaser.Scene {
                 break;
 
             case 'attack':
-                if (evt.attackerIsSoldier || evt.defenderIsSoldier) {
-                    // 병사 교전: 로그만
-                    this._addLog(`${evt.attacker} → ${evt.defender} -${evt.damage}hp (잔여 ${evt.remainHp})`);
-                } else {
-                    this._animateAttack(evt);
-                    this._addLog(`${evt.attacker} → ${evt.defender} -${evt.damage}hp (잔여 ${evt.remainHp})`);
-                }
+                this._animateAttack(evt);
+                this._addLog(`${evt.attacker} → ${evt.defender} -${evt.damage}hp (잔여 ${evt.remainHp})`);
                 break;
 
             case 'defeat':
-                if (evt.isSoldier) {
-                    this._soldierAlive = Math.max(0, this._soldierAlive - 1);
-                    this._updateSoldierDisplay();
-                    this._addLog(`▼ ${evt.name} 전사 (잔여: ${this._soldierAlive})`);
-                } else if (evt.isHero) {
+                if (evt.isHero) {
                     this._animateDefeat('ally');
                     this._addLog(`▼ ${evt.name} 쓰러졌다!`);
                 } else {
@@ -329,26 +298,6 @@ class BattleSceneB extends Phaser.Scene {
         if (side === 'enemy' && this._currentEnemy) {
             this._currentEnemy.container.destroy();
             this._currentEnemy = null;
-        }
-
-        // 병사면 이름만 표시
-        if (unitData.isSoldier) {
-            const container = this.add.container(x, GROUND_Y);
-            const nameText = this.add.text(0, -20, '민병', {
-                fontSize: '14px', fontFamily: FONT, color: '#a0a0c0'
-            }).setOrigin(0.5);
-            container.add(nameText);
-
-            const display = {
-                container, nameText,
-                sprite: null, hpBar: null, hpText: null,
-                maxHp: unitData.maxHp || 80,
-                isSoldier: true, alive: true
-            };
-
-            if (side === 'ally') this._currentAlly = display;
-            else this._currentEnemy = display;
-            return;
         }
 
         // 영웅/적 스프라이트
@@ -402,8 +351,7 @@ class BattleSceneB extends Phaser.Scene {
             baseX: x, baseY: GROUND_Y,
             maxHp: unitData.maxHp,
             hpBarWidth: HP_BAR_W,
-            spriteType, alive: true,
-            isSoldier: false
+            spriteType, alive: true
         };
 
         if (side === 'ally') this._currentAlly = display;
@@ -419,16 +367,6 @@ class BattleSceneB extends Phaser.Scene {
 
             const aliveEnemies = units.enemies.filter(u => u.alive).map(u => u.name);
             this._enemyQueueText.setText(aliveEnemies.join('\n'));
-        }
-    }
-
-    _updateSoldierDisplay() {
-        if (this._soldierTotal > 0) {
-            const color = this._soldierAlive > 0 ? '#40d870' : '#e03030';
-            this.soldierText.setText(`민병: ${this._soldierAlive}/${this._soldierTotal}`);
-            this.soldierText.setColor(color);
-        } else {
-            this.soldierText.setText('');
         }
     }
 

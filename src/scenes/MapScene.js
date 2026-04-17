@@ -18,6 +18,7 @@ import ExpeditionManager from '../game_logic/ExpeditionManager.js';
 import SpriteComposer from '../game_logic/SpriteComposer.js';
 import DayActions from '../game_logic/DayActions.js';
 import TurnProcessor from '../game_logic/TurnProcessor.js';
+import { makeDefaultPlayerSins } from '../game_logic/SinUtils.js';
 
 import { C, HUD_H, MAP_VP_W, MAP_VP_H } from './map/MapConstants.js';
 import MapWidgets from './map/MapWidgets.js';
@@ -135,6 +136,10 @@ class MapScene extends Phaser.Scene {
                 this.heroManager.initStartingHeroes();
             }
         }
+        // 바알(플레이어) 죄종 수치 초기화 — 세이브에 없으면 기본값 50
+        if (!store.getState('playerSins')) {
+            store.setState('playerSins', makeDefaultPlayerSins());
+        }
 
         // ─── 씬 모듈 초기화 ───
         this.widgets = new MapWidgets(this);
@@ -171,14 +176,14 @@ class MapScene extends Phaser.Scene {
             store.subscribe('gold', () => this.hud.updateResources()),
             store.subscribe('food', () => this.hud.updateResources()),
             store.subscribe('wood', () => this.hud.updateResources()),
-            store.subscribe('soldiers', () => this.hud.updateSoldiers()),
+            store.subscribe('playerSins', () => this.hud.updateBaalSins()),
         ];
 
         this.events.once('shutdown', () => this._cleanup());
 
         // ─── 초기 UI 갱신 ───
         this.hud.updateResources();
-        this.hud.updateSoldiers();
+        this.hud.updateBaalSins();
         this.hud.updatePhaseDisplay();
         this.bottomPanel.switchTab('base');
         // this.world.initDebugMode();
@@ -285,7 +290,6 @@ class MapScene extends Phaser.Scene {
         switch (mode) {
             case 'expedition': this.bottomPanel.renderExpeditionAction(data.stageIndex); break;
             case 'expeditionList': this.bottomPanel.renderExpeditionListAction(); break;
-            case 'soldierSelect': this.bottomPanel.renderSoldierSelectAction(data); break;
         }
     }
 

@@ -8,7 +8,6 @@
  * 모드 전환: 우상단 [모드] 버튼 또는 HUD ⚙ 설정
  * 인게임 registry.get('expeditionMode') 로 모드 유지
  */
-import Phaser from 'phaser';
 import { FONT, FONT_BOLD } from '../constants.js';
 import store from '../store/Store.js';
 import ExpeditionNodeManager from '../game_logic/ExpeditionNodeManager.js';
@@ -38,17 +37,31 @@ class ExpeditionScene extends Phaser.Scene {
     }
 
     init(data) {
-        // 재시작(restart) 시에도 hero/soldier 유지
+        // 재시작(restart) 시에도 hero 유지
         if (data.heroIds !== undefined) {
             this.registry.set('_expHeroIds', data.heroIds);
-            this.registry.set('_expSoldiers', data.soldierCount ?? 0);
+
+            // 원정 시작 — 영웅 status = 'expedition', 체력 소모
+            const heroes = store.getState('heroes') || [];
+            const balance = this.registry.get('balance') || {};
+            const staminaCost = balance.stamina_cost_expedition ?? 25;
+            for (const id of data.heroIds) {
+                const h = heroes.find(x => x.id === id);
+                if (h) {
+                    h.status = 'expedition';
+                    h.location = 'expedition';
+                    h.stamina = Math.max(0, (h.stamina ?? (balance.stamina_max ?? 100)) - staminaCost);
+                }
+            }
+            store.setState('heroes', [...heroes]);
         }
-        this._heroIds      = this.registry.get('_expHeroIds') || [];
-        this._soldierCount = this.registry.get('_expSoldiers') ?? 0;
+        this._heroIds = this.registry.get('_expHeroIds') || [];
     }
 
     create() {
-        this._nm    = new ExpeditionNodeManager(store);
+        const nodesData = this.registry.get('expeditionNodesData') || null;
+        const diceData  = this.registry.get('expeditionDiceData')  || null;
+        this._nm    = new ExpeditionNodeManager(store, nodesData, diceData);
         this._mode  = this.registry.get('expeditionMode') || 'node';
         this._bal   = this.registry.get('balance') || {};
 
@@ -117,8 +130,10 @@ class ExpeditionScene extends Phaser.Scene {
             fontSize: '12px', fontFamily: FONT, color: '#a0a0c0',
         }).setOrigin(0, 0.5).setDepth(D + 2);
 
-        this.add.text(W - 20, y + STATUS_H / 2,
-            `원정 병사: ${this._soldierCount}명  |  거점 잔여: ${store.getState('soldiers') || 0}명`, {
+        // 영웅 HP 요약
+        const partyHeroes = (store.getState('heroes') || []).filter(h => this._heroIds.includes(h.id));
+        const hpSummary = partyHeroes.map(h => `${h.name.split(' ').pop()}: ${h.hp ?? '?'}/${h.maxHp ?? '?'}`).join('  |  ');
+        this.add.text(W - 20, y + STATUS_H / 2, hpSummary, {
             fontSize: '12px', fontFamily: FONT, color: '#a0a0c0',
         }).setOrigin(1, 0.5).setDepth(D + 2);
     }
@@ -133,6 +148,12 @@ class ExpeditionScene extends Phaser.Scene {
 
         // 시작 노드 연결 공개
         this._nm.revealConnected('start', allNodes);
+
+        // 감시탑 레벨에 따라 추가 노드 미리보기
+        const mapScene = this.scene.get('MapScene');
+        const wtLevel = mapScene?.baseManager?.getWatchtowerLevel?.() ?? 0;
+        if (wtLevel > 0) this._nm.revealByWatchtower(wtLevel, allNodes);
+
         const revealed = this._nm.getRevealedNodes();
 
         // 노드 좌표 계산
@@ -178,7 +199,7 @@ class ExpeditionScene extends Phaser.Scene {
         const cols  = isRevealed ? NODE_COLORS[node.type] : NODE_COLORS.fog;
         const borderColor = isCleared ? 0x282838
             : isCheckpt ? 0xd040f0
-            : Phaser.Display.Color.HexStringToColor(cols.border).color;
+            : cols.border;
 
         const g = this.add.graphics().setDepth(D + 3);
         g.fillStyle(isCleared ? 0x0a0a12 : cols.bg, 1);
@@ -235,8 +256,12 @@ class ExpeditionScene extends Phaser.Scene {
         switch (node.type) {
             case 'combat':
             case 'boss':
-                this._resolveCombat(node.type === 'boss', () => {
+                this._resolveCombat(node.type === 'boss', (result) => {
                     this._nm.markCleared(node.id);
+                    // 보스 격파 시 다음 챕터 해금 (restart 전 state 갱신)
+                    if (node.type === 'boss' && result?.victory) {
+                        this._nm.advanceChapterOnBoss(this._bal);
+                    }
                     this.scene.restart();
                 });
                 break;
@@ -246,96 +271,142 @@ class ExpeditionScene extends Phaser.Scene {
                 this._showToast('🌀 포탈 확보! 다음 원정은 여기서 출발합니다.', '#b040e0');
                 this.time.delayedCall(1800, () => this.scene.restart());
                 break;
-            case 'rest':
+            case 'rest': {
                 this._nm.markCleared(node.id);
-                this._showToast('🏕 야영 — 영웅 사기 +10', '#40d870');
+                const { moraleDelta } = this._nm.applyRestNode(this._heroIds, this._bal);
+                this._showToast(`🏕 야영 — 영웅 사기 +${moraleDelta}`, '#40d870');
                 this.time.delayedCall(1600, () => this.scene.restart());
                 break;
+            }
             case 'event':
                 this._nm.markCleared(node.id);
-                this._showToast('? 조우 이벤트 발생 — (구현 예정)', '#40a0f8');
-                this.time.delayedCall(1600, () => this.scene.restart());
+                this._launchEncounterEvent();
                 break;
         }
     }
 
     // ═══════════════════════════════════
-    // 주사위 보드 모드
+    // 주사위 보드 모드 (25칸 스네이크)
     // ═══════════════════════════════════
     _drawDiceBoard() {
-        const path     = this._nm.generateDicePath(this._chapter);
-        const pos      = this._nm.getDicePosition();
-        const cleared  = new Set(this._nm.getClearedNodes());
-        const checkpt  = this._nm.getCheckpoint();
+        const COLS    = 5;
+        const path    = this._nm.generateDicePath(this._chapter);
+        const pos     = this._nm.getDicePosition();
+        const cleared = new Set(this._nm.getClearedNodes());
+        const checkpt = this._nm.getCheckpoint();
 
-        const tileW = 108;
-        const tileH = 72;
-        const gap   = 10;
-        const totalW = path.length * tileW + (path.length - 1) * gap;
+        const tileW = 132;
+        const tileH = 62;
+        const hGap  = 14;
+        const vGap  = 36;
+        const ROWS  = Math.ceil(path.length / COLS);
+
+        const totalW = COLS * tileW + (COLS - 1) * hGap;
+        const totalH = ROWS * tileH + (ROWS - 1) * vGap;
         const startX = (W - totalW) / 2;
-        const tileY  = TITLE_H + (H - TITLE_H - STATUS_H) / 2 - 60;
+        const startY = TITLE_H + Math.max(12, Math.floor((H - TITLE_H - STATUS_H - totalH - 68) / 2));
+
+        // 스네이크 패턴 좌표 계산
+        // 짝수 행: 좌→우, 홀수 행: 우→좌
+        const getTilePos = (index) => {
+            const row = Math.floor(index / COLS);
+            const col = index % COLS;
+            const actualCol = (row % 2 === 0) ? col : (COLS - 1 - col);
+            return {
+                x: startX + actualCol * (tileW + hGap),
+                y: startY + row * (tileH + vGap),
+            };
+        };
 
         // 연결선
         const lineG = this.add.graphics().setDepth(D + 2);
-        lineG.lineStyle(2, 0x283038);
         for (let i = 0; i < path.length - 1; i++) {
-            const x1 = startX + i * (tileW + gap) + tileW;
-            const x2 = startX + (i + 1) * (tileW + gap);
-            lineG.lineBetween(x1, tileY + tileH / 2, x2, tileY + tileH / 2);
+            const { x: x1, y: y1 } = getTilePos(i);
+            const { x: x2, y: y2 } = getTilePos(i + 1);
+            const bothClr = cleared.has(path[i].id) && cleared.has(path[i + 1].id);
+            lineG.lineStyle(2, bothClr ? 0x1e1e2a : 0x304050, 1);
+
+            if (Math.floor(i / COLS) === Math.floor((i + 1) / COLS)) {
+                // 같은 행: 수평 연결 (타일 사이 간격)
+                const lx = Math.min(x1, x2) + tileW;
+                const rx = Math.max(x1, x2);
+                lineG.lineBetween(lx, y1 + tileH / 2, rx, y1 + tileH / 2);
+            } else {
+                // 행 전환: 수직 연결 (같은 열, 타일 하단→다음행 타일 상단)
+                lineG.lineBetween(x1 + tileW / 2, y1 + tileH, x2 + tileW / 2, y2);
+            }
         }
 
         // 타일
         for (let i = 0; i < path.length; i++) {
-            const tile = path[i];
-            const tx   = startX + i * (tileW + gap);
-            const isCur    = i === pos;
-            const isClr    = cleared.has(tile.id);
+            const tile    = path[i];
+            const { x: tx, y: ty } = getTilePos(i);
+            const isCur   = i === pos;
+            const isClr   = cleared.has(tile.id);
             const isCheckpt = checkpt === tile.id;
-            const cols     = NODE_COLORS[tile.type];
+            const cols    = NODE_COLORS[tile.type];
 
             const g = this.add.graphics().setDepth(D + 3);
             g.fillStyle(isClr ? 0x0a0a12 : cols.bg, 1);
-            g.fillRoundedRect(tx, tileY, tileW, tileH, 6);
+            g.fillRoundedRect(tx, ty, tileW, tileH, 5);
             g.lineStyle(
                 isCheckpt ? 3 : isCur ? 2 : 1,
-                isCheckpt ? 0xb040e0 : isCur ? 0xffffff : (isClr ? 0x282838 : Phaser.Display.Color.HexStringToColor(cols.border).color),
+                isCheckpt ? 0xb040e0 : isCur ? 0xffffff : (isClr ? 0x282838 : cols.border),
                 1
             );
-            g.strokeRoundedRect(tx, tileY, tileW, tileH, 6);
+            g.strokeRoundedRect(tx, ty, tileW, tileH, 5);
 
             const tcx = tx + tileW / 2;
-            const tcy = tileY + tileH / 2;
+            const tcy = ty + tileH / 2;
 
-            this.add.text(tcx, tcy - 13, tile.icon, {
-                fontSize: '18px', fontFamily: FONT, color: isClr ? '#282838' : cols.text,
+            // 칸 번호 (좌상단)
+            this.add.text(tx + 5, ty + 3, String(i + 1), {
+                fontSize: '9px', fontFamily: FONT, color: isClr ? '#282838' : '#505070',
+            }).setDepth(D + 4);
+
+            this.add.text(tcx, tcy - 10, tile.icon, {
+                fontSize: '15px', fontFamily: FONT, color: isClr ? '#282838' : cols.text,
             }).setOrigin(0.5).setDepth(D + 4);
 
             this.add.text(tcx, tcy + 11, tile.label, {
-                fontSize: '10px', fontFamily: FONT, color: isClr ? '#282838' : cols.text,
+                fontSize: '9px', fontFamily: FONT, color: isClr ? '#282838' : cols.text,
             }).setOrigin(0.5).setDepth(D + 4);
 
             if (isCur) {
-                this.add.text(tcx, tileY - 22, '▼', {
-                    fontSize: '14px', fontFamily: FONT_BOLD, color: '#f8c830',
+                this.add.text(tcx, ty - 18, '▼', {
+                    fontSize: '12px', fontFamily: FONT_BOLD, color: '#f8c830',
                 }).setOrigin(0.5).setDepth(D + 5);
             }
             if (isClr) {
                 this.add.text(tcx, tcy, '✓', {
-                    fontSize: '22px', fontFamily: FONT_BOLD, color: '#282838',
+                    fontSize: '18px', fontFamily: FONT_BOLD, color: '#282838',
                 }).setOrigin(0.5).setDepth(D + 5);
             }
         }
 
-        // 주사위 버튼
-        const btnY    = tileY + tileH + 50;
-        const curTile = path[pos];
-        const canRoll = curTile && !cleared.has(curTile.id) && pos < path.length - 1;
+        // 진행도
+        this.add.text(W - 16, TITLE_H + 12, `${pos + 1} / ${path.length}칸`, {
+            fontSize: '12px', fontFamily: FONT, color: '#808098',
+        }).setOrigin(1, 0).setDepth(D + 3);
 
-        this._btn(W / 2, btnY, 220, 44, '🎲  주사위 굴리기  (1~3)', canRoll ? '#f8c830' : '#404058',
+        // 주사위 버튼
+        const btnY    = startY + totalH + 28;
+        const curTile = path[pos];
+        const bossCleared = cleared.has(path[path.length - 1].id);
+        // 출발칸(0)이거나 현재 칸이 이미 클리어된 경우 굴리기 가능
+        const canRoll = !bossCleared && pos < path.length - 1 &&
+            (pos === 0 || cleared.has(curTile.id));
+
+        this._btn(W / 2, btnY, 220, 40, '🎲  주사위 굴리기  (1~3)',
+            canRoll ? '#f8c830' : '#404058',
             () => { if (canRoll) this._diceRoll(path, pos); });
 
-        if (!canRoll && pos < path.length - 1) {
-            this.add.text(W / 2, btnY + 36, '현재 칸을 먼저 처리하세요', {
+        if (bossCleared) {
+            this.add.text(W / 2, btnY + 28, '🎉 원정 완료! 귀환하세요.', {
+                fontSize: '12px', fontFamily: FONT_BOLD, color: '#f8c830',
+            }).setOrigin(0.5).setDepth(D + 3);
+        } else if (!canRoll && pos > 0) {
+            this.add.text(W / 2, btnY + 28, '현재 칸을 먼저 처리하세요', {
                 fontSize: '10px', fontFamily: FONT, color: '#a0a0c0',
             }).setOrigin(0.5).setDepth(D + 3);
         }
@@ -356,8 +427,11 @@ class ExpeditionScene extends Phaser.Scene {
             switch (tile.type) {
                 case 'combat':
                 case 'boss':
-                    this._resolveCombat(tile.type === 'boss', () => {
+                    this._resolveCombat(tile.type === 'boss', (result) => {
                         this._nm.markCleared(tile.id);
+                        if (tile.type === 'boss' && result?.victory) {
+                            this._nm.advanceChapterOnBoss(this._bal);
+                        }
                         this.scene.restart();
                     });
                     break;
@@ -367,19 +441,55 @@ class ExpeditionScene extends Phaser.Scene {
                     this._showToast('🌀 포탈 확보!', '#b040e0');
                     this.time.delayedCall(1600, () => this.scene.restart());
                     break;
-                case 'rest':
+                case 'rest': {
                     this._nm.markCleared(tile.id);
-                    this._showToast('🏕 야영 — 사기 +10', '#40d870');
+                    const { moraleDelta } = this._nm.applyRestNode(this._heroIds, this._bal);
+                    this._showToast(`🏕 야영 — 사기 +${moraleDelta}`, '#40d870');
                     this.time.delayedCall(1600, () => this.scene.restart());
                     break;
+                }
                 case 'event':
                     this._nm.markCleared(tile.id);
-                    this._showToast('? 조우 이벤트 — (구현 예정)', '#40a0f8');
-                    this.time.delayedCall(1600, () => this.scene.restart());
+                    this._launchEncounterEvent();
                     break;
                 default:
                     this.scene.restart();
             }
+        });
+    }
+
+    // ═══════════════════════════════════
+    // 조우 이벤트 (EventScene 연동)
+    // ═══════════════════════════════════
+    _launchEncounterEvent() {
+        const mapScene = this.scene.get('MapScene');
+        const eventSystem = mapScene?.eventSystem;
+        if (!eventSystem) {
+            this._showToast('? 조우 이벤트 시스템 없음', '#e03030');
+            this.time.delayedCall(1200, () => this.scene.restart());
+            return;
+        }
+
+        const evt = eventSystem.pickEncounterEvent(this._heroIds);
+        if (!evt) {
+            this._showToast('? 조우 이벤트 풀 비어있음', '#e03030');
+            this.time.delayedCall(1200, () => this.scene.restart());
+            return;
+        }
+
+        // ExpeditionScene 일시 정지 (EventScene 위에 표시)
+        this.scene.pause();
+        this.scene.launch('EventScene', {
+            event: evt,
+            eventSystem,
+            context: { partyHeroIds: this._heroIds },
+            onComplete: () => {
+                const expScene = this.scene.get('ExpeditionScene');
+                if (expScene) {
+                    expScene.scene.resume();
+                    expScene.scene.restart();
+                }
+            },
         });
     }
 
@@ -396,7 +506,14 @@ class ExpeditionScene extends Phaser.Scene {
             : [{ name: '전위병', hp: 70, atk: 11, spd: 5 }, { name: '궁수', hp: 55, atk: 13, spd: 7 }];
 
         const engine = new BattleEngine(this._bal);
-        const result = engine.simulate(heroes, enemies, BATTLE_TYPES.EXPEDITION, this._soldierCount, BATTLE_MODES.MELEE);
+        const result = engine.simulate(heroes, enemies, BATTLE_TYPES.EXPEDITION, BATTLE_MODES.MELEE);
+
+        // Store 반영 — 부상 / HP / 사기 / 골드 보상
+        const applied = this._nm.applyCombatResult(this._heroIds, result, isBoss, this._bal);
+
+        // 승리 시 골드 보상을 결과창에 주입
+        result.goldReward = applied.goldReward;
+        result.moraleDelta = applied.moraleDelta;
 
         this._showCombatResult(result, isBoss, onDone);
     }
@@ -424,11 +541,25 @@ class ExpeditionScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(D + 11);
         y += 36;
 
-        this.add.text(px + pw / 2, y,
-            `병사 손실: ${result.soldiersLost ?? 0}명  |  생존: ${result.soldiersSurvived ?? 0}명`, {
+        this.add.text(px + pw / 2, y, `총 ${result.rounds ?? 0}라운드`, {
             fontSize: '12px', fontFamily: FONT, color: '#a0a0c0',
         }).setOrigin(0.5).setDepth(D + 11);
-        y += 26;
+        y += 22;
+
+        // 보상 / 사기 변동
+        const rewardBits = [];
+        if (result.goldReward > 0) rewardBits.push(`💰 +${result.goldReward}`);
+        if (result.moraleDelta) {
+            const sign = result.moraleDelta > 0 ? '+' : '';
+            rewardBits.push(`사기 ${sign}${result.moraleDelta}`);
+        }
+        if (rewardBits.length) {
+            this.add.text(px + pw / 2, y, rewardBits.join('  |  '), {
+                fontSize: '12px', fontFamily: FONT_BOLD,
+                color: result.victory ? '#f8c830' : '#e03030',
+            }).setOrigin(0.5).setDepth(D + 11);
+            y += 22;
+        }
 
         // 영웅 결과
         for (const hr of (result.heroResults || [])) {
@@ -522,6 +653,9 @@ class ExpeditionScene extends Phaser.Scene {
     // 씬 종료
     // ═══════════════════════════════════
     _close() {
+        // 귀환 처리 — 영웅 상태 복구
+        this._nm.finalizeReturn(this._heroIds);
+
         const mapScene = this.scene.get('MapScene');
         this.scene.stop('ExpeditionScene');
         if (mapScene) {

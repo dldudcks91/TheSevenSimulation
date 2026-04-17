@@ -15,7 +15,7 @@
 - 게임 엔진: **Phaser.js** (2D 게임 프레임워크)
 - 게임 로직: JS (ES Modules) — Phaser와 분리
 - 전투: **시각 시뮬레이션** (자동전투, 스프라이트 애니메이션)
-- 데이터: **CSV** (게임 데이터 26개 파일, 세이브는 LocalStorage)
+- 데이터: **CSV** (게임 데이터 28개 파일, 세이브는 LocalStorage)
 - Phase 2 이후: Godot(GDScript)으로 이식 → 스팀 출시
 
 ## 프로젝트 구조
@@ -112,7 +112,7 @@ TheSevenSimulation/
     │   ├── Store.js           # Central Store (pub/sub)
     │   └── SaveManager.js     # LocalStorage 세이브/로드
     ├── assets/                # 게임 에셋
-    └── data/                  # 게임 데이터 CSV (26개) + CsvLoader.js
+    └── data/                  # 게임 데이터 CSV (28개 — expedition_nodes/dice 추가 2026-04-16) + CsvLoader.js
 ```
 
 ## 기획 문서 위치

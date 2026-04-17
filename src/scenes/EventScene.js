@@ -42,6 +42,7 @@ class EventScene extends Phaser.Scene {
     init(data) {
         this.eventData = data.event;
         this.eventSystem = data.eventSystem;
+        this.context = data.context || {};
         this.onComplete = data.onComplete || (() => {});
     }
 
@@ -104,7 +105,7 @@ class EventScene extends Phaser.Scene {
     }
 
     _onChoice(index) {
-        const result = this.eventSystem.applyChoice(this.eventData, index);
+        const result = this.eventSystem.applyChoice(this.eventData, index, this.context);
         this.onComplete(result);
         this.scene.stop('EventScene');
     }

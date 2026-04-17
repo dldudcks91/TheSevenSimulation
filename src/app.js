@@ -70,6 +70,8 @@ async function boot() {
     game.registry.set('heroEpithets', gameData.heroEpithets || []);
     game.registry.set('itemsData', gameData.itemsData || []);
     game.registry.set('traitsData', gameData.traitsData || []);
+    game.registry.set('expeditionNodesData', gameData.expeditionNodesData || {});
+    game.registry.set('expeditionDiceData', gameData.expeditionDiceData || {});
 }
 
 boot();

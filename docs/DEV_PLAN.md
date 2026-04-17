@@ -167,6 +167,17 @@ src/
 | 57 | 새 게임 초기 아이템 랜덤 지급 + 세이브/로드 인벤토리·식량·나무 연동 | [x] |
 | 58 | 채집/벌목 행동 팝업 (MapActionPopup — 프로그레스 바 + 결과 + 죄종 대사) | [x] |
 | 59 | **원정 맵 탐색 프로토타입** (ExpeditionScene + ExpeditionNodeManager) — STS 노드 방식 / 주사위 방식, HUD ⚙ 토글 | [x] |
+| 60 | **원정 결과 Store 반영** — 전투 승패 골드·사기·영웅 부상·HP 반영, 보스 격파 → 챕터 해금, 야영 사기 +10 (2026-04-16) | [x] |
+| 61 | **조우 이벤트 노드 연동** — EventSystem.pickEncounterEvent + target='party'. 조우 이벤트 F1~F3 추가 (부상 순례자/제단/보물상자) (2026-04-16) | [x] |
+| 62 | **감시탑 ↔ 구름 해제 연동** — Lv.1/2/3 = +1/+2/전체 스텝 미리보기 (2026-04-16) | [x] |
+| 63 | **챕터별 원정 노드 CSV화** — expedition_nodes.csv (7ch×7노드) + expedition_dice.csv (7ch×25칸) (2026-04-16) | [x] |
+| 64 | **바알 죄종 수치 기반 시스템** — Store.playerSins, SaveManager, HUD 표시, 이벤트 target='player_sin_X' 태깅 (2026-04-16) | [x] |
+| 65 | **체력(stamina) 시스템 Phase A** — hero.stamina 필드, 턴 회복 / 행동 소모 / 과로 발병 / 피로 효율 감소 / UI 바 (2026-04-16) | [x] |
+| 66 | **아침 보고 죄종 태그 버그 수정** — MorningReportPopup sin 태그가 undefined 표시되던 문제 (2026-04-16) | [x] |
+| 67 | **병사 시스템 전면 제거 + 영웅 HP 직격 구조** — balance.csv `hero_hp_base/per_vitality/regen_per_turn` 추가, BattleEngine/Expedition/Defense 전면 영웅 HP 기반 (2026-04-16) | [x] |
+| 68 | **Stamina → 사기 페널티 연결** — 탈진 -10 즉시, 과로 -2/턴, 발병 -8 (TurnProcessor.processDayPhase) (2026-04-16) | [x] |
+| 69 | **죄종 × Stamina 보정** — 주 성향별 소모/회복 배율 CSV(`stamina_mult_<sin>_*`) + HeroManager 적용 (2026-04-16) | [x] |
+| 70 | **UI 정보 계층 정리** — HUD 병사 카운터 제거, Stamina 아이콘 경고 전환, HP 바 영웅 상시 표시 (2026-04-16) | [x] |
 
 ---
 

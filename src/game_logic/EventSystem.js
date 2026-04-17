@@ -2,7 +2,7 @@
  * 이벤트/선택지 시스템
  * 매 턴(아침) 이벤트 발생 → 플레이어 판결 → 사기 변동
  */
-import { SIN_KEYS, topSin, weightedSinRoll } from './SinUtils.js';
+import { SIN_KEYS, topSin, weightedSinRoll, applyPlayerSinDelta } from './SinUtils.js';
 
 class EventSystem {
     constructor(store, eventsData, balance = {}) {
@@ -211,14 +211,39 @@ class EventSystem {
         };
     }
 
-    /** 선택지 실행 → 사기 변동 적용 */
-    applyChoice(event, choiceIndex) {
+    /**
+     * 조우(encounter) 이벤트 1개 선택 — 원정 event 노드에서 호출
+     * @param {number[]} partyHeroIds 파티 영웅 id (문구/효과 적용 범위)
+     * @returns {object|null} resolved event
+     */
+    pickEncounterEvent(partyHeroIds = []) {
+        const pool = this.allEvents.filter(e => e.category === 'encounter');
+        if (pool.length === 0) return null;
+        const evt = this._pickRandom(pool);
+
+        const heroes = this.store.getState('heroes') || [];
+        const party = partyHeroIds.length > 0
+            ? heroes.filter(h => partyHeroIds.includes(h.id))
+            : heroes;
+        if (party.length === 0) return null;
+
+        return this._resolveEvent(evt, party);
+    }
+
+    /**
+     * 선택지 실행 → 사기 변동 적용
+     * @param {object} event 이벤트 객체
+     * @param {number} choiceIndex 선택한 choice index
+     * @param {object} context { partyHeroIds?: number[] } — 'party' 타겟 범위 지정
+     */
+    applyChoice(event, choiceIndex, context = {}) {
         const choice = event.choices[choiceIndex];
         if (!choice) return [];
 
         const heroes = this.store.getState('heroes') || [];
         const results = [];
         const targetMap = choice.targetMap || {};
+        const partyIds = Array.isArray(context.partyHeroIds) ? context.partyHeroIds : null;
 
         const moraleMin = this.balance.morale_min ?? 0;
         const moraleMax = this.balance.morale_max ?? 100;
@@ -226,6 +251,14 @@ class EventSystem {
         for (const effect of choice.effects) {
             if (effect.target === 'all') {
                 for (const hero of heroes) {
+                    hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + (effect.morale || 0)));
+                    results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
+                }
+            } else if (effect.target === 'party') {
+                const targets = partyIds
+                    ? heroes.filter(h => partyIds.includes(h.id))
+                    : heroes;
+                for (const hero of targets) {
                     hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + (effect.morale || 0)));
                     results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
                 }
@@ -242,6 +275,12 @@ class EventSystem {
                 results.push({ type: 'gold', delta: effect.amount || 0 });
             } else if (effect.target === 'recruit') {
                 results.push({ type: 'recruit', action: effect.action });
+            } else if (typeof effect.target === 'string' && effect.target.startsWith('player_sin_')) {
+                // 바알 죄종 수치 변동 — 예: target='player_sin_wrath', amount=+2
+                const sin = effect.target.slice('player_sin_'.length);
+                const delta = effect.amount || 0;
+                applyPlayerSinDelta(this.store, sin, delta);
+                results.push({ type: 'player_sin', sin, delta });
             } else {
                 // 특정 영웅 타겟
                 const heroId = targetMap[effect.target];

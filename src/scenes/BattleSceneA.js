@@ -2,7 +2,7 @@
  * BattleSceneA — X축 오토배틀 + 일기토
  *
  * 영웅(좌) vs 적(우), X축 이동만 (east/west).
- * Y는 겹침 방지 오프셋. 병사는 카운터 표시.
+ * Y는 겹침 방지 오프셋.
  * 전투 중 죄종 기반 일기토 발동 → 화면 중앙 1:1.
  *
  * 모드: realtime (engine tick) / replay (log 재생)
@@ -154,13 +154,6 @@ class BattleSceneA extends Phaser.Scene {
         this._roundText = this.add.text(width - 30, 16, '', {
             fontSize: '11px', fontFamily: FONT, color: '#606080'
         }).setOrigin(1, 0);
-
-        // 병사 카운터
-        this._soldierAlive = 0;
-        this._soldierTotal = 0;
-        this.soldierText = this.add.text(width / 2, 34, '', {
-            fontSize: '11px', fontFamily: FONT, color: '#a0a0c0'
-        }).setOrigin(0.5);
 
         // 런타임 합성 실행
         this._composedHeroes = {};
@@ -341,12 +334,6 @@ class BattleSceneA extends Phaser.Scene {
             this._createUnit(u.name, fx, fy, spriteType, false, u.maxHp);
         });
 
-        if (unitsData.soldiers) {
-            this._soldierTotal = unitsData.soldiers.total;
-            this._soldierAlive = unitsData.soldiers.alive;
-            this._updateSoldierDisplay();
-        }
-
         this._addLog('[오토배틀 시작]');
     }
 
@@ -386,12 +373,6 @@ class BattleSceneA extends Phaser.Scene {
             this._createUnit(name, fx, fy, spriteType, false, 100);
         });
 
-        if (startEntry.soldiers) {
-            this._soldierTotal = startEntry.soldiers;
-            this._soldierAlive = startEntry.soldiers;
-            this._updateSoldierDisplay();
-        }
-
         this._addLog('[오토배틀 시작]');
         this._logIndex = 1;
     }
@@ -421,20 +402,12 @@ class BattleSceneA extends Phaser.Scene {
                 break;
 
             case 'attack':
-                if (evt.attackerIsSoldier || evt.defenderIsSoldier) {
-                    this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`, '#808090');
-                } else {
-                    this._animateAttack(evt);
-                    this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`, '#c0c0d0');
-                }
+                this._animateAttack(evt);
+                this._addLog(`R${evt.round} ${evt.attacker} → ${evt.defender} (${evt.damage})`, '#c0c0d0');
                 break;
 
             case 'defeat':
-                if (evt.isSoldier) {
-                    this._soldierAlive = Math.max(0, this._soldierAlive - 1);
-                    this._updateSoldierDisplay();
-                    this._addLog(`▼ ${evt.name} 전사 (잔여: ${this._soldierAlive})`, '#f08040');
-                } else if (evt.isHero) {
+                if (evt.isHero) {
                     this._animateDefeat(evt);
                     this._addLog(`▼ ${evt.name} 쓰러졌다!`, '#f04040');
                 } else {
@@ -821,16 +794,6 @@ class BattleSceneA extends Phaser.Scene {
         };
     }
 
-    _updateSoldierDisplay() {
-        if (this._soldierTotal > 0) {
-            const color = this._soldierAlive > 0 ? '#40d870' : '#e03030';
-            this.soldierText.setText(`민병: ${this._soldierAlive}/${this._soldierTotal}`);
-            this.soldierText.setColor(color);
-        } else {
-            this.soldierText.setText('');
-        }
-    }
-
     // ═══════════════════════════════════
     // 애니메이션 정의
     // ═══════════════════════════════════
@@ -1110,14 +1073,6 @@ class BattleSceneA extends Phaser.Scene {
             ...summaryStyle, color: '#f8c830'
         }).setOrigin(1, 0).setDepth(10002);
 
-        if (this._soldierTotal > 0) {
-            summaryY += 24;
-            this.add.text(px + 30, summaryY, `민병 생존`, summaryStyle).setDepth(10002);
-            this.add.text(px + panelW - 30, summaryY, `${this._soldierAlive} / ${this._soldierTotal}`, {
-                ...summaryStyle, color: this._soldierAlive > 0 ? '#40d870' : '#e03030'
-            }).setOrigin(1, 0).setDepth(10002);
-        }
-
         // 닫기 버튼
         this._createBtn(width / 2, py + panelH - 30, '닫 기', () => {
             this.onClose();
@@ -1132,7 +1087,7 @@ class BattleSceneA extends Phaser.Scene {
                 if (!events) break;
                 const evts = Array.isArray(events) ? events : [events];
                 for (const evt of evts) {
-                    if (evt.type === 'defeat' && !evt.isSoldier) {
+                    if (evt.type === 'defeat') {
                         const unit = this.units[evt.name];
                         if (unit) {
                             unit.alive = false;

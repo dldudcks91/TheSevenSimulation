@@ -6,7 +6,7 @@ farm,농장,1,,80,20,턴당 식량 생산,,,,,,,,,,,
 lumber_mill,벌목장,1,,80,20,턴당 나무 생산,,,,,,,,,,,
 hospital,병원,2,tavern,200,25,부상 영웅 치료 (회복 턴 절반) + 사기 안정화,,,,,,2,true,,,
 stagecoach,역마차,2,tavern,150,25,"교역 상인 도착, 외부 정보",,,,,,,,true,,
-training_ground,훈련장,2,smithy,200,25,턴당 병사 자동 생산 + 골드로 추가 모집,,,,,,,,,,,
+training_ground,훈련장,2,smithy,200,25,영웅 HP 회복 속도 +50%,,,,,,,,,,,
 watchtower_2,감시탑 Lv.2,2,watchtower,200,25,습격 규모 알림,,,,,2,,,,,
 alchemy_lab,연금술소,3,smithy|hospital,300,30,"소모품 제작 (치료약, 사기 물약 등)",,,,,,,,,true,
 market,시장,3,stagecoach,200,30,턴당 골드 수입,,,,,,,,,,20
