@@ -273,8 +273,8 @@ class ExpeditionScene extends Phaser.Scene {
                 break;
             case 'rest': {
                 this._nm.markCleared(node.id);
-                const { moraleDelta } = this._nm.applyRestNode(this._heroIds, this._bal);
-                this._showToast(`🏕 야영 — 영웅 사기 +${moraleDelta}`, '#40d870');
+                this._nm.applyRestNode(this._heroIds, this._bal);
+                this._showToast('🏕 야영 — 나태·폭식 수치 상승', '#40d870');
                 this.time.delayedCall(1600, () => this.scene.restart());
                 break;
             }
@@ -443,8 +443,8 @@ class ExpeditionScene extends Phaser.Scene {
                     break;
                 case 'rest': {
                     this._nm.markCleared(tile.id);
-                    const { moraleDelta } = this._nm.applyRestNode(this._heroIds, this._bal);
-                    this._showToast(`🏕 야영 — 사기 +${moraleDelta}`, '#40d870');
+                    this._nm.applyRestNode(this._heroIds, this._bal);
+                    this._showToast('🏕 야영 — 나태·폭식 수치 상승', '#40d870');
                     this.time.delayedCall(1600, () => this.scene.restart());
                     break;
                 }
@@ -513,7 +513,6 @@ class ExpeditionScene extends Phaser.Scene {
 
         // 승리 시 골드 보상을 결과창에 주입
         result.goldReward = applied.goldReward;
-        result.moraleDelta = applied.moraleDelta;
 
         this._showCombatResult(result, isBoss, onDone);
     }
@@ -546,13 +545,9 @@ class ExpeditionScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(D + 11);
         y += 22;
 
-        // 보상 / 사기 변동
+        // 보상
         const rewardBits = [];
         if (result.goldReward > 0) rewardBits.push(`💰 +${result.goldReward}`);
-        if (result.moraleDelta) {
-            const sign = result.moraleDelta > 0 ? '+' : '';
-            rewardBits.push(`사기 ${sign}${result.moraleDelta}`);
-        }
         if (rewardBits.length) {
             this.add.text(px + pw / 2, y, rewardBits.join('  |  '), {
                 fontSize: '12px', fontFamily: FONT_BOLD,

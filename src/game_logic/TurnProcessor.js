@@ -8,13 +8,14 @@ import BattleEngine, { BATTLE_MODES } from './BattleEngine.js';
 import { sinChance, sinIntensity } from './SinUtils.js';
 
 class TurnProcessor {
-    constructor(store, { turnManager, heroManager, baseManager, sinSystem, expeditionManager, balance }) {
+    constructor(store, { turnManager, heroManager, baseManager, sinSystem, expeditionManager, edictManager, balance }) {
         this.store = store;
         this.turnManager = turnManager;
         this.heroManager = heroManager;
         this.baseManager = baseManager;
         this.sinSystem = sinSystem;
         this.expeditionManager = expeditionManager;
+        this.edictManager = edictManager;
         this.balance = balance;
     }
 
@@ -22,25 +23,36 @@ class TurnProcessor {
 
     /** 낮 → 저녁 전환 시 호출. 건설/연구/수입/영웅 상태 정리 */
     processDayPhase() {
+        // 국시 만료/쿨다운 해소 체크 (날이 바뀐 시점 처리)
+        if (this.edictManager) {
+            const turn = this.turnManager.getCurrentTurn();
+            this.edictManager.tickDay(turn.day);
+        }
+
         this.baseManager.processBuildTurn();
         this.baseManager.processResearchTurn();
         this.baseManager.processPioneerTurn();
 
-        // 패시브 수입
+        // 패시브 수입 (국시 resource_gain_mult 적용)
         const income = this.baseManager.getPassiveIncomeWithBonus();
+        const resourceMult = 1 + (this.edictManager ? this.edictManager.getEffect('resource_gain_mult') : 0);
         if (income > 0) {
-            this.store.setState('gold', (this.store.getState('gold') || 0) + income);
+            this.store.setState('gold', (this.store.getState('gold') || 0) + Math.floor(income * resourceMult));
         }
 
-        // 농장/벌목장 턴당 자원 생산
+        // 농장/벌목장 턴당 자원 생산 (resource_gain_mult 적용)
         if (this.baseManager.hasFacility('farm')) {
-            const farmFood = this.balance.farm_food_per_turn ?? 5;
-            this.store.setState('food', (this.store.getState('food') || 0) + farmFood);
+            const farmFood = (this.balance.farm_food_per_turn ?? 5) * resourceMult;
+            this.store.setState('food', (this.store.getState('food') || 0) + Math.floor(farmFood));
         }
         if (this.baseManager.hasFacility('lumber_mill')) {
-            const millWood = this.balance.lumber_mill_wood_per_turn ?? 4;
-            this.store.setState('wood', (this.store.getState('wood') || 0) + millWood);
+            const millWood = (this.balance.lumber_mill_wood_per_turn ?? 4) * resourceMult;
+            this.store.setState('wood', (this.store.getState('wood') || 0) + Math.floor(millWood));
         }
+
+        // 국시 사기 tick (morale_tick) — 사기 시스템 재도입 시 연결 예정
+        // 현재는 HeroManager에 updateMorale이 없으므로 no-op
+        // TODO: 사기→죄종 전환 시 해당 국시 죄종에 sinStat +/- tick으로 매핑
 
         // 영웅 상태 복원 (원정/부상/기절/발병 제외)
         const heroes = this.heroManager.getHeroes();
@@ -57,28 +69,14 @@ class TurnProcessor {
             this.store.setState('heroes', [...heroes]);
         }
 
-        // 체력(Stamina) 회복 + HP 자연 회복 + 발병 진행/판정 + Stamina 사기 페널티
-        const b = this.balance;
-        const overwork = b.stamina_overwork_threshold ?? 25;
-        const exhaustedDelta = b.morale_penalty_exhausted ?? -10;
-        const overworkTickDelta = b.morale_penalty_overwork_tick ?? -2;
-
+        // 체력(Stamina) 회복 + HP 자연 회복 + 발병 진행/판정
         for (const h of heroes) {
             if (h.status === 'dead') continue;
-            // 발병 중이면 타이머 진행
             if (h.status === 'sick') {
                 this.heroManager.tickSickness(h.id);
             }
             this.heroManager.recoverStaminaTurn(h.id);
             this.heroManager.regenHeroHpTurn(h.id);
-
-            // Stamina 사기 페널티
-            const stamina = h.stamina ?? 100;
-            if (stamina <= 0) {
-                this.heroManager.updateMorale(h.id, exhaustedDelta);
-            } else if (stamina <= overwork) {
-                this.heroManager.updateMorale(h.id, overworkTickDelta);
-            }
 
             // 발병 판정 (과로일 때만)
             if (h.status !== 'sick' && h.status !== 'injured') {
@@ -86,6 +84,19 @@ class TurnProcessor {
             }
         }
         this.store.setState('heroes', [...heroes]);
+
+        // 폭주 중인 영웅 문제 행동 실행
+        const rampageResults = [];
+        const allHeroes = this.heroManager.getHeroes();
+        for (const h of allHeroes) {
+            if (h.isRampaging) {
+                const r = this.sinSystem.processRampageTick(h, allHeroes);
+                if (r) rampageResults.push(r);
+            }
+        }
+        if (rampageResults.length > 0) {
+            this.store.setState('heroes', [...allHeroes]);
+        }
     }
 
     // ─── 저녁 페이즈 처리 ───
@@ -96,16 +107,6 @@ class TurnProcessor {
     }
 
     // ─── 밤 페이즈 처리 ───
-
-    /** 정책 사기 효과 적용 */
-    applyPolicyMorale() {
-        const policyDelta = this.baseManager.getPolicyMoraleEffect();
-        if (policyDelta !== 0) {
-            for (const h of this.heroManager.getHeroes()) {
-                this.heroManager.updateMorale(h.id, policyDelta);
-            }
-        }
-    }
 
     /** 습격 여부 판단 */
     shouldRaid(day) {
@@ -132,6 +133,9 @@ class TurnProcessor {
     /** 방어전 BattleEngine 초기화 (씬에서 시각화용으로 사용) */
     createDefenseEngine(baseHeroes, enemies) {
         const engine = new BattleEngine(this.balance);
+        if (this.edictManager) {
+            engine.setPowerMultDelta(this.edictManager.getEffect('battle_power_mult'));
+        }
         engine.init(baseHeroes, enemies, 'defense', BATTLE_MODES.MELEE);
         return engine;
     }
@@ -162,27 +166,15 @@ class TurnProcessor {
 
         const b = this.balance;
         if (defenseResult) {
-            // 교만 수치 비례 방어 결과 플래그
+            // 방어 결과 플래그 설정 (checkSinConditions에서 교만 변동에 사용)
             for (const h of this.heroManager.getHeroes()) {
-                if (sinIntensity(h.sinStats, 'pride') > 0) h._lastDefenseWin = defenseResult.victory;
+                h._lastDefenseWin = defenseResult.victory;
             }
 
             if (defenseResult.victory) {
                 const goldReward = (b.defense_victory_gold_base ?? 10) + turn.day * (b.defense_victory_gold_per_day ?? 2);
                 this.store.setState('gold', (this.store.getState('gold') || 0) + goldReward);
-                for (const h of this.heroManager.getHeroes()) {
-                    this.heroManager.updateMorale(h.id, b.defense_victory_morale ?? 5);
-                    // 교만 수치 비례 추가 보너스
-                    const prideBonus = Math.round(sinIntensity(h.sinStats, 'pride') * (b.pride_defense_win_morale ?? 8));
-                    if (prideBonus > 0) this.heroManager.updateMorale(h.id, prideBonus);
-                }
             } else {
-                for (const h of this.heroManager.getHeroes()) {
-                    this.heroManager.updateMorale(h.id, b.defense_defeat_morale ?? -10);
-                    // 교만 수치 비례 추가 페널티
-                    const pridePenalty = Math.round(sinIntensity(h.sinStats, 'pride') * (b.pride_defense_lose_morale ?? -12));
-                    if (pridePenalty !== 0) this.heroManager.updateMorale(h.id, pridePenalty);
-                }
                 // 패배 시 자원 약탈
                 const lootRatio = defenseResult.reason === 'no_defenders'
                     ? (b.defense_nodefender_loot_ratio ?? 0.5)
@@ -200,11 +192,10 @@ class TurnProcessor {
             }
         }
 
-        // 죄종 조건 체크
+        // 죄종 조건 체크 (sinStat 변동)
         this.checkSinConditions();
 
-        // 폭주/이탈 극한 체크
-        this.sinSystem.setRampageThreshold(this.baseManager.getRampageThreshold());
+        // 폭주 상태 갱신 + 이탈 판정
         const extremeResults = this.sinSystem.checkExtremes();
 
         // 게임 오버 체크
@@ -213,32 +204,64 @@ class TurnProcessor {
         return { extremeResults, gameOver };
     }
 
-    /** 죄종별 조건 체크 (밤 결산 시) */
+    /** 죄종별 조건 체크 → sinStat 수치 변동 (밤 결산 시) */
     checkSinConditions() {
         const b = this.balance;
-        for (const hero of this.heroManager.getHeroes()) {
-            // 분노: sinChance 확률로 페널티 발동 + sinIntensity로 강도
+        const heroes = this.heroManager.getHeroes();
+        const expeditionCount = heroes.filter(h => h.status === 'expedition').length;
+        const food = this.store.getState('food') || 0;
+        const foodLow = food < (b.food_shortage_threshold ?? 30);
+
+        for (const hero of heroes) {
+            // ── 분노(wrath) ──
             if (hero.location === 'base') {
                 hero.daysIdle = (hero.daysIdle || 0) + 1;
-                if (hero.daysIdle >= (b.wrath_idle_threshold ?? 3)) {
-                    if (Math.random() < sinChance(hero.sinStats, 'wrath')) {
-                        const penalty = Math.round(sinIntensity(hero.sinStats, 'wrath') * (b.wrath_idle_morale ?? -5));
-                        if (penalty !== 0) this.heroManager.updateMorale(hero.id, penalty);
-                    }
+                // idle 유지 → wrath 감소 (싸울 곳이 없어 에너지 방전)
+                if (hero.status === 'idle') {
+                    this.heroManager.updateSinStat(hero.id, 'wrath', -(b.wrath_idle_fall ?? 1));
                 }
             } else {
                 hero.daysIdle = 0;
-            }
-            // 나태: 수치 비례 사기 변동
-            const slothInt = sinIntensity(hero.sinStats, 'sloth');
-            if (slothInt > 0) {
-                if (hero.status !== 'idle') {
-                    const workPenalty = Math.round(slothInt * (b.sloth_work_morale ?? -3));
-                    if (workPenalty !== 0) this.heroManager.updateMorale(hero.id, workPenalty);
-                } else {
-                    const restBonus = Math.round(slothInt * (b.sloth_rest_morale ?? 3));
-                    if (restBonus !== 0) this.heroManager.updateMorale(hero.id, restBonus);
+                // 전투 참여 → wrath 상승
+                if (hero.status === 'expedition' || hero.status === 'hunt' || hero.status === 'defense') {
+                    this.heroManager.updateSinStat(hero.id, 'wrath', b.wrath_combat_rise ?? 1);
                 }
+            }
+
+            // ── 나태(sloth) ──
+            if (hero.status === 'idle') {
+                this.heroManager.updateSinStat(hero.id, 'sloth', b.sloth_idle_rise ?? 1);
+            } else if (hero.status === 'defense') {
+                this.heroManager.updateSinStat(hero.id, 'sloth', -(b.sloth_defense_fall ?? 2));
+            } else if (hero.status !== 'injured' && hero.status !== 'sick') {
+                this.heroManager.updateSinStat(hero.id, 'sloth', -(b.sloth_action_fall ?? 1));
+            }
+
+            // ── 시기(envy) ──
+            // 거점에 idle인데 다른 영웅이 원정 중 → envy 상승
+            if (hero.status === 'idle' && expeditionCount > 0) {
+                this.heroManager.updateSinStat(hero.id, 'envy', b.envy_bench_rise ?? 1);
+            }
+
+            // ── 폭식(gluttony) ──
+            // 식량 부족 → gluttony 하락 (못 먹어서 불만)
+            if (foodLow) {
+                this.heroManager.updateSinStat(hero.id, 'gluttony', -(b.gluttony_food_shortage_fall ?? 1));
+            }
+
+            // ── 색욕(lust) ──
+            // 원정 중 파티원 있음 → lust 상승 / 혼자 idle → lust 하락
+            if (hero.status === 'expedition') {
+                this.heroManager.updateSinStat(hero.id, 'lust', b.lust_party_rise ?? 1);
+            } else if (hero.status === 'idle') {
+                this.heroManager.updateSinStat(hero.id, 'lust', -(b.lust_solo_fall ?? 1));
+            }
+
+            // ── 교만(pride) ──
+            if (hero._lastDefenseWin === true) {
+                this.heroManager.updateSinStat(hero.id, 'pride', b.pride_defense_win_rise ?? 2);
+            } else if (hero._lastDefenseWin === false) {
+                this.heroManager.updateSinStat(hero.id, 'pride', -(b.pride_defense_lose_fall ?? 2));
             }
         }
     }

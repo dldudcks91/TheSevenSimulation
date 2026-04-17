@@ -2,7 +2,7 @@
  * 이벤트/선택지 시스템
  * 매 턴(아침) 이벤트 발생 → 플레이어 판결 → 사기 변동
  */
-import { SIN_KEYS, topSin, weightedSinRoll, applyPlayerSinDelta } from './SinUtils.js';
+import { SIN_KEYS, topSin, weightedSinRoll } from './SinUtils.js';
 
 class EventSystem {
     constructor(store, eventsData, balance = {}) {
@@ -63,11 +63,9 @@ class EventSystem {
 
             switch (t.type) {
                 case 'sin_elevated': {
-                    const elevatedThreshold = t.min_morale || (this.balance.elevated_threshold ?? 76);
-                    // 해당 죄종 수치 8+ 인 영웅 중 사기 조건 충족하는 후보
-                    const hero = heroes.find(h =>
-                        (h.sinStats?.[t.sin] || 0) >= 8 && h.morale >= elevatedThreshold
-                    );
+                    // 해당 죄종 수치 15+ 영웅이 있을 때 (고수치 = 위험 징후)
+                    const elevatedMin = t.min_sin_value || (this.balance.sin_elevated_threshold ?? 15);
+                    const hero = heroes.find(h => (h.sinStats?.[t.sin] || 0) >= elevatedMin);
                     if (!hero) return false;
                     if (t.oppose_sin) {
                         const oppose = heroes.find(h => (h.sinStats?.[t.oppose_sin] || 0) >= 8);
@@ -76,16 +74,15 @@ class EventSystem {
                     return true;
                 }
                 case 'sin_frustrated': {
-                    const frustratedThreshold = this.balance.frustrated_threshold ?? 25;
-                    const hero = heroes.find(h =>
-                        (h.sinStats?.[t.sin] || 0) >= 8 && h.morale <= frustratedThreshold
-                    );
+                    // 해당 죄종 수치 5 이하 영웅이 있을 때 (저수치 = 의욕 상실)
+                    const frustratedMax = this.balance.sin_frustrated_threshold ?? 5;
+                    const hero = heroes.find(h => (h.sinStats?.[t.sin] || 0) <= frustratedMax);
                     return !!hero;
                 }
                 case 'rampage': {
-                    const rampageThreshold = this.balance.morale_max ?? 100;
+                    // 폭주 상태인 영웅이 해당 죄종을 가질 때
                     const hero = heroes.find(h =>
-                        (h.sinStats?.[t.sin] || 0) >= 8 && h.morale >= rampageThreshold
+                        h.isRampaging && (h.sinStats?.[t.sin] || 0) >= (this.balance.sin_rampage_threshold ?? 18)
                     );
                     return !!hero;
                 }
@@ -245,29 +242,46 @@ class EventSystem {
         const targetMap = choice.targetMap || {};
         const partyIds = Array.isArray(context.partyHeroIds) ? context.partyHeroIds : null;
 
-        const moraleMin = this.balance.morale_min ?? 0;
-        const moraleMax = this.balance.morale_max ?? 100;
+        const _applySinStatDelta = (hero, sinKey, delta) => {
+            if (!hero?.sinStats || !(sinKey in hero.sinStats)) return;
+            hero.sinStats[sinKey] = Math.max(1, Math.min(20, (hero.sinStats[sinKey] ?? 1) + delta));
+            hero.isRampaging = Object.values(hero.sinStats).some(v => v >= (this.balance.sin_rampage_threshold ?? 18));
+        };
 
         for (const effect of choice.effects) {
+            // sin_delta: 죄종 수치 변동 (신규 effect type)
+            // 구 morale effect는 주 성향 sinStat으로 전환
+            const sinKey = effect.sin_key || null;
+            const sinDelta = effect.sin_delta || (effect.morale ? (effect.morale > 0 ? 1 : -1) : 0);
+
             if (effect.target === 'all') {
                 for (const hero of heroes) {
-                    hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + (effect.morale || 0)));
-                    results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
+                    const targetSin = sinKey || topSin(hero.sinStats);
+                    if (targetSin && sinDelta !== 0) {
+                        _applySinStatDelta(hero, targetSin, sinDelta);
+                        results.push({ heroId: hero.id, name: hero.name, sinKey: targetSin, delta: sinDelta });
+                    }
                 }
             } else if (effect.target === 'party') {
                 const targets = partyIds
                     ? heroes.filter(h => partyIds.includes(h.id))
                     : heroes;
                 for (const hero of targets) {
-                    hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + (effect.morale || 0)));
-                    results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
+                    const targetSin = sinKey || topSin(hero.sinStats);
+                    if (targetSin && sinDelta !== 0) {
+                        _applySinStatDelta(hero, targetSin, sinDelta);
+                        results.push({ heroId: hero.id, name: hero.name, sinKey: targetSin, delta: sinDelta });
+                    }
                 }
             } else if (effect.target === 'others') {
                 const mainSin = event.id.startsWith('A4') ? 'pride' : null;
                 for (const hero of heroes) {
                     if (mainSin && topSin(hero.sinStats) === mainSin) continue;
-                    hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + (effect.morale || 0)));
-                    results.push({ heroId: hero.id, name: hero.name, delta: effect.morale || 0 });
+                    const targetSin = sinKey || topSin(hero.sinStats);
+                    if (targetSin && sinDelta !== 0) {
+                        _applySinStatDelta(hero, targetSin, sinDelta);
+                        results.push({ heroId: hero.id, name: hero.name, sinKey: targetSin, delta: sinDelta });
+                    }
                 }
             } else if (effect.target === 'gold') {
                 const gold = this.store.getState('gold') || 500;
@@ -275,12 +289,6 @@ class EventSystem {
                 results.push({ type: 'gold', delta: effect.amount || 0 });
             } else if (effect.target === 'recruit') {
                 results.push({ type: 'recruit', action: effect.action });
-            } else if (typeof effect.target === 'string' && effect.target.startsWith('player_sin_')) {
-                // 바알 죄종 수치 변동 — 예: target='player_sin_wrath', amount=+2
-                const sin = effect.target.slice('player_sin_'.length);
-                const delta = effect.amount || 0;
-                applyPlayerSinDelta(this.store, sin, delta);
-                results.push({ type: 'player_sin', sin, delta });
             } else {
                 // 특정 영웅 타겟
                 const heroId = targetMap[effect.target];
@@ -289,13 +297,15 @@ class EventSystem {
                     if (hero) {
                         const delta = effect.morale || 0;
                         if (delta <= -999) {
-                            // 영구 제거
                             const idx = heroes.indexOf(hero);
                             if (idx !== -1) heroes.splice(idx, 1);
                             results.push({ heroId: hero.id, name: hero.name, type: 'dismissed' });
                         } else {
-                            hero.morale = Math.max(moraleMin, Math.min(moraleMax, hero.morale + delta));
-                            results.push({ heroId: hero.id, name: hero.name, delta });
+                            const targetSin = sinKey || topSin(hero.sinStats);
+                            if (targetSin && sinDelta !== 0) {
+                                _applySinStatDelta(hero, targetSin, sinDelta);
+                                results.push({ heroId: hero.id, name: hero.name, sinKey: targetSin, delta: sinDelta });
+                            }
                         }
                     }
                 }

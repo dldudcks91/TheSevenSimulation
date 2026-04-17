@@ -1,5 +1,5 @@
 /**
- * 영웅 관리 — 랜덤 생성, 사기 관리, 폭주/이탈 체크
+ * 영웅 관리 — 랜덤 생성, 죄종 수치 관리, 폭주/이탈 체크
  * 모든 상수는 balance 데이터에서 주입
  */
 
@@ -10,14 +10,6 @@ const SIN_STAT_KEYS = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'p
 
 // 하위 호환: 기존 SUB_STAT_KEYS → SIN_STAT_KEYS 매핑
 const SUB_STAT_KEYS = SIN_STAT_KEYS;
-
-const MORALE_STATE = {
-    DESERTION: 'desertion',
-    UNHAPPY: 'unhappy',
-    STABLE: 'stable',
-    ELEVATED: 'elevated',
-    RAMPAGE: 'rampage'
-};
 
 class HeroManager {
     constructor(store, heroData, balance = {}) {
@@ -31,18 +23,16 @@ class HeroManager {
         this._traitsData = [];
 
         // balance에서 상수 로드 (기본값 폴백)
-        this.MORALE_MIN = balance.morale_min ?? 0;
-        this.MORALE_MAX = balance.morale_max ?? 100;
-        this.MORALE_DEFAULT = balance.morale_default ?? 50;
         this.STAT_MIN = balance.stat_min ?? 1;
         this.STAT_MAX = balance.stat_max ?? 20;
+        this.SIN_MIN = balance.sin_min ?? 1;
+        this.SIN_MAX = balance.sin_max ?? 20;
+        this.SIN_RAMPAGE_THRESHOLD = balance.sin_rampage_threshold ?? 18;
         this.MAX_HEROES = balance.max_heroes ?? 7;
         this.STARTING_HEROES = balance.starting_heroes ?? 3;
         this.STAT_ROLL_DICE = balance.stat_roll_dice ?? 3;
         this.STAT_ROLL_SIDES = balance.stat_roll_sides ?? 8;
         this.STAT_ROLL_BONUS = balance.stat_roll_bonus ?? 3;
-        this.FRUSTRATED_THRESHOLD = balance.frustrated_threshold ?? 25;
-        this.ELEVATED_THRESHOLD = balance.elevated_threshold ?? 76;
     }
 
     /** SpriteComposer 주입 (런타임 외형 생성용) */
@@ -130,7 +120,6 @@ class HeroManager {
             sinFlaw: sinDef?.flaw || '',
             trait: trait ? { id: trait.id, name: trait.name, category: trait.category, pro_effect: trait.pro_effect, con_effect: trait.con_effect } : null,
             acquiredTraits: [],
-            morale: this.MORALE_DEFAULT,
             stats,
             subStats: sinStats,
             foodCost: this.calcFoodCost(stats),
@@ -141,6 +130,8 @@ class HeroManager {
             daysIdle: 0,
             expeditionFailStreak: 0,
             _rampageHistory: [],
+            _sinOverflowTurns: {},
+            isRampaging: false,
             hp: maxHp,
             maxHp,
             stamina: this.balance.stamina_max ?? 100,
@@ -327,8 +318,9 @@ class HeroManager {
         const maxT = this.balance.sickness_max_turns ?? 3;
         hero.sickTurns = minT + Math.floor(Math.random() * (maxT - minT + 1));
         hero.status = 'sick';
-        const moraleDelta = this.balance.sickness_morale_delta ?? -8;
-        hero.morale = Math.max(0, (hero.morale ?? 50) + moraleDelta);
+        // 발병 시 주 성향 죄종 수치 상승 (스트레스 반응)
+        const primarySin = topSin(hero.sinStats);
+        if (primarySin) this.updateSinStat(heroId, primarySin, 1);
         return true;
     }
 
@@ -398,45 +390,30 @@ class HeroManager {
         };
     }
 
-    /** 사기 변동 */
-    updateMorale(heroId, delta) {
+    /** 죄종 수치 변동 (1~20 클램프) */
+    updateSinStat(heroId, sinKey, delta) {
         const heroes = this.store.getState('heroes');
         const hero = heroes.find(h => h.id === heroId);
-        if (!hero) return null;
+        if (!hero || !hero.sinStats || !(sinKey in hero.sinStats)) return null;
 
-        const oldMorale = hero.morale;
-        hero.morale = Math.max(this.MORALE_MIN, Math.min(this.MORALE_MAX, hero.morale + delta));
+        const oldVal = hero.sinStats[sinKey];
+        hero.sinStats[sinKey] = Math.max(this.SIN_MIN, Math.min(this.SIN_MAX, oldVal + delta));
+        hero.isRampaging = this.isRampaging(hero);
 
         this.store.setState('heroes', [...heroes]);
-
-        return {
-            heroId,
-            oldMorale,
-            newMorale: hero.morale,
-            state: this.getMoraleState(hero.morale)
-        };
+        return { heroId, sinKey, oldVal, newVal: hero.sinStats[sinKey] };
     }
 
-    /** 사기 상태 판정 */
-    getMoraleState(morale) {
-        if (morale <= this.MORALE_MIN) return MORALE_STATE.DESERTION;
-        if (morale <= this.FRUSTRATED_THRESHOLD) return MORALE_STATE.UNHAPPY;
-        if (morale < this.ELEVATED_THRESHOLD) return MORALE_STATE.STABLE;
-        if (morale < this.MORALE_MAX) return MORALE_STATE.ELEVATED;
-        return MORALE_STATE.RAMPAGE;
+    /** 영웅이 폭주 상태인지 판정 (어떤 죄종이든 18 이상이면 폭주) */
+    isRampaging(hero) {
+        if (!hero?.sinStats) return false;
+        return SIN_STAT_KEYS.some(k => (hero.sinStats[k] ?? 0) >= this.SIN_RAMPAGE_THRESHOLD);
     }
 
-    /** 사기 상태 한글명 */
-    getMoraleStateName(morale) {
-        const state = this.getMoraleState(morale);
-        const names = {
-            [MORALE_STATE.DESERTION]: '이탈',
-            [MORALE_STATE.UNHAPPY]: '불만',
-            [MORALE_STATE.STABLE]: '안정',
-            [MORALE_STATE.ELEVATED]: '고양',
-            [MORALE_STATE.RAMPAGE]: '폭주'
-        };
-        return names[state];
+    /** 폭주 중인 죄종 키 목록 반환 */
+    getRampagingSins(hero) {
+        if (!hero?.sinStats) return [];
+        return SIN_STAT_KEYS.filter(k => (hero.sinStats[k] ?? 0) >= this.SIN_RAMPAGE_THRESHOLD);
     }
 
     /** 영웅 목록 조회 */
@@ -483,4 +460,4 @@ class HeroManager {
 }
 
 export default HeroManager;
-export { STAT_KEYS, SIN_STAT_KEYS, SUB_STAT_KEYS, MORALE_STATE };
+export { STAT_KEYS, SIN_STAT_KEYS, SUB_STAT_KEYS };

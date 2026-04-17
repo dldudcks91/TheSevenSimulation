@@ -3,7 +3,7 @@
  * 채집/벌목/연회/안정화/사냥 보상 계산 + 적합도
  */
 
-import { sinIntensity } from './SinUtils.js';
+// sinIntensity 미사용 — 연회 보너스 계산 제거됨
 
 class DayActions {
     constructor(store, heroManager, balance = {}) {
@@ -12,13 +12,12 @@ class DayActions {
         this.balance = balance;
     }
 
-    /** 채집 실행 → 식량 획득 + 사기 변동 + 체력 소모 */
+    /** 채집 실행 → 식량 획득 + sinStat 변동 + 체력 소모 */
     doGather(hero) {
         const turn = this.store.getState('turn');
         const day = (turn && turn.day) || 1;
         const b = this.balance;
         const baseReward = (b.gather_base_food ?? 8) + Math.floor(Math.random() * day);
-        // 피로/과로 시 효율 감소
         const effMult = this._efficiencyMult(hero);
         const foodReward = Math.max(1, Math.round(baseReward * effMult));
 
@@ -28,12 +27,14 @@ class DayActions {
 
         const food = this.store.getState('food') || 0;
         this.store.setState('food', food + foodReward);
-        this.heroManager.updateMorale(hero.id, b.gather_morale ?? 2);
+        // 채집: 탐욕 상승 (획득), 나태 하락 (몸 움직임)
+        this.heroManager.updateSinStat(hero.id, 'greed', b.greed_gather_rise ?? 1);
+        this.heroManager.updateSinStat(hero.id, 'sloth', -(b.sloth_action_fall ?? 1));
 
         return { foodReward };
     }
 
-    /** 벌목 실행 → 나무 획득 + 사기 변동 + 체력 소모 */
+    /** 벌목 실행 → 나무 획득 + sinStat 변동 + 체력 소모 */
     doLumber(hero) {
         const turn = this.store.getState('turn');
         const day = (turn && turn.day) || 1;
@@ -48,7 +49,8 @@ class DayActions {
 
         const wood = this.store.getState('wood') || 0;
         this.store.setState('wood', wood + woodReward);
-        this.heroManager.updateMorale(hero.id, b.lumber_morale ?? 1);
+        // 벌목: 나태 하락 (몸 움직임)
+        this.heroManager.updateSinStat(hero.id, 'sloth', -(b.sloth_action_fall ?? 1));
 
         return { woodReward };
     }
@@ -62,7 +64,7 @@ class DayActions {
         return 1.0;
     }
 
-    /** 연회 실행 → 골드 소비 + 전체 사기 증가 */
+    /** 연회 실행 → 골드 소비 + 전체 폭식/색욕 sinStat 상승 */
     doFeast() {
         const b = this.balance;
         const feastCost = b.feast_cost ?? 100;
@@ -72,28 +74,13 @@ class DayActions {
         this.store.setState('gold', gold - feastCost);
         const heroes = this.heroManager.getHeroes();
         for (const hero of heroes) {
-            const baseDelta = b.feast_morale_normal ?? 15;
-            const gluttonyIntensity = sinIntensity(hero.sinStats, 'gluttony');
-            const lustIntensity = sinIntensity(hero.sinStats, 'lust');
-            const bonus = Math.round(Math.max(gluttonyIntensity, lustIntensity) * 10);
-            const delta = baseDelta + bonus;
-            this.heroManager.updateMorale(hero.id, delta);
+            // 연회: 폭식 상승 + 색욕 상승 (함께 즐기는 시간)
+            this.heroManager.updateSinStat(hero.id, 'gluttony', b.gluttony_feast_rise ?? 2);
+            this.heroManager.updateSinStat(hero.id, 'lust', b.lust_feast_rise ?? 1);
+            // 탐욕 하락 (풍족해서 움켜쥘 필요 없음)
+            this.heroManager.updateSinStat(hero.id, 'greed', -(b.greed_feast_fall ?? 1));
         }
         return { success: true, cost: feastCost };
-    }
-
-    /** 사기 안정화 → 극단 사기를 중앙으로 끌어옴 */
-    doStabilize() {
-        const b = this.balance;
-        const heroes = this.heroManager.getHeroes();
-        for (const hero of heroes) {
-            if (hero.morale < (b.stabilize_low_threshold ?? 30) ||
-                hero.morale > (b.stabilize_high_threshold ?? 80)) {
-                const target = b.stabilize_target ?? 50;
-                const delta = Math.round((target - hero.morale) * (b.stabilize_factor ?? 0.3));
-                this.heroManager.updateMorale(hero.id, delta);
-            }
-        }
     }
 
     /** 사냥 적 생성 + 보상 계산 (전투 자체는 씬에서 처리) */
@@ -122,10 +109,13 @@ class DayActions {
             hero.status = 'hunt';
             const gold = this.store.getState('gold') || 0;
             this.store.setState('gold', gold + goldReward);
-            this.heroManager.updateMorale(hero.id, b.hunt_win_morale ?? 3);
+            // 사냥 승리: 분노 상승 (전투 본능 충족), 교만 상승 (자신감)
+            this.heroManager.updateSinStat(hero.id, 'wrath', b.wrath_combat_rise ?? 1);
+            this.heroManager.updateSinStat(hero.id, 'pride', b.pride_combat_win_rise ?? 1);
         } else {
             hero.status = 'injured';
-            this.heroManager.updateMorale(hero.id, b.hunt_lose_morale ?? -5);
+            // 사냥 패배: 교만 하락 (자존심 상처)
+            this.heroManager.updateSinStat(hero.id, 'pride', -(b.pride_combat_lose_fall ?? 1));
         }
         this.store.setState('heroes', [...this.heroManager.getHeroes()]);
     }

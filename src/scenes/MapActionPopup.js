@@ -7,7 +7,7 @@
  * 사용법:
  *   const popup = new MapActionPopup(scene, {
  *       hero, actionType: 'gather', result: { foodReward: 12 },
- *       moraleDelta: 2, onComplete: () => {}
+ *       onComplete: () => {}
  *   });
  *   popup.start();
  *   // scene.update에서: popup.update(time, delta);
@@ -30,12 +30,14 @@ const ACTION_CONFIG = {
     gather: {
         icon: '\u{1F33F}', title: '채집', color: '#30b050', colorHex: 0x30b050,
         resourceKey: 'food', resourceIcon: '\u{1F33E}', resourceLabel: '식량',
-        workingText: '풀과 열매를 채집하는 중...'
+        workingText: '풀과 열매를 채집하는 중...',
+        sinEffect: '탐욕 +1 · 나태 -1'
     },
     lumber: {
         icon: '\u{1FA93}', title: '벌목', color: '#8a6a3a', colorHex: 0x8a6a3a,
         resourceKey: 'wood', resourceIcon: '\u{1FAB5}', resourceLabel: '나무',
-        workingText: '나무를 베는 중...'
+        workingText: '나무를 베는 중...',
+        sinEffect: '나태 -1'
     }
 };
 
@@ -85,7 +87,6 @@ class MapActionPopup {
      * @param {Object} config.hero
      * @param {string} config.actionType - 'gather' | 'lumber'
      * @param {Object} config.result - { foodReward } or { woodReward }
-     * @param {number} config.moraleDelta
      * @param {Function} config.onComplete
      */
     constructor(scene, config) {
@@ -93,7 +94,6 @@ class MapActionPopup {
         this.heroData = config.hero;
         this.actionType = config.actionType;
         this.result = config.result;
-        this.moraleDelta = config.moraleDelta;
         this.onComplete = config.onComplete || (() => {});
 
         this.active = false;
@@ -311,14 +311,14 @@ class MapActionPopup {
         this._container.add(rewardText);
         y += 24;
 
-        // 사기 변동
-        const moraleSign = this.moraleDelta >= 0 ? '+' : '';
-        const moraleColor = this.moraleDelta >= 0 ? '#40d870' : '#f04040';
-        const moraleText = this.scene.add.text(cx, y,
-            `사기: ${moraleSign}${this.moraleDelta}`, {
-            fontSize: '11px', fontFamily: FONT, color: moraleColor
-        }).setOrigin(0.5);
-        this._container.add(moraleText);
+        // 죄종 변동
+        const sinEffect = ACTION_CONFIG[this.actionType]?.sinEffect;
+        if (sinEffect) {
+            const sinEffText = this.scene.add.text(cx, y, sinEffect, {
+                fontSize: '11px', fontFamily: FONT, color: '#a0a0c0'
+            }).setOrigin(0.5);
+            this._container.add(sinEffText);
+        }
         y += 28;
 
         // 죄종별 대사

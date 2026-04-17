@@ -20,11 +20,6 @@ export const SIN_COLOR_HEX = {
     sloth: '#808898', gluttony: '#e07020', lust: '#e03080', pride: '#8040e0'
 };
 
-export const MORALE_COLORS_HEX = {
-    desertion: '#f04040', unhappy: '#f8b830', stable: '#a0a0c0',
-    elevated: '#40d870', rampage: '#e03030'
-};
-
 export const ACTION_STATS = {
     build: { primary: ['strength', 'vitality'], label: '건설' },
     buildAssign: { primary: ['strength', 'vitality'], label: '건설 투입' },
@@ -57,7 +52,7 @@ export const TABS = [
     { id: 'hero', icon: '⚔', label: '영웅' },
     { id: 'item', icon: '🎒', label: '아이템' },
     { id: 'expedition', icon: '🗺', label: '원정' },
-    { id: 'policy', icon: '📜', label: '정책' },
+    { id: 'edict', icon: '📜', label: '국시' },
     { id: 'bestiary', icon: '📖', label: '도감' },
 ];
 

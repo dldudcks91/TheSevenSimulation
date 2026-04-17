@@ -117,7 +117,7 @@ async function loadAllCsv(basePath = './data/') {
         'stages',
         'stage_enemies',
         'balance',
-        'policies',
+        'edicts',
         'hunt_enemies',
         'defense_scaling',
         'phases',
@@ -348,8 +348,8 @@ function buildGameData(csvData) {
         data.balance[r.key] = r.value;
     }
 
-    // ─── policies ───
-    data.policies = csvData.policies;
+    // ─── edicts (국시 시스템) ───
+    data.edicts = csvData.edicts || [];
 
     // ─── hunt_enemies ───
     data.huntEnemies = csvData.hunt_enemies;

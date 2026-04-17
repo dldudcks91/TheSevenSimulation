@@ -58,11 +58,10 @@ async function boot() {
     game.registry.set('stagesData', gameData.stagesData);
     game.registry.set('chapters', gameData.chapters);
     game.registry.set('balance', gameData.balance);
-    game.registry.set('policies', gameData.policies);
+    game.registry.set('edicts', gameData.edicts);
     game.registry.set('huntEnemies', gameData.huntEnemies);
     game.registry.set('defenseScaling', gameData.defenseScaling);
     game.registry.set('phases', gameData.phases);
-    game.registry.set('moraleStates', gameData.moraleStates);
     game.registry.set('desertionEffects', gameData.desertionEffects);
     game.registry.set('battleScene', BATTLE_SCENE);
     game.registry.set('expeditionMode', 'node');

@@ -10,6 +10,7 @@ class ExpeditionManager {
         this.store = store;
         this.balance = balance;
         this.battleEngine = new BattleEngine(balance);
+        this.edictManager = null;
         this._stagesData = {};
         this._battleMode = BATTLE_MODES.MELEE;
         this._initState();
@@ -18,6 +19,14 @@ class ExpeditionManager {
     /** 전투 모드 설정 (MELEE / TAG) */
     setBattleMode(mode) {
         this._battleMode = mode;
+    }
+
+    /** 국시 효과 연동을 위한 EdictManager 주입 (선택) */
+    setEdictManager(edictManager) {
+        this.edictManager = edictManager;
+        if (this.battleEngine && edictManager) {
+            this.battleEngine.setPowerMultDelta(edictManager.getEffect('battle_power_mult'));
+        }
     }
 
     /** stagesData 주입 (app.js에서 registry를 통해 전달) */

@@ -15,7 +15,7 @@ const SaveManager = {
             inventory: store.getState('inventory'),
             base: store.getState('base'),
             expedition: store.getState('expedition'),
-            playerSins: store.getState('playerSins'),
+            edict: store.getState('edict'),
             savedAt: new Date().toISOString()
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -38,13 +38,18 @@ const SaveManager = {
                 saveData.base.buildings = saveData.base.building ? [saveData.base.building] : [];
                 delete saveData.base.building;
             }
+            // 2026-04-17: policies 필드 제거. 기존 세이브에 남아있으면 무시
+            if (saveData.base.policies !== undefined) {
+                delete saveData.base.policies;
+            }
             store.setState('base', saveData.base);
         }
         if (saveData.expedition) store.setState('expedition', saveData.expedition);
         if (saveData.food !== undefined) store.setState('food', saveData.food);
         if (saveData.wood !== undefined) store.setState('wood', saveData.wood);
         if (saveData.inventory) store.setState('inventory', saveData.inventory);
-        if (saveData.playerSins) store.setState('playerSins', saveData.playerSins);
+        if (saveData.edict !== undefined) store.setState('edict', saveData.edict);
+        // 2026-04-17: saveData.playerSins는 로드 시 단순 무시 (바알 죄종 수치 시스템 폐기)
         return true;
     },
 

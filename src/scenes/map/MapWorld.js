@@ -199,7 +199,7 @@ class MapWorld {
         container.add(s.add.text(0, -8, '바알', { fontSize: '12px', fontFamily: FONT_BOLD, color: C.accentRed, shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true } }).setOrigin(0.5));
         container.add(s.add.text(0, 10, '(판결자)', { fontSize: '8px', fontFamily: FONT, color: C.textMuted }).setOrigin(0.5));
         const zone = s.add.zone(0, 0, CELL_W, CELL_H).setInteractive({ useHandCursor: true });
-        zone.on('pointerdown', () => { s._showPanelAction('policy'); });
+        zone.on('pointerdown', () => { s._showPanelAction('edict'); });
         container.add(zone);
         mc.add(container);
     }

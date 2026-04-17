@@ -240,9 +240,8 @@ class ExpeditionNodeManager {
      * 전투 결과 Store 반영
      * - 영웅 부상 상태 (alive=false → status='injured')
      * - 영웅 HP 반영
-     * - 승리 시 골드 보상, 전 영웅 사기 +α
-     * - 패배 시 전 영웅 사기 -α
-     * @returns {object} { goldReward, moraleDelta, injuredIds[] }
+     * - 승리/패배 시 sinStat 변동
+     * @returns {object} { goldReward, sinDeltas, injuredIds[] }
      */
     applyCombatResult(heroIds, battleResult, isBoss, balance = {}) {
         const heroes = this.store.getState('heroes') || [];
@@ -261,9 +260,8 @@ class ExpeditionNodeManager {
         }
         this.store.setState('heroes', [...heroes]);
 
-        // 골드 보상 + 사기 변동
         let goldReward = 0;
-        let moraleDelta = 0;
+        const sinDeltas = [];
         if (battleResult.victory) {
             const base = isBoss
                 ? (balance.exp_node_boss_gold_base ?? 120)
@@ -272,25 +270,27 @@ class ExpeditionNodeManager {
                 ? (balance.exp_node_boss_gold_per_day ?? 10)
                 : (balance.exp_node_combat_gold_per_day ?? 4);
             goldReward = base + day * perDay;
+            this.store.setState('gold', (this.store.getState('gold') || 0) + goldReward);
 
-            const gold = this.store.getState('gold') || 0;
-            this.store.setState('gold', gold + goldReward);
-
-            moraleDelta = balance.exp_node_victory_morale ?? 3;
+            // 승리: 분노 상승 (전투 충족), 교만 상승 (자신감)
+            this._applySinDeltaToParty(heroIds, 'wrath', balance.wrath_combat_rise ?? 1);
+            this._applySinDeltaToParty(heroIds, 'pride', balance.pride_combat_win_rise ?? 1);
+            sinDeltas.push({ sinKey: 'wrath', delta: 1 }, { sinKey: 'pride', delta: 1 });
         } else {
-            moraleDelta = balance.exp_node_defeat_morale ?? -8;
+            // 패배: 교만 하락
+            this._applySinDeltaToParty(heroIds, 'pride', -(balance.pride_combat_lose_fall ?? 1));
+            sinDeltas.push({ sinKey: 'pride', delta: -1 });
         }
 
-        this._applyMoraleToParty(heroIds, moraleDelta);
-
-        return { goldReward, moraleDelta, injuredIds };
+        return { goldReward, sinDeltas, injuredIds };
     }
 
-    /** 야영 노드 — 파티 영웅 사기 +α */
+    /** 야영 노드 — 파티 영웅 sinStat 변동 */
     applyRestNode(heroIds, balance = {}) {
-        const delta = balance.exp_node_rest_morale ?? 10;
-        this._applyMoraleToParty(heroIds, delta);
-        return { moraleDelta: delta };
+        // 야영: 나태 상승 (쉼), 폭식 상승 (먹고 쉬는 시간)
+        this._applySinDeltaToParty(heroIds, 'sloth', balance.sloth_idle_rise ?? 1);
+        this._applySinDeltaToParty(heroIds, 'gluttony', balance.gluttony_feast_rise ?? 1);
+        return { sinDeltas: [{ sinKey: 'sloth', delta: 1 }, { sinKey: 'gluttony', delta: 1 }] };
     }
 
     /** 보스 격파 시 다음 챕터 해금 */
@@ -326,17 +326,15 @@ class ExpeditionNodeManager {
         this.store.setState('heroes', [...heroes]);
     }
 
-    /** 내부 헬퍼 — 파티 전원 사기 변동 */
-    _applyMoraleToParty(heroIds, delta) {
-        if (!delta) return;
+    /** 내부 헬퍼 — 파티 전원 sinStat 변동 */
+    _applySinDeltaToParty(heroIds, sinKey, delta) {
+        if (!delta || !sinKey) return;
         const heroes = this.store.getState('heroes') || [];
-        const moraleMin = 0;
-        const moraleMax = 100;
         for (const id of heroIds) {
             const hero = heroes.find(h => h.id === id);
-            if (!hero) continue;
-            const cur = hero.morale ?? 50;
-            hero.morale = Math.max(moraleMin, Math.min(moraleMax, cur + delta));
+            if (!hero?.sinStats || !(sinKey in hero.sinStats)) continue;
+            hero.sinStats[sinKey] = Math.max(1, Math.min(20, (hero.sinStats[sinKey] ?? 1) + delta));
+            hero.isRampaging = Object.values(hero.sinStats).some(v => v >= 18);
         }
         this.store.setState('heroes', [...heroes]);
     }

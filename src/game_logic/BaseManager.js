@@ -1,16 +1,27 @@
 /**
- * 거점 시설/건설/연구 관리 + 포고령
- * 포고령 효과는 policies CSV 데이터에서 로드
+ * 거점 시설/건설/연구 관리
+ * 포고령 시스템은 2026-04-17에 국시(Edict)로 이전/제거됨
  */
 
 class BaseManager {
-    constructor(store, facilitiesData, policies = [], balance = {}) {
+    constructor(store, facilitiesData, balance = {}) {
         this.store = store;
         this.allFacilities = facilitiesData.facilities;
         this.allResearch = facilitiesData.research;
-        this.policies = policies;
         this.balance = balance;
+        this.edictManager = null; // 선택 주입
         this._initState();
+    }
+
+    /** 국시 효과 연동을 위한 EdictManager 주입 (선택) */
+    setEdictManager(edictManager) {
+        this.edictManager = edictManager;
+    }
+
+    /** 국시 기반 건설/연구 속도 배율 */
+    _buildResearchMult() {
+        if (!this.edictManager) return 1;
+        return 1 + (this.edictManager.getEffect('build_research_mult') || 0);
     }
 
     _initState() {
@@ -24,12 +35,7 @@ class BaseManager {
             researching: null,
             unlockedCells: [...initialUnlocked],
             pioneering: null, // { cellIndex, assignedHeroId }
-            defenseHeroIds: [], // 방어 배치된 영웅 ID 목록
-            policies: {
-                ration: 'normal',
-                training: 'normal',
-                alert: 'normal'
-            }
+            defenseHeroIds: [] // 방어 배치된 영웅 ID 목록
         });
     }
 
@@ -99,7 +105,7 @@ class BaseManager {
                 results.push({ type: 'no_hero', name: building.name });
                 continue;
             }
-            const buildPower = Math.floor((hero.stats.strength + hero.stats.agility) / 2);
+            const buildPower = Math.floor((hero.stats.strength + hero.stats.agility) / 2 * this._buildResearchMult());
 
             building.progress += buildPower;
 
@@ -164,10 +170,10 @@ class BaseManager {
         const base = this.store.getState('base');
         if (!base.researching) return null;
 
-        // 영웅 스탯으로 연구력 계산: 지능
+        // 영웅 스탯으로 연구력 계산: 지능 (국시 build_research_mult 적용)
         const heroes = this.store.getState('heroes') || [];
         const hero = heroes.find(h => h.id === base.researching.assignedHeroId);
-        const researchPower = hero ? hero.stats.intelligence : 1;
+        const researchPower = Math.floor((hero ? hero.stats.intelligence : 1) * this._buildResearchMult());
 
         base.researching.progress += researchPower;
 
@@ -283,34 +289,6 @@ class BaseManager {
         const base = this.store.getState('base');
         base.defenseHeroIds = [];
         this.store.setState('base', { ...base });
-    }
-
-    // ─── 포고령 (CSV 데이터 기반) ───
-
-    setPolicy(policyKey, value) {
-        const base = this.store.getState('base');
-        if (base.policies[policyKey] !== undefined) {
-            base.policies[policyKey] = value;
-            this.store.setState('base', { ...base });
-            return true;
-        }
-        return false;
-    }
-
-    /** 포고령에 의한 턴당 사기 변동 계산 — policies CSV 기반 */
-    getPolicyMoraleEffect() {
-        const base = this.store.getState('base');
-        const p = base.policies;
-        let delta = 0;
-
-        for (const [key, val] of Object.entries(p)) {
-            const policyRow = this.policies.find(r => r.policy === key && r.value === val);
-            if (policyRow) {
-                delta += policyRow.morale_delta;
-            }
-        }
-
-        return delta;
     }
 
     // ─── 턴 수입 ───

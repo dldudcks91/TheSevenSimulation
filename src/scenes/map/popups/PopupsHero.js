@@ -1,7 +1,7 @@
 /**
  * 영웅 관련 팝업 — 영웅 선택, 상세, 고용
  */
-import { C, ACTION_STATS, SIN_COLOR_HEX, MORALE_COLORS_HEX } from '../MapConstants.js';
+import { C, ACTION_STATS, SIN_COLOR_HEX } from '../MapConstants.js';
 import { FONT, FONT_BOLD } from '../../../constants.js';
 import store from '../../../store/Store.js';
 import { topSin, SIN_NAMES_KO } from '../../../game_logic/SinUtils.js';
@@ -188,25 +188,42 @@ class PopupsHero {
 
         y += cardH + 10;
 
-        // ─── 사기 바 ───
-        const moraleState = s.heroManager.getMoraleState(hero.morale);
-        const moraleColor = MORALE_COLORS_HEX[moraleState];
-        const moraleName = s.heroManager.getMoraleStateName(hero.morale);
+        // ─── 죄종 수치 바 (7종) ───
         const mBarX = px + 32;
         const mBarW = pw - 160;
-        pp(s.add.text(mBarX, y - 2, '사기', { fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary }));
-        const mBarStartX = mBarX + 36;
-        const mBg = pp(s.add.graphics());
-        mBg.fillStyle(0x0e0e1a, 1); mBg.fillRect(mBarStartX, y + 2, mBarW, 10);
-        mBg.lineStyle(1, C.borderPrimary); mBg.strokeRect(mBarStartX, y + 2, mBarW, 10);
-        const mFill = pp(s.add.graphics());
-        const mfw = Math.max(0, (hero.morale / 100) * (mBarW - 2));
-        mFill.fillStyle(Phaser.Display.Color.HexStringToColor(moraleColor).color, 1);
-        mFill.fillRect(mBarStartX + 1, y + 3, mfw, 8);
-        pp(s.add.text(mBarStartX + mBarW + 8, y - 2, `${hero.morale} (${moraleName})`, {
-            fontSize: '13px', fontFamily: FONT_BOLD, color: moraleColor
-        }));
-        y += 22;
+        const sinLblW = 32;
+        const sinStartX = mBarX + sinLblW;
+        const sinRealW = mBarW - sinLblW - 26;
+        const sinBarH = 7;
+        const sinKeyList = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'pride'];
+        const sinLabelKo = { wrath: '분노', envy: '시기', greed: '탐욕', sloth: '나태', gluttony: '폭식', lust: '색욕', pride: '교만' };
+
+        pp(s.add.text(mBarX, y - 2, '죄종 수치', { fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary }));
+        y += 16;
+
+        for (const sinKey of sinKeyList) {
+            const sinVal = hero.sinStats?.[sinKey] ?? 1;
+            const isRampage = sinVal >= 18;
+            const sinColorHex = isRampage ? '#e03030' : SIN_COLOR_HEX[sinKey];
+
+            pp(s.add.text(mBarX, y, sinLabelKo[sinKey], { fontSize: '10px', fontFamily: FONT_BOLD, color: sinColorHex }));
+
+            const sBg = pp(s.add.graphics());
+            sBg.fillStyle(0x0e0e1a, 1); sBg.fillRect(sinStartX, y + 2, sinRealW, sinBarH);
+            sBg.lineStyle(1, C.borderPrimary); sBg.strokeRect(sinStartX, y + 2, sinRealW, sinBarH);
+
+            const sFill = pp(s.add.graphics());
+            const sfw = Math.max(0, (sinVal / 20) * (sinRealW - 2));
+            sFill.fillStyle(Phaser.Display.Color.HexStringToColor(sinColorHex).color, 1);
+            sFill.fillRect(sinStartX + 1, y + 3, sfw, sinBarH - 2);
+
+            pp(s.add.text(sinStartX + sinRealW + 6, y, `${sinVal}${isRampage ? '!' : ''}`, {
+                fontSize: '10px', fontFamily: isRampage ? FONT_BOLD : FONT, color: sinColorHex
+            }));
+
+            y += sinBarH + 5;
+        }
+        y += 6;
 
         // ─── 스탯 ───
         const margin = 24;

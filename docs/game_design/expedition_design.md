@@ -54,7 +54,7 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 - **구름 가리기(Fog of war)**: 현재 노드의 연결 노드만 공개. 나머지는 '???' 로 표시
 - **감시탑 연동** (2026-04-16 구현): 감시탑 레벨에 따라 START에서 N스텝 앞까지 미리 공개
   - Lv.1 → +1 스텝, Lv.2 → +2 스텝, Lv.3 → 전체 공개
-- **선택 전략**: 현재 파티 상태(사기/HP)에 따라 전투 vs 야영 선택
+- **선택 전략**: 현재 파티 상태(HP/Stamina/죄종 수치)에 따라 전투 vs 야영 선택
 
 #### 노드 유형
 
@@ -63,7 +63,7 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 | start | ★ | 초록 | 출발점 |
 | combat | ⚔ | 빨강 | 자동전투 |
 | event | ? | 파랑 | 조우 이벤트 (구현 예정) |
-| rest | 🏕 | 초록 | 야영 — 사기 +10 |
+| rest | 🏕 | 초록 | 야영 — HP/Stamina 회복, 죄종 수치 안정 |
 | portal | 🌀 | 보라 | 포탈 — 체크포인트 설정 |
 | boss | 💀 | 금색 | 보스 전투 |
 
@@ -129,7 +129,7 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 | 포탈 체크포인트 | ✅ 구현 완료 |
 | 인라인 전투 해결 (BattleEngine) | ✅ 구현 완료 |
 | 인게임 모드 전환 (HUD ⚙) | ✅ 구현 완료 |
-| 원정 결과 → Store 반영 (자원/부상/사기/HP) | ✅ 구현 완료 (2026-04-16) |
+| 원정 결과 → Store 반영 (자원/부상/HP) | ✅ 구현 완료 (2026-04-16) |
 | 보스 격파 시 다음 챕터 해금 | ✅ 구현 완료 (2026-04-16) |
 | 조우 이벤트 연동 (EventScene) | ✅ 구현 완료 (2026-04-16) |
 | 감시탑 ↔ 구름 해제 연동 | ✅ 구현 완료 (2026-04-16) |
@@ -139,10 +139,10 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 
 | 노드 | 효과 | balance.csv 키 |
 |------|------|---------------|
-| combat 승리 | 골드 `base + day×per_day`, 파티 사기 +3 | `exp_node_combat_gold_base`(40) / `exp_node_combat_gold_per_day`(4) / `exp_node_victory_morale` |
-| combat 패배 | 파티 사기 -8, 쓰러진 영웅 `status='injured'` | `exp_node_defeat_morale` |
+| combat 승리 | 골드 `base + day×per_day`, 파티 분노+1 / 교만+1 | `exp_node_combat_gold_base`(40) / `exp_node_combat_gold_per_day`(4) |
+| combat 패배 | 파티 교만-1, 쓰러진 영웅 `status='injured'` | — |
 | boss 승리 | 골드 `120 + day×10`, 챕터 +1, 맵 리셋 | `exp_node_boss_gold_base` / `exp_node_boss_gold_per_day` |
-| rest | 파티 사기 +10 | `exp_node_rest_morale` |
+| rest | 파티 나태+1 / 폭식+1 | — |
 | 영웅 HP | 전투별 피해 누적, 귀환 후 매 턴 자연 회복 | `hero_hp_regen_per_turn` |
 
 ### 조우 이벤트 (encounter) — 2026-04-16 구현

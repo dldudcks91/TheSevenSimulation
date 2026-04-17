@@ -38,7 +38,7 @@ src/
 ├── index.html
 ├── app.js                    # 진입점, CSV 전체 로드 + Phaser 초기화
 ├── game_logic/               # 순수 게임 로직 (Godot 이식 대상)
-│   ├── SinSystem.js          # 죄종/사기/폭주/이탈/연쇄반응 (balance+desertionEffects 주입)
+│   ├── SinSystem.js          # 죄종/폭주/이탈/연쇄반응 (balance+desertionEffects 주입)
 │   ├── HeroManager.js        # 영웅 관리 (balance 주입)
 │   ├── EventSystem.js        # 이벤트/선택지
 │   ├── ExpeditionManager.js  # 원정/방어전 (stagesData+balance 주입)
@@ -96,7 +96,7 @@ src/
     ├── hunt_enemies.csv       # 사냥 적 5종
     ├── defense_scaling.csv    # 방어전 스케일링
     ├── phases.csv             # 턴 4페이즈
-    ├── morale_states.csv      # 사기 5단계
+    ├── morale_states.csv      # (레거시, 실제 미사용 — 사기 시스템 제거됨)
     ├── desertion_effects.csv  # 이탈 효과
     ├── stat_names.csv         # 스탯 한글명
     └── traits.csv             # 특성 38개 (고유 21 장점전용 + 후천 행동 10 + 후천 폭주 7)
@@ -109,9 +109,9 @@ src/
 | 순서 | 기능 | 상태 |
 |------|------|------|
 | 1 | 프로젝트 셋업 (Phaser.js 기본 구조) | [x] |
-| 2 | 영웅 시스템 (랜덤 생성, 7스탯, 죄종, 사기) | [x] |
+| 2 | 영웅 시스템 (랜덤 생성, 7스탯, 죄종 수치 동적화) | [x] |
 | 3 | 턴 진행 (아침/낮/저녁/밤 4단계) | [x] |
-| 4 | 이벤트 시스템 (선택지 → 사기 변화) | [x] |
+| 4 | 이벤트 시스템 (선택지 → 죄종 수치 변동) | [x] |
 | 5 | 거점 시설 건설 (Tier 1~3 건설 트리) | [x] |
 | 6 | 연구 시스템 | [x] |
 | 7 | 폭주 & 이탈 & 연쇄 반응 | [x] |
@@ -143,7 +143,7 @@ src/
 | 33 | 채집→식량, 벌목→나무 자원 분리 + 농장/벌목장 시설 | [x] |
 | 34 | 팝업 버튼 depth 하드코딩 제거 + 전체 depth 정리 | [x] |
 | 35 | MapDefenseMode/MapHuntPopup destroy() 메모리 누수 수정 | [x] |
-| 36 | HeroManager 사기 임계값 balance.csv 연동 | [x] |
+| 36 | HeroManager 죄종 수치 임계값 balance.csv 연동 | [x] |
 | 37 | 방어 배치 후 영웅 status 복원 버그 수정 | [x] |
 | 38 | 턴종료 확인 팝업 스택 시스템 전환 | [x] |
 | 39 | 스프라이트 walk 액션 preload 누락 수정 | [x] |
@@ -167,7 +167,7 @@ src/
 | 57 | 새 게임 초기 아이템 랜덤 지급 + 세이브/로드 인벤토리·식량·나무 연동 | [x] |
 | 58 | 채집/벌목 행동 팝업 (MapActionPopup — 프로그레스 바 + 결과 + 죄종 대사) | [x] |
 | 59 | **원정 맵 탐색 프로토타입** (ExpeditionScene + ExpeditionNodeManager) — STS 노드 방식 / 주사위 방식, HUD ⚙ 토글 | [x] |
-| 60 | **원정 결과 Store 반영** — 전투 승패 골드·사기·영웅 부상·HP 반영, 보스 격파 → 챕터 해금, 야영 사기 +10 (2026-04-16) | [x] |
+| 60 | **원정 결과 Store 반영** — 전투 승패 골드·영웅 부상·HP 반영, 보스 격파 → 챕터 해금, 야영 HP/Stamina 회복 (2026-04-16) | [x] |
 | 61 | **조우 이벤트 노드 연동** — EventSystem.pickEncounterEvent + target='party'. 조우 이벤트 F1~F3 추가 (부상 순례자/제단/보물상자) (2026-04-16) | [x] |
 | 62 | **감시탑 ↔ 구름 해제 연동** — Lv.1/2/3 = +1/+2/전체 스텝 미리보기 (2026-04-16) | [x] |
 | 63 | **챕터별 원정 노드 CSV화** — expedition_nodes.csv (7ch×7노드) + expedition_dice.csv (7ch×25칸) (2026-04-16) | [x] |
@@ -175,9 +175,10 @@ src/
 | 65 | **체력(stamina) 시스템 Phase A** — hero.stamina 필드, 턴 회복 / 행동 소모 / 과로 발병 / 피로 효율 감소 / UI 바 (2026-04-16) | [x] |
 | 66 | **아침 보고 죄종 태그 버그 수정** — MorningReportPopup sin 태그가 undefined 표시되던 문제 (2026-04-16) | [x] |
 | 67 | **병사 시스템 전면 제거 + 영웅 HP 직격 구조** — balance.csv `hero_hp_base/per_vitality/regen_per_turn` 추가, BattleEngine/Expedition/Defense 전면 영웅 HP 기반 (2026-04-16) | [x] |
-| 68 | **Stamina → 사기 페널티 연결** — 탈진 -10 즉시, 과로 -2/턴, 발병 -8 (TurnProcessor.processDayPhase) (2026-04-16) | [x] |
+| 68 | **Stamina 구간별 효율 감소** — 피로 -20%, 과로 -40%, 발병 판정 (TurnProcessor.processDayPhase) (2026-04-16) | [x] |
 | 69 | **죄종 × Stamina 보정** — 주 성향별 소모/회복 배율 CSV(`stamina_mult_<sin>_*`) + HeroManager 적용 (2026-04-16) | [x] |
 | 70 | **UI 정보 계층 정리** — HUD 병사 카운터 제거, Stamina 아이콘 경고 전환, HP 바 영웅 상시 표시 (2026-04-16) | [x] |
+| 71 | **사기 시스템 완전 제거 + 죄종 수치 동적화** — HeroManager/SinSystem/TurnProcessor/DayActions/ExpeditionNodeManager/EventSystem/MorningReport 전면 재작성. balance.csv morale 키 제거, sin_rampage_*/sin_*_rise/fall 키 신규. UI 6개 씬 사기 바 → 죄종 수치 바 교체 (2026-04-17) | [x] |
 
 ---
 
@@ -185,7 +186,7 @@ src/
 
 | # | 항목 | 상태 | 상세 |
 |---|------|------|------|
-| 1 | **사기 5구간 재설계** | CSV+코드 반영 완료 | 0/1~25/26~75/76~99/100 구간 확정. morale_states.csv+balance.csv+HeroManager+EventSystem+SettlementScene 동기화 (2026-04-13). 변동 로그 팝업은 미구현 |
+| 1 | **죄종 수치 동적화 완료** | ✅ 2026-04-17 | 죄종 7수치가 유일한 관리 레버. sin_rampage 폭주 지속 상태 + processRampageTick. UI 전면 교체 완료. |
 | 2 | **장비 시스템** | Phase 2 | equipment_design.md "재설계 예정" |
 | 3 | **챕터 2~7 콘텐츠** | Phase 2 | chapters.csv에 7챕터 정의 완료, stages.csv는 챕터1만 |
 | 4 | **원정 실시간 전투** | 미구현 | 결과형→실시간 오토배틀+죄종 반응으로 전환 예정 (카드 제거 완료 2026-04-13) |
@@ -210,4 +211,4 @@ src/
 
 ---
 
-*마지막 업데이트: 2026-04-10 (영웅 21명 풀 + 고유 특성 장점 전용, 사기 5구간 재설계, 행동강박 후천 통합, 세력 Phase 2)*
+*마지막 업데이트: 2026-04-17 (사기 시스템 완전 제거, 죄종 수치 동적화 완료)*

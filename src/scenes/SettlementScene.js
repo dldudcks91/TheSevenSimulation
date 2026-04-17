@@ -2,13 +2,8 @@
  * 결산 화면 (밤 끝)
  * 방어 결과 + 사기 변동 + 폭주/이탈 연쇄 반응 표시
  */
-import { topSin } from '../game_logic/SinUtils.js';
+import { topSin, SIN_NAMES_KO } from '../game_logic/SinUtils.js';
 import { FONT } from '../constants.js';
-
-const MORALE_COLORS = {
-    desertion: '#f04040', unhappy: '#f8b830', stable: '#a0a0c0',
-    elevated: '#40d870', rampage: '#e03030'
-};
 
 const SIN_COLORS = {
     wrath: '#e03030', envy: '#30b050', greed: '#d0a020',
@@ -57,16 +52,19 @@ class SettlementScene extends Phaser.Scene {
         this._line(60, y, width - 60, y);
         y += 15;
 
-        // 사기 변동
-        this.add.text(60, y, '── 영웅 사기 ──', {
+        // 죄종 수치 변동
+        this.add.text(60, y, '── 영웅 죄종 ──', {
             fontSize: '11px', fontFamily: FONT, color: '#606080'
         });
         y += 20;
 
         for (const hero of this.heroes) {
-            const sinColor = SIN_COLORS[topSin(hero.sinStats)] || '#a0a0c0';
-            const moraleColor = hero.morale <= 25 ? '#f8b830' : hero.morale >= 76 ? '#40d870' : '#a0a0c0';
-            const warning = hero.morale >= 76 ? ' ★ 고양' : hero.morale <= 25 ? ' ⚠ 불만' : '';
+            const domSin = topSin(hero.sinStats);
+            const sinColor = SIN_COLORS[domSin] || '#a0a0c0';
+            const domVal = hero.sinStats?.[domSin] ?? 1;
+            const isRampaging = hero.isRampaging || domVal >= 18;
+            const valColor = isRampaging ? '#e03030' : domVal <= 5 ? '#f8b830' : '#a0a0c0';
+            const warning = isRampaging ? ' 💢 폭주' : domVal <= 5 ? ' ⚠ 의욕상실' : '';
 
             const traitText = hero.trait ? `[${hero.trait.name}]` : hero.sinName;
             this.add.text(72, y, traitText, {
@@ -77,8 +75,8 @@ class SettlementScene extends Phaser.Scene {
                 fontSize: '9px', fontFamily: FONT, color: '#e8e8f0'
             });
 
-            this.add.text(width - 160, y, `사기: ${hero.morale}`, {
-                fontSize: '9px', fontFamily: FONT, color: moraleColor
+            this.add.text(width - 160, y, `${SIN_NAMES_KO[domSin] ?? domSin}: ${domVal}`, {
+                fontSize: '9px', fontFamily: FONT, color: valColor
             });
 
             if (warning) {

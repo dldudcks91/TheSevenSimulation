@@ -187,14 +187,16 @@ class MorningReportPopup {
         });
         target.add(sinTag);
 
-        // 사기 수치
+        // 죄종 수치 피크
         if (isAlert) {
-            const moraleColor = entry.level === 'high' ? '#e03030' : '#f8b830';
+            const peakColor = entry.level === 'high' ? '#e03030' : '#f8b830';
             const arrow = entry.level === 'high' ? '▲' : '▼';
-            const moraleText = this.scene.add.text(ox + POP_W - 80, y + 3, `사기 ${entry.morale} ${arrow}`, {
-                fontSize: '9px', fontFamily: FONT, color: moraleColor
+            const peakVal = entry.sinPeak?.value ?? '?';
+            const peakSin = entry.sinName || '?';
+            const sinPeakText = this.scene.add.text(ox + POP_W - 80, y + 3, `${peakSin} ${peakVal}${arrow}`, {
+                fontSize: '9px', fontFamily: FONT, color: peakColor
             });
-            target.add(moraleText);
+            target.add(sinPeakText);
         }
 
         // 서사 텍스트

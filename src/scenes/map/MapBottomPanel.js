@@ -2,7 +2,7 @@
  * MapBottomPanel — 하단 패널 (탭 바 + 6개 탭 렌더러 + 패널 액션)
  * MapScene에서 분리된 모듈. scene 참조를 통해 매니저/위젯에 접근.
  */
-import { C, SIN_COLOR_HEX, MORALE_COLORS_HEX, PANEL_Y, PANEL_H, PANEL_TAB_H, PANEL_CONTENT_Y, TABS } from './MapConstants.js';
+import { C, SIN_COLOR_HEX, PANEL_Y, PANEL_H, PANEL_TAB_H, PANEL_CONTENT_Y, TABS } from './MapConstants.js';
 import { FONT, FONT_BOLD } from '../../constants.js';
 import store from '../../store/Store.js';
 import { topSin, weightedSinRoll, SIN_NAMES_KO } from '../../game_logic/SinUtils.js';
@@ -59,7 +59,8 @@ const STATUS_ACTIVITY = {
 
 function getHeroThought(hero) {
     const sin = weightedSinRoll(hero.sinStats);
-    const level = hero.morale >= 80 ? 'high' : hero.morale <= 25 ? 'low' : 'stable';
+    const domSinVal = hero.sinStats?.[weightedSinRoll(hero.sinStats)] ?? 10;
+    const level = domSinVal >= 15 ? 'high' : domSinVal <= 5 ? 'low' : 'stable';
     const pool = SIN_THOUGHTS[sin]?.[level];
     if (!pool || pool.length === 0) return '특이사항 없음';
     return pool[Math.floor(Math.random() * pool.length)];
@@ -154,7 +155,7 @@ class MapBottomPanel {
             case 'hero': this.renderHeroTab(); break;
             case 'item': this.renderItemTab(); break;
             case 'expedition': this.renderExpeditionTab(); break;
-            case 'policy': this.renderPolicyTab(); break;
+            case 'edict': this.renderEdictTab(); break;
             case 'bestiary': this.renderBestiaryTab(); break;
         }
     }
@@ -239,9 +240,11 @@ class MapBottomPanel {
                 lineSpacing: 1
             }));
 
-            // 사기 바
-            const moraleState = s.heroManager.getMoraleState(hero.morale);
-            const moraleColor = MORALE_COLORS_HEX[moraleState];
+            // 주 죄종 수치 바
+            const domSin = topSin(hero.sinStats);
+            const domVal = hero.sinStats?.[domSin] ?? 1;
+            const isRampaging = hero.isRampaging || domVal >= 18;
+            const sinBarColor = isRampaging ? '#e03030' : SIN_COLOR_HEX[domSin];
             const barX = cx + 8;
             const barY = y + CARD_H - 16;
             const barW = CARD_W - 50;
@@ -252,12 +255,12 @@ class MapBottomPanel {
             mBarBg.lineStyle(1, C.borderPrimary); mBarBg.strokeRect(barX, barY, barW, barH);
 
             const mBar = this.p(s.add.graphics());
-            const fillW = Math.max(0, (hero.morale / 100) * barW);
-            mBar.fillStyle(Phaser.Display.Color.HexStringToColor(moraleColor).color, 1);
+            const fillW = Math.max(0, (domVal / 20) * barW);
+            mBar.fillStyle(Phaser.Display.Color.HexStringToColor(sinBarColor).color, 1);
             mBar.fillRect(barX + 1, barY + 1, fillW - 2, barH - 2);
 
-            this.p(s.add.text(barX + barW + 6, barY - 2, `${hero.morale}`, {
-                fontSize: '10px', fontFamily: FONT_BOLD, color: moraleColor
+            this.p(s.add.text(barX + barW + 6, barY - 2, `${domVal}${isRampaging ? '!' : ''}`, {
+                fontSize: '10px', fontFamily: FONT_BOLD, color: sinBarColor
             }));
 
             const cardZone = this.p(s.add.zone(cx + CARD_W / 2, y + CARD_H / 2, CARD_W, CARD_H).setInteractive({ useHandCursor: true }));
@@ -339,10 +342,7 @@ class MapBottomPanel {
         this.p(s.add.text(px + 8, y, `턴당 수입: 💰${income}`, { fontSize: '11px', fontFamily: FONT, color: C.expYellow }));
         y += 20;
 
-        const policyEffect = s.baseManager.getPolicyMoraleEffect();
-        const pColor = policyEffect >= 0 ? C.successGreen : C.accentRed;
-        this.p(s.add.text(px + 8, y, `포고령 효과: 사기 ${policyEffect >= 0 ? '+' : ''}${policyEffect}/턴`, { fontSize: '11px', fontFamily: FONT, color: pColor }));
-        y += 30;
+        y += 10;
 
         this.p(w.panelButton(px + 100, y, '건 설', () => s._showPanelAction('build')));
         if (!researching) {
@@ -421,79 +421,88 @@ class MapBottomPanel {
     }
 
     // ═══════════════════════════════════
-    // 탭: 정책
+    // 탭: 국시(Edict) — 2026-04-17
     // ═══════════════════════════════════
-    renderPolicyTab() {
+    renderEdictTab() {
         const s = this.scene;
         const w = s.widgets;
         const px = 16;
         let y = PANEL_CONTENT_Y + 8;
 
-        const base = store.getState('base');
-        const policies = base.policies;
+        const em = s.edictManager;
+        const day = s.turnManager.getCurrentTurn().day;
+        const activeDef = em.getActiveDefinition();
+        const activeSin = em.getActiveSin();
+        const inCooldown = em.isCooldown(day);
 
-        this.p(w.sectionTitle(px, y, '포고령'));
+        this.p(w.sectionTitle(px, y, '국시(Edict)'));
         y += 22;
 
-        const currentEffect = s.baseManager.getPolicyMoraleEffect();
-        const eColor = currentEffect >= 0 ? C.successGreen : C.accentRed;
-        this.p(s.add.text(px + 8, y, `현재 효과: 전체 사기 ${currentEffect >= 0 ? '+' : ''}${currentEffect}/턴`, { fontSize: '11px', fontFamily: FONT, color: eColor }));
-        y += 24;
+        // 상태 바
+        if (activeDef) {
+            const remain = em.getRemainingTurns(day);
+            this.p(s.add.text(px + 8, y, `선포 중: ${activeDef.name_ko} (잔여 ${remain}턴)`, {
+                fontSize: '11px', fontFamily: FONT_BOLD, color: '#f8c830'
+            }));
+        } else if (inCooldown) {
+            const cd = em.getCooldownTurns(day);
+            this.p(s.add.text(px + 8, y, `쿨다운: ${cd}턴 남음`, {
+                fontSize: '11px', fontFamily: FONT_BOLD, color: '#808098'
+            }));
+        } else {
+            this.p(s.add.text(px + 8, y, '무 국시 — 선포 가능', {
+                fontSize: '11px', fontFamily: FONT, color: C.textSecondary
+            }));
+        }
+        y += 22;
 
-        const policyDefs = [
-            { key: 'ration', label: '배급', options: [
-                { value: 'lavish', label: '풍족 (사기+5, 비용↑)', color: C.successGreen },
-                { value: 'normal', label: '보통', color: C.textSecondary },
-                { value: 'austerity', label: '긴축 (사기-3, 비용↓)', color: C.warningOrange }
-            ]},
-            { key: 'training', label: '훈련', options: [
-                { value: 'intense', label: '강화 (경험↑, 사기-3)', color: C.accentRed },
-                { value: 'normal', label: '보통', color: C.textSecondary },
-                { value: 'relaxed', label: '완화 (경험↓, 사기+3)', color: C.successGreen }
-            ]},
-            { key: 'alert', label: '경계', options: [
-                { value: 'max', label: '최대 (방어↑, 사기-2)', color: C.accentRed },
-                { value: 'normal', label: '보통', color: C.textSecondary },
-                { value: 'min', label: '최소 (방어↓, 사기+2)', color: C.successGreen }
-            ]}
-        ];
+        // 국시 7종 가로 배치
+        const defs = em.getDefinitions();
+        const cardW = 172;
+        const cardH = 96;
+        const gap = 6;
+        let cx = px;
 
-        // 3열 가로 배치
-        let colX = px;
-        for (const pDef of policyDefs) {
-            const colW = 380;
-            let py = y;
+        for (const def of defs) {
+            if (cx + cardW > 1260) { cx = px; y += cardH + gap; }
+            const isActive = def.sin === activeSin;
+            const sinColor = SIN_COLOR_HEX[def.sin] || C.textMuted;
 
-            this.p(s.add.text(colX + 8, py, pDef.label, { fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary }));
-            py += 20;
+            const bg = this.p(s.add.graphics());
+            bg.fillStyle(isActive ? 0x2a2010 : C.cardBg, 1);
+            bg.fillRoundedRect(cx, y, cardW, cardH, 4);
+            bg.lineStyle(1, isActive ? 0xf8c830 : C.borderPrimary);
+            bg.strokeRoundedRect(cx, y, cardW, cardH, 4);
 
-            for (const opt of pDef.options) {
-                const isCurrent = policies[pDef.key] === opt.value;
-                const marker = isCurrent ? '●' : '○';
-                const optColor = isCurrent ? opt.color : C.textMuted;
+            this.p(s.add.text(cx + 8, y + 6, def.name_ko, {
+                fontSize: '12px', fontFamily: FONT_BOLD, color: sinColor
+            }));
+            this.p(s.add.text(cx + cardW - 8, y + 6, SIN_NAMES_KO[def.sin] || def.sin, {
+                fontSize: '9px', fontFamily: FONT, color: C.textMuted
+            }).setOrigin(1, 0));
 
-                const optBg = this.p(s.add.graphics());
-                optBg.fillStyle(isCurrent ? 0x1e1e34 : C.inputBg, 1);
-                optBg.fillRect(colX + 4, py, colW - 8, 22);
-                optBg.lineStyle(1, isCurrent ? 0xe03030 : C.borderPrimary);
-                optBg.strokeRect(colX + 4, py, colW - 8, 22);
+            this.p(s.add.text(cx + 8, y + 24, def.description || '', {
+                fontSize: '9px', fontFamily: FONT, color: C.textSecondary,
+                wordWrap: { width: cardW - 16 },
+                lineSpacing: 1
+            }));
 
-                this.p(s.add.text(colX + 12, py + 4, `${marker} ${opt.label}`, {
-                    fontSize: '11px', fontFamily: FONT, color: optColor
-                }));
-
-                const zone = this.p(s.add.zone(colX + colW / 2, py + 11, colW - 8, 22)
-                    .setInteractive({ useHandCursor: true }));
-                const pKey = pDef.key;
-                const pVal = opt.value;
-                zone.on('pointerdown', () => {
-                    s.baseManager.setPolicy(pKey, pVal);
+            const sinKey = def.sin;
+            if (isActive) {
+                this.p(s.widgets.smallPanelBtn(cx + cardW / 2, y + cardH - 14, '해제', () => {
+                    em.revoke(day);
                     this.refreshActiveTab();
-                });
-
-                py += 26;
+                    s.hud.updateEdict();
+                }));
+            } else if (!inCooldown && !activeDef) {
+                this.p(s.widgets.smallPanelBtn(cx + cardW / 2, y + cardH - 14, '선포', () => {
+                    em.proclaim(sinKey, day);
+                    this.refreshActiveTab();
+                    s.hud.updateEdict();
+                }));
             }
-            colX += colW + 16;
+
+            cx += cardW + gap;
         }
     }
 

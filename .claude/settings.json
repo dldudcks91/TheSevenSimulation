@@ -37,11 +37,14 @@
       "Edit(/.claude/skills/client-review/**)",
       "Edit(/.claude/skills/client-debug/**)",
       "Edit(/.claude/skills/design-review/**)",
-      "Edit(/.claude/skills/sprite-compose/**)"
+      "Edit(/.claude/skills/sprite-compose/**)",
+      "Edit(/.claude/skills/design-hero/**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude",
-      "c:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude\\rules"
+      "c:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude\\rules",
+      "c:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude\\skills",
+      "c:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude"
     ]
   },
   "hooks": {

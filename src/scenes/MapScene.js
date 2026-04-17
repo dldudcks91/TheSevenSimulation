@@ -18,7 +18,7 @@ import ExpeditionManager from '../game_logic/ExpeditionManager.js';
 import SpriteComposer from '../game_logic/SpriteComposer.js';
 import DayActions from '../game_logic/DayActions.js';
 import TurnProcessor from '../game_logic/TurnProcessor.js';
-import { makeDefaultPlayerSins } from '../game_logic/SinUtils.js';
+import EdictManager from '../game_logic/EdictManager.js';
 
 import { C, HUD_H, MAP_VP_W, MAP_VP_H } from './map/MapConstants.js';
 import MapWidgets from './map/MapWidgets.js';
@@ -92,7 +92,7 @@ class MapScene extends Phaser.Scene {
         const eventsData = this.registry.get('eventsData');
         const facilitiesData = this.registry.get('facilitiesData');
         const balance = this.registry.get('balance') || {};
-        const policies = this.registry.get('policies') || [];
+        const edictsData = this.registry.get('edicts') || [];
         const phases = this.registry.get('phases') || [];
         const desertionEffects = this.registry.get('desertionEffects') || [];
         const stagesData = this.registry.get('stagesData') || {};
@@ -107,10 +107,13 @@ class MapScene extends Phaser.Scene {
         this.heroManager.setItemsData(this.registry.get('itemsData') || []);
         this.heroManager.setTraitsData(this.registry.get('traitsData') || []);
         this.eventSystem = new EventSystem(store, eventsData, balance);
-        this.baseManager = new BaseManager(store, facilitiesData, policies, balance);
+        this.baseManager = new BaseManager(store, facilitiesData, balance);
+        this.edictManager = new EdictManager(store, edictsData, balance);
+        this.baseManager.setEdictManager(this.edictManager);
         this.sinSystem = new SinSystem(store, this.registry.get('sinRelations'), balance, desertionEffects);
         this.expeditionManager = new ExpeditionManager(store, balance);
         this.expeditionManager.setStagesData(stagesData);
+        this.expeditionManager.setEdictManager(this.edictManager);
         const battleSceneKey = this.registry.get('battleScene') || 'BattleSceneB';
         this.expeditionManager.setBattleMode(battleSceneKey === 'BattleSceneA' ? 'melee' : 'tag');
 
@@ -122,6 +125,7 @@ class MapScene extends Phaser.Scene {
             baseManager: this.baseManager,
             sinSystem: this.sinSystem,
             expeditionManager: this.expeditionManager,
+            edictManager: this.edictManager,
             balance
         });
 
@@ -136,9 +140,9 @@ class MapScene extends Phaser.Scene {
                 this.heroManager.initStartingHeroes();
             }
         }
-        // 바알(플레이어) 죄종 수치 초기화 — 세이브에 없으면 기본값 50
-        if (!store.getState('playerSins')) {
-            store.setState('playerSins', makeDefaultPlayerSins());
+        // 국시 초기화 — 세이브에 없으면 null (무 국시 상태)
+        if (store.getState('edict') === undefined) {
+            store.setState('edict', null);
         }
 
         // ─── 씬 모듈 초기화 ───
@@ -176,14 +180,14 @@ class MapScene extends Phaser.Scene {
             store.subscribe('gold', () => this.hud.updateResources()),
             store.subscribe('food', () => this.hud.updateResources()),
             store.subscribe('wood', () => this.hud.updateResources()),
-            store.subscribe('playerSins', () => this.hud.updateBaalSins()),
+            store.subscribe('edict', () => this.hud.updateEdict()),
         ];
 
         this.events.once('shutdown', () => this._cleanup());
 
         // ─── 초기 UI 갱신 ───
         this.hud.updateResources();
-        this.hud.updateBaalSins();
+        this.hud.updateEdict();
         this.hud.updatePhaseDisplay();
         this.bottomPanel.switchTab('base');
         // this.world.initDebugMode();
@@ -268,7 +272,7 @@ class MapScene extends Phaser.Scene {
             case 'hunt': this.popupsAction.popupHunt(px, py, pw, ph); break;
             case 'pioneer': this.popupsAction.popupPioneer(px, py, pw, ph, data); break;
             case 'defense': this.popupsAction.popupDefense(px, py, pw, ph); break;
-            case 'policy': this.popupsAction.popupPolicy(px, py, pw, ph); break;
+            case 'edict': this.popupsAction.popupEdict(px, py, pw, ph); break;
             case '_confirm': this.popupsAction.popupConfirm(px, py, pw, ph, data); break;
         }
     }
@@ -279,7 +283,7 @@ class MapScene extends Phaser.Scene {
         this.bottomPanel._actionMode = mode;
         this.bottomPanel._actionData = data;
 
-        const popupModes = ['build', 'research', 'facility', 'policy', 'recruit', 'heroSelect', 'heroDetail', 'hunt', 'gather', 'lumber', 'pioneer', 'defense', 'buildingInfo'];
+        const popupModes = ['build', 'research', 'facility', 'edict', 'recruit', 'heroSelect', 'heroDetail', 'hunt', 'gather', 'lumber', 'pioneer', 'defense', 'buildingInfo'];
         // heroDetail은 _showPopup에서 인스펙터로 분기됨
         if (popupModes.includes(mode)) {
             this._showPopup(mode, data);

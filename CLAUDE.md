@@ -2,7 +2,7 @@
 
 ## 프로젝트 개요
 7대 죄악(Seven Deadly Sins) 테마의 거점 경영 시뮬레이션 게임.
-마왕 바알이 인간 세계에 추락하여 림보(거점)를 운영하며, 결함 있는 인간 영웅들을 이끌고 7대 죄악의 화신들에게 복수하는 여정. 바알은 판결자이자 영주로서 7개 죄종 수치(1~100, 시작 50)를 가지며, 경영 판단과 영웅들과의 상호작용에 따라 수치가 변동된다.
+마왕 바알이 인간 세계에 추락하여 림보(거점)를 운영하며, 결함 있는 인간 영웅들을 이끌고 7대 죄악의 화신들에게 복수하는 여정. 바알은 판결자이자 영주로서 **국시(Edict)**를 통해 통치 방향을 결정한다.
 스토리는 컷신이 아닌 **시뮬레이션 체감**으로 전달 — 챕터별 환경 변조 + 챕터 이벤트 + 보스 서사(브리핑+유언).
 
 **장르**: 거점 경영 시뮬레이션 + 로스터 관리 + 자동전투 원정
@@ -25,7 +25,7 @@ TheSevenSimulation/
 ├── docs/
 │   ├── GAME_DESIGN.md         # 메인 게임 디자인 문서
 │   ├── DEV_PLAN.md            # 개발 계획서
-│   ├── game_design/           # 세부 시스템 설계 (14개)
+│   ├── game_design/           # 세부 시스템 설계 (12개)
 │   │   ├── sin_system.md      # 죄종 시스템 (핵심)
 │   │   ├── hero_design.md     # 영웅/로스터 설계 (랜덤 생성, 결함 있는 인간)
 │   │   ├── battle_design.md   # 전투 시스템 설계
@@ -34,12 +34,9 @@ TheSevenSimulation/
 │   │   ├── base_design.md     # 거점 시설 설계
 │   │   ├── equipment_design.md # 장비 시스템 설계
 │   │   ├── chapter_scenario.md # 챕터 시나리오
-│   │   ├── balance_design.md  # 밸런스 설계서 (전투/경제/사기)
+│   │   ├── balance_design.md  # 밸런스 설계서 (전투/경제/죄종)
 │   │   ├── ui_design.md       # UI/화면 설계 (씬 변경 시 먼저 업데이트)
-│   │   ├── faction_design.md  # 세력/초청 이벤트 설계
-│   │   ├── battle_intervention_analysis.md # 전투 개입 방식 분석
-│   │   ├── fun_review_20260401.md # 재미 관점 기획 리뷰
-│   │   └── mapscene_refactor_plan.md # MapScene 리팩토링 계획
+│   │   └── faction_design.md  # 세력/초청 이벤트 설계
 │   ├── story/                 # 스토리 (TheSevenTactics 계승)
 │   │   ├── story_guide.md
 │   │   ├── story_line.md

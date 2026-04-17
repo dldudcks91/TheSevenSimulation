@@ -2,13 +2,13 @@
  * MorningReport — 아침 보고 데이터 생성 (순수 로직, Phaser 의존 없음)
  *
  * 영웅별 심리 상태를 분석하고 서사적 텍스트를 생성한다.
- * 위험 영웅(사기 80+/25-)과 안정 영웅을 분류.
+ * 위험 영웅(죄종 수치 18+ = 폭주 위험 / 3- = 의욕 상실)과 안정 영웅을 분류.
  */
 
 import { weightedSinRoll, topSin, sinIntensity, SIN_NAMES_KO, SIN_KEYS } from './SinUtils.js';
 
-const DANGER_HIGH = 80;
-const DANGER_LOW = 25;
+const DANGER_HIGH_SIN = 18; // 폭주 위험 임계값
+const DANGER_LOW_SIN = 3;   // 의욕 상실 임계값
 
 /** 죄종별 서사 텍스트 (안정 / 고양·폭주위험 / 불만·이탈위험) */
 const SIN_TEXTS = {
@@ -167,8 +167,8 @@ const SIN_CONDITION_TEXTS = {
 
 class MorningReport {
     constructor(balance = {}) {
-        this.dangerHigh = balance.morning_danger_high ?? DANGER_HIGH;
-        this.dangerLow = balance.morning_danger_low ?? DANGER_LOW;
+        this.dangerHighSin = balance.sin_rampage_threshold ?? DANGER_HIGH_SIN;
+        this.dangerLowSin = balance.sin_frustrated_threshold ?? DANGER_LOW_SIN;
         this.wrathIdleThreshold = balance.wrath_idle_threshold ?? 3;
     }
 
@@ -188,27 +188,33 @@ class MorningReport {
             const dominant = topSin(hero.sinStats);
             const rolledSin = weightedSinRoll(hero.sinStats);
 
+            // 최고 죄종 수치
+            const topSinVal = hero.sinStats?.[dominant] ?? 0;
+            // 최저 죄종 수치
+            const minSinVal = Math.min(...Object.values(hero.sinStats || {}));
+
             const entry = {
                 id: hero.id,
                 name: hero.name,
                 epithet: hero.epithet || '',
                 dominantSin: dominant,
                 sinName: SIN_NAMES_KO[dominant],
-                morale: hero.morale,
+                sinPeak: { sin: dominant, value: topSinVal },
+                isRampaging: hero.isRampaging || false,
                 status: hero.status,
                 condition: this._getCondition(hero),
             };
 
-            if (hero.morale >= this.dangerHigh) {
+            if (hero.isRampaging || topSinVal >= this.dangerHighSin) {
                 entry.level = 'high';
                 entry.icon = '🔺';
                 entry.label = '폭주 위험';
-                entry.text = this._pickText(rolledSin, 'high');
+                entry.text = this._pickText(dominant, 'high');
                 alerts.push(entry);
-            } else if (hero.morale <= this.dangerLow) {
+            } else if (minSinVal <= this.dangerLowSin) {
                 entry.level = 'low';
                 entry.icon = '🔻';
-                entry.label = '이탈 위험';
+                entry.label = '의욕 상실';
                 entry.text = this._pickText(rolledSin, 'low');
                 alerts.push(entry);
             } else {
@@ -252,8 +258,9 @@ class MorningReport {
                     break;
                 }
                 default: {
-                    if (hero.morale <= 40) result = { type: 'unhappy', text: texts.unhappy() };
-                    else if (hero.morale >= 65) result = { type: 'happy', text: texts.happy() };
+                    const sinVal = hero.sinStats?.[sin] ?? 0;
+                    if (sinVal <= 5) result = { type: 'unhappy', text: texts.unhappy() };
+                    else if (sinVal >= 15) result = { type: 'happy', text: texts.happy() };
                     break;
                 }
             }

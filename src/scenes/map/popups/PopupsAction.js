@@ -1,5 +1,5 @@
 /**
- * 행동 관련 팝업 — 채집, 벌목, 개척, 방어, 사냥, 포고령, 확인
+ * 행동 관련 팝업 — 채집, 벌목, 개척, 방어, 사냥, 국시, 확인
  */
 import { C, SIN_COLOR_HEX } from '../MapConstants.js';
 import { FONT, FONT_BOLD } from '../../../constants.js';
@@ -356,80 +356,79 @@ class PopupsAction {
     }
 
     // ═══════════════════════════════════
-    // 팝업: 포고령
+    // 팝업: 국시(Edict) — 7종 중 1개 선포, 기간형 5턴
     // ═══════════════════════════════════
-    popupPolicy(px, py, pw, ph) {
+    popupEdict(px, py, pw, ph) {
         const s = this.scene;
         const pp = s.popupSystem.pp.bind(s.popupSystem);
         const cx = px + pw / 2;
         let y = py + 16;
 
-        pp(s.add.text(cx, y, '[ 포고령 ]', {
-            fontSize: '16px', fontFamily: FONT_BOLD, color: C.accentRed,
+        const em = s.edictManager;
+        const day = s.turnManager.getCurrentTurn().day;
+
+        pp(s.add.text(cx, y, '[ 국  시 ]', {
+            fontSize: '16px', fontFamily: FONT_BOLD, color: '#f8c830',
             shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5));
-        y += 28;
+        y += 26;
 
-        const base = store.getState('base');
-        const policies = base.policies;
-        const currentEffect = s.baseManager.getPolicyMoraleEffect();
-        const eColor = currentEffect >= 0 ? C.successGreen : C.accentRed;
+        const activeDef = em.getActiveDefinition();
+        const activeSin = em.getActiveSin();
+        const inCooldown = em.isCooldown(day);
 
-        pp(s.add.text(cx, y, `현재 효과: 전체 사기 ${currentEffect >= 0 ? '+' : ''}${currentEffect}/턴`, {
-            fontSize: '11px', fontFamily: FONT, color: eColor
-        }).setOrigin(0.5));
-        y += 28;
+        // 현재 상태 헤더
+        if (activeDef) {
+            const remain = em.getRemainingTurns(day);
+            pp(s.add.text(cx, y, `선포 중: ${activeDef.name_ko} (잔여 ${remain}턴)`, {
+                fontSize: '12px', fontFamily: FONT_BOLD, color: '#f8c830'
+            }).setOrigin(0.5));
+        } else if (inCooldown) {
+            const cd = em.getCooldownTurns(day);
+            pp(s.add.text(cx, y, `쿨다운: ${cd}턴 남음`, {
+                fontSize: '12px', fontFamily: FONT_BOLD, color: '#808098'
+            }).setOrigin(0.5));
+        } else {
+            pp(s.add.text(cx, y, '무 국시 — 선포 가능', {
+                fontSize: '12px', fontFamily: FONT, color: C.textSecondary
+            }).setOrigin(0.5));
+        }
+        y += 24;
 
+        // 국시 목록
         const iw = pw - 40;
-        const policyDefs = [
-            { key: 'ration', label: '배급', options: [
-                { value: 'lavish', label: '풍족 (사기+5, 비용↑)', color: C.successGreen },
-                { value: 'normal', label: '보통', color: C.textSecondary },
-                { value: 'austerity', label: '긴축 (사기-3, 비용↓)', color: C.warningOrange }
-            ]},
-            { key: 'training', label: '훈련', options: [
-                { value: 'intense', label: '강화 (경험↑, 사기-3)', color: C.accentRed },
-                { value: 'normal', label: '보통', color: C.textSecondary },
-                { value: 'relaxed', label: '완화 (경험↓, 사기+3)', color: C.successGreen }
-            ]},
-            { key: 'alert', label: '경계', options: [
-                { value: 'max', label: '최대 (방어↑, 사기-2)', color: C.accentRed },
-                { value: 'normal', label: '보통', color: C.textSecondary },
-                { value: 'min', label: '최소 (방어↓, 사기+2)', color: C.successGreen }
-            ]}
-        ];
+        const defs = em.getDefinitions();
+        for (const def of defs) {
+            const isActive = def.sin === activeSin;
+            const sinColor = SIN_COLOR_HEX[def.sin] || C.textMuted;
 
-        for (const pDef of policyDefs) {
-            pp(s.add.text(px + 24, y, pDef.label, {
-                fontSize: '13px', fontFamily: FONT_BOLD, color: C.textPrimary
+            const rowBg = pp(s.add.graphics());
+            rowBg.fillStyle(isActive ? 0x2a2010 : C.inputBg, 1);
+            rowBg.fillRect(px + 20, y, iw, 30);
+            rowBg.lineStyle(1, isActive ? 0xf8c830 : C.borderPrimary);
+            rowBg.strokeRect(px + 20, y, iw, 30);
+
+            pp(s.add.text(px + 32, y + 4, `${def.name_ko} (${SIN_NAMES_KO[def.sin]})`, {
+                fontSize: '11px', fontFamily: FONT_BOLD, color: sinColor
             }));
-            y += 22;
+            pp(s.add.text(px + 32, y + 17, def.description || '', {
+                fontSize: '9px', fontFamily: FONT, color: C.textSecondary
+            }));
 
-            for (const opt of pDef.options) {
-                const isCurrent = policies[pDef.key] === opt.value;
-                const marker = isCurrent ? '●' : '○';
-                const optColor = isCurrent ? opt.color : C.textMuted;
-
-                const optBg = pp(s.add.graphics());
-                optBg.fillStyle(isCurrent ? 0x1e1e34 : C.inputBg, 1);
-                optBg.fillRect(px + 20, y, iw, 24);
-                optBg.lineStyle(1, isCurrent ? 0xe03030 : C.borderPrimary);
-                optBg.strokeRect(px + 20, y, iw, 24);
-
-                pp(s.add.text(px + 32, y + 5, `${marker} ${opt.label}`, {
-                    fontSize: '11px', fontFamily: FONT, color: optColor
+            // 선포/해제 버튼
+            const sinKey = def.sin;
+            if (isActive) {
+                pp(s.popupSystem.popupSmallBtn(px + 20 + iw - 30, y + 15, '해제', () => {
+                    em.revoke(day);
+                    s._showPopup('edict');
                 }));
-
-                const zone = pp(s.add.zone(px + 20 + iw / 2, y + 12, iw, 24).setInteractive({ useHandCursor: true }));
-                const pKey = pDef.key;
-                const pVal = opt.value;
-                zone.on('pointerdown', () => {
-                    s.baseManager.setPolicy(pKey, pVal);
-                    s._showPopup('policy');
-                });
-                y += 28;
+            } else if (!inCooldown && !activeDef) {
+                pp(s.popupSystem.popupSmallBtn(px + 20 + iw - 30, y + 15, '선포', () => {
+                    em.proclaim(sinKey, day);
+                    s._showPopup('edict');
+                }));
             }
-            y += 6;
+            y += 34;
         }
 
         s.popupSystem.popupCloseBtn(px, py, pw, ph);

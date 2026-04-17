@@ -6,7 +6,7 @@
  * 레이아웃: 좌측 프로필(260px) | 우측 스탯 + 장비(528px)
  */
 import {
-    C, SIN_COLOR_HEX, MORALE_COLORS_HEX,
+    C, SIN_COLOR_HEX,
     INSP_X, INSP_Y, INSP_W, INSP_H, INSP_DEPTH,
     INSP_PROFILE_W, INSP_RIGHT_W, MAP_VP_W, MAP_VP_H, HUD_H
 } from './MapConstants.js';
@@ -179,35 +179,47 @@ class MapHeroInspector {
         }).setOrigin(0.5, 0).setDepth(INSP_DEPTH + 2));
         ty += 20;
 
-        // 사기 바
-        const moraleState = s.heroManager.getMoraleState(hero.morale);
-        const moraleColor = MORALE_COLORS_HEX[moraleState];
-        const moraleName = s.heroManager.getMoraleStateName(hero.morale);
+        // 죄종 수치 바 (7종)
         const mBarW = pw - 32;
         const mBarX = x + 16;
+        const sinLblW = 28;
+        const sinBarStartX = mBarX + sinLblW;
+        const sinBarRealW = mBarW - sinLblW - 22;
+        const sinBarH = 6;
+        const sinKeys = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'pride'];
 
-        this._p(s.add.text(mBarX, ty, '사기', {
+        this._p(s.add.text(mBarX, ty, '죄종 수치', {
             fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
         }).setDepth(INSP_DEPTH + 2));
+        ty += 14;
 
-        const mBarStartX = mBarX + 30;
-        const mBarRealW = mBarW - 30;
-        const mBg = this._p(s.add.graphics().setDepth(INSP_DEPTH + 2));
-        mBg.fillStyle(0x0e0e1a, 1);
-        mBg.fillRect(mBarStartX, ty + 2, mBarRealW, 10);
-        mBg.lineStyle(1, C.borderPrimary);
-        mBg.strokeRect(mBarStartX, ty + 2, mBarRealW, 10);
+        for (const sinKey of sinKeys) {
+            const sinVal = hero.sinStats?.[sinKey] ?? 1;
+            const isRampage = sinVal >= 18;
+            const sinColorHex = isRampage ? '#e03030' : SIN_COLOR_HEX[sinKey];
 
-        const mFill = this._p(s.add.graphics().setDepth(INSP_DEPTH + 2));
-        const mfw = Math.max(0, (hero.morale / 100) * (mBarRealW - 2));
-        mFill.fillStyle(Phaser.Display.Color.HexStringToColor(moraleColor).color, 1);
-        mFill.fillRect(mBarStartX + 1, ty + 3, mfw, 8);
-        ty += 16;
+            this._p(s.add.text(mBarX, ty, SIN_NAMES_KO[sinKey], {
+                fontSize: '9px', fontFamily: FONT, color: sinColorHex
+            }).setDepth(INSP_DEPTH + 2));
 
-        this._p(s.add.text(x + pw / 2, ty, `${hero.morale} (${moraleName})`, {
-            fontSize: '11px', fontFamily: FONT_BOLD, color: moraleColor
-        }).setOrigin(0.5, 0).setDepth(INSP_DEPTH + 2));
-        ty += 20;
+            const sBg = this._p(s.add.graphics().setDepth(INSP_DEPTH + 2));
+            sBg.fillStyle(0x0e0e1a, 1);
+            sBg.fillRect(sinBarStartX, ty + 1, sinBarRealW, sinBarH);
+            sBg.lineStyle(1, C.borderPrimary);
+            sBg.strokeRect(sinBarStartX, ty + 1, sinBarRealW, sinBarH);
+
+            const sFill = this._p(s.add.graphics().setDepth(INSP_DEPTH + 2));
+            const sfw = Math.max(0, (sinVal / 20) * (sinBarRealW - 2));
+            sFill.fillStyle(Phaser.Display.Color.HexStringToColor(sinColorHex).color, 1);
+            sFill.fillRect(sinBarStartX + 1, ty + 2, sfw, sinBarH - 2);
+
+            this._p(s.add.text(sinBarStartX + sinBarRealW + 4, ty, `${sinVal}${isRampage ? '!' : ''}`, {
+                fontSize: '9px', fontFamily: isRampage ? FONT_BOLD : FONT, color: sinColorHex
+            }).setDepth(INSP_DEPTH + 2));
+
+            ty += sinBarH + 4;
+        }
+        ty += 6;
 
         // 체력(stamina) 바
         const stam = hero.stamina ?? 100;

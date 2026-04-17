@@ -5,7 +5,6 @@ import { C, HUD_H } from './MapConstants.js';
 import { FONT, FONT_BOLD } from '../../constants.js';
 import store from '../../store/Store.js';
 import SaveManager from '../../store/SaveManager.js';
-import { SIN_KEYS, SIN_NAMES_KO, makeDefaultPlayerSins } from '../../game_logic/SinUtils.js';
 
 class MapHUD {
     constructor(scene) {
@@ -60,11 +59,11 @@ class MapHUD {
             fontSize: '11px', fontFamily: FONT, color: C.textSecondary
         }).setOrigin(0, 0.5).setDepth(201);
 
-        // 바알 죄종 — 가장 높은 수치 1개 표시 (클릭 시 전체 팝업)
-        s.baalSinText = s.add.text(730, HUD_H / 2, '', {
-            fontSize: '11px', fontFamily: FONT, color: '#e040a0'
+        // 국시 배지 — 현재 선포 국시명 + 잔여 턴 (쿨다운 중/무국시 표시)
+        s.edictText = s.add.text(730, HUD_H / 2, '', {
+            fontSize: '11px', fontFamily: FONT, color: '#f8b830'
         }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true }).setDepth(201);
-        s.baalSinText.on('pointerdown', () => this._showBaalSinPopup());
+        s.edictText.on('pointerdown', () => s._showPanelAction('edict'));
 
         this._drawNavButton(width - 200, 4, 65, HUD_H - 8, '턴 종료', C.accentRed, () => s._onEndTurn());
         this._drawNavButton(width - 128, 4, 45, HUD_H - 8, '저장', C.textMuted, () => { SaveManager.save(store); });
@@ -139,48 +138,24 @@ class MapHUD {
         s.goldText.setText(`💰${store.getState('gold') || 0}`);
     }
 
-    updateBaalSins() {
+    updateEdict() {
         const s = this.scene;
-        if (!s.baalSinText) return;
-        const ps = store.getState('playerSins') || makeDefaultPlayerSins();
-        let topKey = SIN_KEYS[0], topVal = -1;
-        for (const k of SIN_KEYS) {
-            const v = ps[k] ?? 50;
-            if (v > topVal) { topVal = v; topKey = k; }
+        if (!s.edictText || !s.edictManager) return;
+        const em = s.edictManager;
+        const day = s.turnManager?.getCurrentTurn()?.day ?? 0;
+        const activeDef = em.getActiveDefinition();
+        if (activeDef) {
+            const remain = em.getRemainingTurns(day);
+            s.edictText.setText(`📜 ${activeDef.name_ko} (${remain}턴)`);
+            s.edictText.setColor('#f8c830');
+        } else if (em.isCooldown(day)) {
+            const cd = em.getCooldownTurns(day);
+            s.edictText.setText(`📜 쿨다운 ${cd}턴`);
+            s.edictText.setColor('#808098');
+        } else {
+            s.edictText.setText('📜 국시 없음');
+            s.edictText.setColor('#808098');
         }
-        s.baalSinText.setText(`👑 ${SIN_NAMES_KO[topKey]}(${topVal})`);
-    }
-
-    _showBaalSinPopup() {
-        const s = this.scene;
-        const ps = store.getState('playerSins') || makeDefaultPlayerSins();
-        const lines = SIN_KEYS.map(k => `${SIN_NAMES_KO[k]}  ${ps[k] ?? 50}`);
-        const w = 240, h = 60 + lines.length * 18;
-        const x = (1280 - w) / 2, y = (720 - h) / 2;
-        const D = 7000;
-
-        const g = s.add.graphics().setDepth(D);
-        g.fillStyle(0x0a0a12, 0.96); g.fillRoundedRect(x, y, w, h, 8);
-        g.lineStyle(2, 0xe040a0); g.strokeRoundedRect(x, y, w, h, 8);
-
-        const title = s.add.text(x + w / 2, y + 16, '👑 바알 죄종 수치', {
-            fontSize: '13px', fontFamily: FONT_BOLD, color: '#e040a0'
-        }).setOrigin(0.5).setDepth(D + 1);
-
-        const texts = [];
-        let ty = y + 40;
-        for (const line of lines) {
-            texts.push(s.add.text(x + 20, ty, line, {
-                fontSize: '11px', fontFamily: FONT, color: '#e8e8f0'
-            }).setDepth(D + 1));
-            ty += 18;
-        }
-
-        const close = s.add.zone(x + w / 2, y + h / 2, w, h)
-            .setInteractive({ useHandCursor: true }).setDepth(D + 2);
-        close.on('pointerdown', () => {
-            g.destroy(); title.destroy(); texts.forEach(t => t.destroy()); close.destroy();
-        });
     }
 
     updatePhaseDisplay() {

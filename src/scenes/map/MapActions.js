@@ -30,13 +30,11 @@ class MapActions {
         const s = this.scene;
         const b = s.balance;
         const result = s.dayActions.doGather(hero);
-        const moraleDelta = b.gather_morale ?? 2;
 
         s._actionPopup = new MapActionPopup(s, {
             hero,
             actionType: 'gather',
             result,
-            moraleDelta,
             onComplete: () => {
                 s._actionPopup = null;
                 s.bottomPanel._actionMode = null;
@@ -52,13 +50,11 @@ class MapActions {
         const s = this.scene;
         const b = s.balance;
         const result = s.dayActions.doLumber(hero);
-        const moraleDelta = b.lumber_morale ?? 1;
 
         s._actionPopup = new MapActionPopup(s, {
             hero,
             actionType: 'lumber',
             result,
-            moraleDelta,
             onComplete: () => {
                 s._actionPopup = null;
                 s.bottomPanel._actionMode = null;

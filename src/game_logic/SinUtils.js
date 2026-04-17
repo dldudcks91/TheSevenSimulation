@@ -9,31 +9,6 @@
 /** 7대 죄종 키 목록 */
 export const SIN_KEYS = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'pride'];
 
-/** 바알(플레이어) 죄종 수치 범위 */
-export const PLAYER_SIN_MIN = 1;
-export const PLAYER_SIN_MAX = 100;
-export const PLAYER_SIN_DEFAULT = 50;
-
-/** 바알 죄종 수치 기본 객체 생성 */
-export function makeDefaultPlayerSins() {
-    const obj = {};
-    for (const k of SIN_KEYS) obj[k] = PLAYER_SIN_DEFAULT;
-    return obj;
-}
-
-/**
- * Store의 바알 죄종 수치에 delta 적용 (범위 [1,100] 클램프)
- * @returns {object} 변동 후 playerSins
- */
-export function applyPlayerSinDelta(store, sin, delta) {
-    if (!SIN_KEYS.includes(sin) || !delta) return store.getState('playerSins');
-    const cur = store.getState('playerSins') || makeDefaultPlayerSins();
-    const next = { ...cur };
-    next[sin] = Math.max(PLAYER_SIN_MIN, Math.min(PLAYER_SIN_MAX, (cur[sin] ?? PLAYER_SIN_DEFAULT) + delta));
-    store.setState('playerSins', next);
-    return next;
-}
-
 /** 죄종 한글명 */
 export const SIN_NAMES_KO = {
     wrath: '분노', envy: '시기', greed: '탐욕',

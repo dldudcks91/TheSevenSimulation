@@ -53,6 +53,12 @@ class BattleEngine {
         this._duelEnemy = null;
 
         this._activeBuffs = []; // { target, effect_type, value, turnsLeft, id }
+        this._powerMult = 1; // 국시 등 외부 전투력 배율 (기본 1배)
+    }
+
+    /** 국시 등 외부에서 전투력 배율 주입 — init 호출 전에 사용 (예: 0.15 → +15%) */
+    setPowerMultDelta(delta) {
+        this._powerMult = 1 + (delta || 0);
     }
 
     // ═══════════════════════════════════
@@ -531,10 +537,13 @@ class BattleEngine {
     }
 
     _calcATK(hero, type) {
+        const mult = this._powerMult ?? 1;
         if (type === BATTLE_TYPES.DEFENSE) {
-            return Math.floor((hero.stats?.strength || 10) * this.ATK_DEF_STR + (hero.stats?.leadership || 10) * this.ATK_DEF_LEAD);
+            const base = (hero.stats?.strength || 10) * this.ATK_DEF_STR + (hero.stats?.leadership || 10) * this.ATK_DEF_LEAD;
+            return Math.floor(base * mult);
         }
-        return Math.floor((hero.stats?.strength || 10) * this.ATK_EXP_STR + (hero.stats?.agility || 10) * this.ATK_EXP_AGI);
+        const base = (hero.stats?.strength || 10) * this.ATK_EXP_STR + (hero.stats?.agility || 10) * this.ATK_EXP_AGI;
+        return Math.floor(base * mult);
     }
 
     // ═══════════════════════════════════
