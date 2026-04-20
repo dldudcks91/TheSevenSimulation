@@ -132,9 +132,14 @@ lust_party_rise,1
 lust_feast_rise,1
 pride_defense_win_rise,2
 pride_combat_win_rise,1
-purify_feast_greed,1
-purify_rest_sloth,1
-purify_rest_lust,1
+purify_idle_wrath,1
+purify_labor_sloth,1
+purify_labor_pride,1
+purify_feast_greed,3
+purify_solo_envy,2
+purify_room_lust,1
+purify_fast_gluttony,1
+purify_confessional,5
 rampage_wrath_contagion,1
 rampage_sloth_propagation,1
 rampage_greed_steal_food,2
