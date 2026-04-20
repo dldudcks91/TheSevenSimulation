@@ -2,13 +2,12 @@
  * MorningReport — 아침 보고 데이터 생성 (순수 로직, Phaser 의존 없음)
  *
  * 영웅별 심리 상태를 분석하고 서사적 텍스트를 생성한다.
- * 위험 영웅(죄종 수치 18+ = 폭주 위험 / 3- = 의욕 상실)과 안정 영웅을 분류.
+ * 위험 영웅(죄종 수치 18+ = 폭주 위험)과 안정 영웅을 분류. 낮은 수치 = 정상(좋음).
  */
 
 import { weightedSinRoll, topSin, sinIntensity, SIN_NAMES_KO, SIN_KEYS } from './SinUtils.js';
 
 const DANGER_HIGH_SIN = 18; // 폭주 위험 임계값
-const DANGER_LOW_SIN = 3;   // 의욕 상실 임계값
 
 /** 죄종별 서사 텍스트 (안정 / 고양·폭주위험 / 불만·이탈위험) */
 const SIN_TEXTS = {
@@ -168,7 +167,6 @@ const SIN_CONDITION_TEXTS = {
 class MorningReport {
     constructor(balance = {}) {
         this.dangerHighSin = balance.sin_rampage_threshold ?? DANGER_HIGH_SIN;
-        this.dangerLowSin = balance.sin_frustrated_threshold ?? DANGER_LOW_SIN;
         this.wrathIdleThreshold = balance.wrath_idle_threshold ?? 3;
     }
 
@@ -190,8 +188,6 @@ class MorningReport {
 
             // 최고 죄종 수치
             const topSinVal = hero.sinStats?.[dominant] ?? 0;
-            // 최저 죄종 수치
-            const minSinVal = Math.min(...Object.values(hero.sinStats || {}));
 
             const entry = {
                 id: hero.id,
@@ -210,12 +206,6 @@ class MorningReport {
                 entry.icon = '🔺';
                 entry.label = '폭주 위험';
                 entry.text = this._pickText(dominant, 'high');
-                alerts.push(entry);
-            } else if (minSinVal <= this.dangerLowSin) {
-                entry.level = 'low';
-                entry.icon = '🔻';
-                entry.label = '의욕 상실';
-                entry.text = this._pickText(rolledSin, 'low');
                 alerts.push(entry);
             } else {
                 entry.level = 'stable';

@@ -25,7 +25,7 @@ class HeroManager {
         // balance에서 상수 로드 (기본값 폴백)
         this.STAT_MIN = balance.stat_min ?? 1;
         this.STAT_MAX = balance.stat_max ?? 20;
-        this.SIN_MIN = balance.sin_min ?? 1;
+        this.SIN_MIN = balance.sin_min ?? 0;
         this.SIN_MAX = balance.sin_max ?? 20;
         this.SIN_RAMPAGE_THRESHOLD = balance.sin_rampage_threshold ?? 18;
         this.MAX_HEROES = balance.max_heroes ?? 7;
@@ -161,6 +161,10 @@ class HeroManager {
     /** 죄종 수치 상위 2개 조합으로 수식어 결정 */
     _pickEpithet(sinStats) {
         if (!sinStats || this._epithets.length === 0) return null;
+
+        // 쌓임 프레임: 모든 수치가 0이면 수식어 없음 (의미 없는 조합 방지)
+        const maxVal = Math.max(...SIN_STAT_KEYS.map(k => sinStats[k] || 0));
+        if (maxVal === 0) return null;
 
         // 상위 2개 스탯 찾기
         const sorted = SIN_STAT_KEYS
@@ -367,15 +371,11 @@ class HeroManager {
         return values;
     }
 
-    /** 죄종 수치 7개 랜덤 굴림 (각 1~20) */
+    /** 죄종 수치 7개 초기화 — 쌓임 프레임: 모두 0에서 시작 */
     _rollSinStats() {
         const sinStats = {};
         for (const key of SIN_STAT_KEYS) {
-            let roll = this.STAT_ROLL_BONUS;
-            for (let i = 0; i < this.STAT_ROLL_DICE; i++) {
-                roll += Math.floor(Math.random() * this.STAT_ROLL_SIDES);
-            }
-            sinStats[key] = Math.max(1, Math.min(20, roll));
+            sinStats[key] = 0;
         }
         return sinStats;
     }
@@ -390,14 +390,14 @@ class HeroManager {
         };
     }
 
-    /** 죄종 수치 변동 (1~20 클램프) */
+    /** 죄종 수치 변동 (0~20 클램프) */
     updateSinStat(heroId, sinKey, delta) {
         const heroes = this.store.getState('heroes');
         const hero = heroes.find(h => h.id === heroId);
         if (!hero || !hero.sinStats || !(sinKey in hero.sinStats)) return null;
 
         const oldVal = hero.sinStats[sinKey];
-        hero.sinStats[sinKey] = Math.max(this.SIN_MIN, Math.min(this.SIN_MAX, oldVal + delta));
+        hero.sinStats[sinKey] = Math.max(0, Math.min(this.SIN_MAX, oldVal + delta));
         hero.isRampaging = this.isRampaging(hero);
 
         this.store.setState('heroes', [...heroes]);

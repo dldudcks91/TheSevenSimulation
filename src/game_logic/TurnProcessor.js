@@ -50,10 +50,6 @@ class TurnProcessor {
             this.store.setState('wood', (this.store.getState('wood') || 0) + Math.floor(millWood));
         }
 
-        // 국시 사기 tick (morale_tick) — 사기 시스템 재도입 시 연결 예정
-        // 현재는 HeroManager에 updateMorale이 없으므로 no-op
-        // TODO: 사기→죄종 전환 시 해당 국시 죄종에 sinStat +/- tick으로 매핑
-
         // 영웅 상태 복원 (원정/부상/기절/발병 제외)
         const heroes = this.heroManager.getHeroes();
         for (const h of heroes) {
@@ -216,13 +212,9 @@ class TurnProcessor {
             // ── 분노(wrath) ──
             if (hero.location === 'base') {
                 hero.daysIdle = (hero.daysIdle || 0) + 1;
-                // idle 유지 → wrath 감소 (싸울 곳이 없어 에너지 방전)
-                if (hero.status === 'idle') {
-                    this.heroManager.updateSinStat(hero.id, 'wrath', -(b.wrath_idle_fall ?? 1));
-                }
             } else {
                 hero.daysIdle = 0;
-                // 전투 참여 → wrath 상승
+                // 전투 참여 → wrath 쌓임
                 if (hero.status === 'expedition' || hero.status === 'hunt' || hero.status === 'defense') {
                     this.heroManager.updateSinStat(hero.id, 'wrath', b.wrath_combat_rise ?? 1);
                 }
@@ -231,10 +223,6 @@ class TurnProcessor {
             // ── 나태(sloth) ──
             if (hero.status === 'idle') {
                 this.heroManager.updateSinStat(hero.id, 'sloth', b.sloth_idle_rise ?? 1);
-            } else if (hero.status === 'defense') {
-                this.heroManager.updateSinStat(hero.id, 'sloth', -(b.sloth_defense_fall ?? 2));
-            } else if (hero.status !== 'injured' && hero.status !== 'sick') {
-                this.heroManager.updateSinStat(hero.id, 'sloth', -(b.sloth_action_fall ?? 1));
             }
 
             // ── 시기(envy) ──
@@ -244,24 +232,17 @@ class TurnProcessor {
             }
 
             // ── 폭식(gluttony) ──
-            // 식량 부족 → gluttony 하락 (못 먹어서 불만)
-            if (foodLow) {
-                this.heroManager.updateSinStat(hero.id, 'gluttony', -(b.gluttony_food_shortage_fall ?? 1));
-            }
+            // (식량 부족 → gluttony 쌓임: 정화 카탈로그 확정 후 추가 예정)
 
             // ── 색욕(lust) ──
-            // 원정 중 파티원 있음 → lust 상승 / 혼자 idle → lust 하락
+            // 원정 중 파티원 있음 → lust 쌓임
             if (hero.status === 'expedition') {
                 this.heroManager.updateSinStat(hero.id, 'lust', b.lust_party_rise ?? 1);
-            } else if (hero.status === 'idle') {
-                this.heroManager.updateSinStat(hero.id, 'lust', -(b.lust_solo_fall ?? 1));
             }
 
             // ── 교만(pride) ──
             if (hero._lastDefenseWin === true) {
                 this.heroManager.updateSinStat(hero.id, 'pride', b.pride_defense_win_rise ?? 2);
-            } else if (hero._lastDefenseWin === false) {
-                this.heroManager.updateSinStat(hero.id, 'pride', -(b.pride_defense_lose_fall ?? 2));
             }
         }
     }

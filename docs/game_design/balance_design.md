@@ -477,6 +477,7 @@ sin_purify_rest_amount,TBD           # 야영 정화량
 ---
 
 *마지막 업데이트: 2026-04-17 (쌓임 프레임 재정립 — §3 죄종 수치 쌓임 밸런스 뼈대 재작성, 사기 관련 조항 레거시 표시, 세부 수치 TBD)*
+*2026-04-20 사기 → 죄종 수치 전환 정리 — exp_node_rest/victory/defeat 모랄 키 → 죄종 수치 키로 이름 변경 명시*
 
 ---
 
@@ -490,14 +491,14 @@ sin_purify_rest_amount,TBD           # 야영 정화량
 | `exp_node_combat_gold_per_day` | 4 | 일반 전투 노드 승리 시 day당 추가 골드 |
 | `exp_node_boss_gold_base` | 120 | 보스 노드 승리 골드 기본값 |
 | `exp_node_boss_gold_per_day` | 10 | 보스 노드 승리 시 day당 추가 골드 |
-| ~~`exp_node_rest_morale`~~ | 10 | 야영 노드 사기 증가량 (**레거시 — 쌓임 프레임으로 재설계 필요**) |
-| ~~`exp_node_victory_morale`~~ | 3 | 전투 승리 사기 (**레거시 — 교만 누적으로 대체 예정**) |
-| ~~`exp_node_defeat_morale`~~ | -8 | 전투 패배 사기 (**레거시 — 분노 누적으로 대체 예정**) |
+| ~~`exp_node_rest_morale`~~ → `exp_node_rest_sin_restore` | 10→TBD | 야영 노드 사기 증가량 (**레거시 — 쌓임 프레임으로 재설계 필요**: 야영 시 죄종 정화량) |
+| ~~`exp_node_victory_morale`~~ → `exp_node_victory_sin_restore` | 3→TBD | 전투 승리 사기 (**레거시 — 쌓임 프레임으로 재설계 필요**: 전투 승리 시 죄종 정화량) |
+| ~~`exp_node_defeat_morale`~~ → `exp_node_defeat_sin_gain` | -8→TBD | 전투 패배 사기 (**레거시 — 쌓임 프레임으로 재설계 필요**: 전투 패배 시 죄종 증가량) |
 
 > 위 3개 키는 쌓임 프레임에서 다음과 같이 변경 예정 (TBD):
-> - `exp_node_rest_purify` — 야영 시 분노/교만 감소량
-> - `exp_node_victory_sin_<type>` — 전투 승리 시 특정 죄종 누적
-> - `exp_node_defeat_sin_<type>` — 전투 패배 시 특정 죄종 누적
+> - `exp_node_rest_sin_restore` — 야영 시 죄종 수치 감소 (정화)량
+> - `exp_node_victory_sin_restore` — 전투 승리 시 죄종 수치 감소 (정화)량
+> - `exp_node_defeat_sin_gain` — 전투 패배 시 죄종 수치 증가량
 
 ### 체력(stamina) 시스템
 

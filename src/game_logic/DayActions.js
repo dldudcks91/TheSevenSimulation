@@ -27,9 +27,8 @@ class DayActions {
 
         const food = this.store.getState('food') || 0;
         this.store.setState('food', food + foodReward);
-        // 채집: 탐욕 상승 (획득), 나태 하락 (몸 움직임)
+        // 채집: 탐욕 쌓임 (획득 욕구)
         this.heroManager.updateSinStat(hero.id, 'greed', b.greed_gather_rise ?? 1);
-        this.heroManager.updateSinStat(hero.id, 'sloth', -(b.sloth_action_fall ?? 1));
 
         return { foodReward };
     }
@@ -49,8 +48,6 @@ class DayActions {
 
         const wood = this.store.getState('wood') || 0;
         this.store.setState('wood', wood + woodReward);
-        // 벌목: 나태 하락 (몸 움직임)
-        this.heroManager.updateSinStat(hero.id, 'sloth', -(b.sloth_action_fall ?? 1));
 
         return { woodReward };
     }
@@ -74,11 +71,9 @@ class DayActions {
         this.store.setState('gold', gold - feastCost);
         const heroes = this.heroManager.getHeroes();
         for (const hero of heroes) {
-            // 연회: 폭식 상승 + 색욕 상승 (함께 즐기는 시간)
+            // 연회: 폭식 쌓임 + 색욕 쌓임 (함께 즐기는 시간)
             this.heroManager.updateSinStat(hero.id, 'gluttony', b.gluttony_feast_rise ?? 2);
             this.heroManager.updateSinStat(hero.id, 'lust', b.lust_feast_rise ?? 1);
-            // 탐욕 하락 (풍족해서 움켜쥘 필요 없음)
-            this.heroManager.updateSinStat(hero.id, 'greed', -(b.greed_feast_fall ?? 1));
         }
         return { success: true, cost: feastCost };
     }
@@ -109,13 +104,11 @@ class DayActions {
             hero.status = 'hunt';
             const gold = this.store.getState('gold') || 0;
             this.store.setState('gold', gold + goldReward);
-            // 사냥 승리: 분노 상승 (전투 본능 충족), 교만 상승 (자신감)
+            // 사냥 승리: 분노 쌓임 (전투 본능), 교만 쌓임 (자신감)
             this.heroManager.updateSinStat(hero.id, 'wrath', b.wrath_combat_rise ?? 1);
             this.heroManager.updateSinStat(hero.id, 'pride', b.pride_combat_win_rise ?? 1);
         } else {
             hero.status = 'injured';
-            // 사냥 패배: 교만 하락 (자존심 상처)
-            this.heroManager.updateSinStat(hero.id, 'pride', -(b.pride_combat_lose_fall ?? 1));
         }
         this.store.setState('heroes', [...this.heroManager.getHeroes()]);
     }

@@ -139,10 +139,10 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 
 | 노드 | 효과 | balance.csv 키 |
 |------|------|---------------|
-| combat 승리 | 골드 `base + day×per_day`, 파티 분노+1 / 교만+1 | `exp_node_combat_gold_base`(40) / `exp_node_combat_gold_per_day`(4) |
-| combat 패배 | 파티 교만-1, 쓰러진 영웅 `status='injured'` | — |
+| combat 승리 | 골드 `base + day×per_day`, 파티 분노+1 / 교만+1 | `exp_node_combat_gold_base`(40) / `exp_node_combat_gold_per_day`(4) / `exp_node_victory_sin_restore`(TBD) |
+| combat 패배 | 파티 분노+1 / 교만+1 (죄종 수치 증가), 쓰러진 영웅 `status='injured'` | `exp_node_defeat_sin_gain`(TBD) |
 | boss 승리 | 골드 `120 + day×10`, 챕터 +1, 맵 리셋 | `exp_node_boss_gold_base` / `exp_node_boss_gold_per_day` |
-| rest | 파티 나태+1 / 폭식+1 | — |
+| rest | 파티 나태+1 / 폭식+1 (죄종 수치 증가), 분노/교만 죄종 수치 감소 (정화) | `exp_node_rest_sin_restore`(TBD) |
 | 영웅 HP | 전투별 피해 누적, 귀환 후 매 턴 자연 회복 | `hero_hp_regen_per_turn` |
 
 ### 조우 이벤트 (encounter) — 2026-04-16 구현
@@ -170,3 +170,4 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 ---
 
 *마지막 업데이트: 2026-04-16*
+*2026-04-20 사기 → 죄종 수치 전환 — combat 패배 효과 교만-1→죄종 수치 증가, rest 노드 설명 정화 용어로 정비, 신규 balance.csv 키 명시*
