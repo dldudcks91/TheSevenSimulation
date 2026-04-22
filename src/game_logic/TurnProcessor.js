@@ -136,13 +136,31 @@ class TurnProcessor {
         return engine;
     }
 
-    /** 방어전 참전 영웅 목록 추출 */
+    /**
+     * 방어전 참전 영웅 목록 — Stamina 게이트 자동 판정 (2026-04-21).
+     * 조건: 거점 내(location='base') + status in ['idle','defense'] + Stamina ≥ 임계 + 비부상.
+     * 수동 배치(defenseHeroIds)가 있으면 우선 사용 (오버라이드).
+     */
     getDefenseParty() {
-        const defenseHeroIds = this.baseManager.getDefenseHeroIds();
         const allHeroes = this.heroManager.getHeroes();
+        const manualIds = this.baseManager.getDefenseHeroIds();
+        if (manualIds && manualIds.length > 0) {
+            return allHeroes.filter(h => manualIds.includes(h.id) && h.status !== 'injured');
+        }
+        const threshold = this.balance.stamina_defense_threshold ?? 40;
         return allHeroes.filter(h =>
-            defenseHeroIds.includes(h.id) && h.status !== 'injured'
+            h.status !== 'injured' &&
+            h.status !== 'expedition' &&
+            h.status !== 'dead' &&
+            h.status !== 'sick' &&
+            (h.location === 'base' || !h.location) &&
+            (h.stamina ?? 0) >= threshold
         );
+    }
+
+    /** 방어 가능 인원 수 (UI 표시용) */
+    getAutoDefenseCount() {
+        return this.getDefenseParty().length;
     }
 
     // ─── 밤 결산 ───
@@ -207,6 +225,9 @@ class TurnProcessor {
         const expeditionCount = heroes.filter(h => h.status === 'expedition').length;
         const food = this.store.getState('food') || 0;
         const foodLow = food < (b.food_shortage_threshold ?? 30);
+        // 솔로 배치 판정: 자기 혼자 원정 or 혼자 idle
+        const aliveAtBase = heroes.filter(h => (h.location === 'base' || !h.location) && h.status !== 'dead');
+        const aloneAtBase = aliveAtBase.length === 1;
 
         for (const hero of heroes) {
             // ── 분노(wrath) ──
@@ -223,12 +244,20 @@ class TurnProcessor {
             // ── 나태(sloth) ──
             if (hero.status === 'idle') {
                 this.heroManager.updateSinStat(hero.id, 'sloth', b.sloth_idle_rise ?? 1);
+                // 반대 행동 정화: idle(야영) → 분노 감소
+                this.heroManager.updateSinStat(hero.id, 'wrath', -(b.purify_idle_wrath ?? 1));
             }
 
             // ── 시기(envy) ──
             // 거점에 idle인데 다른 영웅이 원정 중 → envy 상승
             if (hero.status === 'idle' && expeditionCount > 0) {
                 this.heroManager.updateSinStat(hero.id, 'envy', b.envy_bench_rise ?? 1);
+            }
+            // 반대 행동 정화: 단독 배치 → 시기 감소
+            if (aloneAtBase && (hero.location === 'base' || !hero.location)) {
+                this.heroManager.updateSinStat(hero.id, 'envy', -(b.purify_solo_envy ?? 2));
+                // 1인실 효과 (색욕 정화) — 단독이면 자동 1인실로 간주
+                this.heroManager.updateSinStat(hero.id, 'lust', -(b.purify_room_lust ?? 1));
             }
 
             // ── 폭식(gluttony) ──
@@ -243,6 +272,13 @@ class TurnProcessor {
             // ── 교만(pride) ──
             if (hero._lastDefenseWin === true) {
                 this.heroManager.updateSinStat(hero.id, 'pride', b.pride_defense_win_rise ?? 2);
+            }
+
+            // ── 밀실 거래 상태 (탐욕 극단 조치 결과) ──
+            if (hero._darkDealTurns && hero._darkDealTurns > 0) {
+                const gold = this.store.getState('gold') || 0;
+                this.store.setState('gold', Math.max(0, gold - 3));
+                hero._darkDealTurns -= 1;
             }
         }
     }

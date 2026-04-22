@@ -93,14 +93,15 @@
 
 ### 🔴 코드 반영 대기
 
-- [ ] 4구간 경계값 balance.csv (sin_elevated/frustrated/rampage_threshold = 5/12/18/20)
-- [ ] 7영역×7스탯 매핑 코드 상수화
-- [ ] 발현/고양/폭주 스탯 치환 로직
-- [ ] 20 도달 결정적 순간 이벤트 시스템 (기존 "20+3턴 이탈" 대체)
-- [ ] hero.bonds 필드 + 변동 훅 + 관계→죄종 증폭/억제 로직
-- [ ] 숙소 1인실/공동실 자동 배정 알고리즘
-- [ ] 밤 방어 Stamina 게이트 전환 (명시 배치 slot 제거)
-- [ ] 이벤트 30개 7감정 프레임 재태깅
+- [x] 4구간 경계값 balance.csv (sin_manifest=5, sin_elevated=12, sin_rampage=18, sin_critical=20) — 2026-04-23
+- [x] 7영역×7스탯 매핑 코드 상수화 (SinUtils.SIN_DOMAIN / SIN_STAT) — 2026-04-23
+- [x] 발현/고양/폭주 스탯 치환 로직 (SinUtils.getSinStatBonuses, HeroManager.getEffectiveStats) — 2026-04-23
+- [x] 20 도달 결정적 순간 이벤트 시스템 (CriticalEventSystem + CriticalEventPopup) — 2026-04-23
+- [x] hero.bonds 필드 + 변동 훅 (HeroManager.adjustBonds, 원정 귀환 시 bonds+3) — 2026-04-23
+- [ ] 숙소 1인실/공동실 자동 배정 알고리즘 (숙소 시스템 자체 미구축 — Phase 2)
+- [x] 밤 방어 Stamina 게이트 전환 (TurnProcessor.getDefenseParty 자동 판정) — 2026-04-23
+- [x] 이벤트 30개 7감정 프레임 재태깅 (event_effects.csv morale→sin_delta, SIN_KEYS 타겟 직접 처리) — 2026-04-23
+- [x] 정화 수단 로직 (DayActions 채집/벌목/연회 + TurnProcessor idle/solo) — 2026-04-23
 
 ---
 

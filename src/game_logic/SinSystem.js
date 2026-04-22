@@ -33,12 +33,14 @@ class SinSystem {
     }
 
     /**
-     * 밤 결산 시 폭주 상태 갱신 + 이탈 판정 → 연쇄 반응
-     * (기존 checkExtremes 대체)
+     * 밤 결산 시 폭주 상태 갱신 + 임계(20) 이벤트 큐잉
+     * 2026-04-21: 기존 "20 + 3턴 이탈"은 CriticalEventSystem으로 이전.
+     * 여기서는 폭주 상태 갱신과 임계 감지만 수행하고, 처리는 UI/CriticalEventSystem이 담당.
      */
     checkExtremes() {
         const heroes = this.store.getState('heroes') || [];
         const results = [];
+        const pendingCritical = [];
 
         for (const hero of [...heroes]) {
             // 폭주 상태 갱신 (18+ → ON, 17- → OFF)
@@ -54,25 +56,33 @@ class SinSystem {
                 this._checkRampageAcquiredTrait(hero, triggerSin);
             }
 
-            // 죄종 20 도달 → 연속 턴 카운트 누적 → 이탈 판정
+            // 죄종 20 도달 → 임계 이벤트 pending
             for (const sinKey of SIN_STAT_KEYS) {
                 const val = hero.sinStats?.[sinKey] ?? 0;
-                if (!hero._sinOverflowTurns) hero._sinOverflowTurns = {};
-
                 if (val >= this.DESERTION_THRESHOLD) {
-                    hero._sinOverflowTurns[sinKey] = (hero._sinOverflowTurns[sinKey] ?? 0) + 1;
-                    if (hero._sinOverflowTurns[sinKey] >= this.DESERTION_TURNS) {
-                        results.push(this._processDesertion(hero, heroes, sinKey));
-                        break;
-                    }
-                } else {
-                    hero._sinOverflowTurns[sinKey] = 0;
+                    pendingCritical.push({ heroId: hero.id, sinKey });
                 }
             }
+            // 기존 overflow 카운터 완전 정리
+            if (hero._sinOverflowTurns) hero._sinOverflowTurns = {};
         }
 
-        const chainResults = this._processChainReactions(results, heroes);
-        results.push(...chainResults);
+        if (pendingCritical.length > 0) {
+            const existing = this.store.getState('pendingCriticalEvents') || [];
+            const keys = new Set(existing.map(e => `${e.heroId}:${e.sinKey}`));
+            const merged = [...existing];
+            for (const item of pendingCritical) {
+                if (!keys.has(`${item.heroId}:${item.sinKey}`)) {
+                    merged.push(item);
+                    results.push({
+                        type: 'critical_event_pending',
+                        heroId: item.heroId,
+                        sinKey: item.sinKey
+                    });
+                }
+            }
+            this.store.setState('pendingCriticalEvents', merged);
+        }
 
         this.store.setState('heroes', [...heroes]);
         return results;

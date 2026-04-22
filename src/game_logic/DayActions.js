@@ -29,6 +29,9 @@ class DayActions {
         this.store.setState('food', food + foodReward);
         // 채집: 탐욕 쌓임 (획득 욕구)
         this.heroManager.updateSinStat(hero.id, 'greed', b.greed_gather_rise ?? 1);
+        // 반대 행동 정화: 노동 → 나태/교만 감소
+        this.heroManager.updateSinStat(hero.id, 'sloth', -(b.purify_labor_sloth ?? 1));
+        this.heroManager.updateSinStat(hero.id, 'pride', -(b.purify_labor_pride ?? 1));
 
         return { foodReward };
     }
@@ -48,6 +51,9 @@ class DayActions {
 
         const wood = this.store.getState('wood') || 0;
         this.store.setState('wood', wood + woodReward);
+        // 반대 행동 정화: 노동 → 나태/교만 감소
+        this.heroManager.updateSinStat(hero.id, 'sloth', -(b.purify_labor_sloth ?? 1));
+        this.heroManager.updateSinStat(hero.id, 'pride', -(b.purify_labor_pride ?? 1));
 
         return { woodReward };
     }
@@ -70,10 +76,22 @@ class DayActions {
 
         this.store.setState('gold', gold - feastCost);
         const heroes = this.heroManager.getHeroes();
+        const feastParticipantIds = new Set();
         for (const hero of heroes) {
+            // 연회 참여 가능: 거점 내 + 비부상
+            if (hero.status === 'injured' || hero.status === 'dead' || hero.status === 'expedition') continue;
+            feastParticipantIds.add(hero.id);
             // 연회: 폭식 쌓임 + 색욕 쌓임 (함께 즐기는 시간)
             this.heroManager.updateSinStat(hero.id, 'gluttony', b.gluttony_feast_rise ?? 2);
             this.heroManager.updateSinStat(hero.id, 'lust', b.lust_feast_rise ?? 1);
+            // 반대 행동 정화: 연회(베풀기) → 탐욕 감소
+            this.heroManager.updateSinStat(hero.id, 'greed', -(b.purify_feast_greed ?? 3));
+        }
+        // 연회 불참자 = 절식 → 폭식 정화
+        for (const hero of heroes) {
+            if (feastParticipantIds.has(hero.id)) continue;
+            if (hero.status === 'dead') continue;
+            this.heroManager.updateSinStat(hero.id, 'gluttony', -(b.purify_fast_gluttony ?? 1));
         }
         return { success: true, cost: feastCost };
     }

@@ -239,7 +239,8 @@ function buildGameData(csvData) {
         );
         for (const e of effects) {
             const eff = { target: e.target };
-            if (e.morale !== null && e.morale !== undefined) eff.morale = e.morale;
+            if (e.sin_delta !== null && e.sin_delta !== undefined) eff.sin_delta = e.sin_delta;
+            if (e.morale !== null && e.morale !== undefined) eff.morale = e.morale; // 레거시 세이브 호환
             if (e.amount !== null && e.amount !== undefined) eff.amount = e.amount;
             if (e.action !== null && e.action !== undefined) eff.action = e.action;
             choice.effects.push(eff);

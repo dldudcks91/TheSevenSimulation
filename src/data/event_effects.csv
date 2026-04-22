@@ -1,4 +1,4 @@
-event_id,choice_index,effect_index,target,morale,amount,action
+event_id,choice_index,effect_index,target,sin_delta,amount,action
 A1,0,0,wrath,-20,,
 A1,0,1,sloth,10,,
 A1,1,0,sloth,-15,,

@@ -15,6 +15,95 @@ export const SIN_NAMES_KO = {
     sloth: '나태', gluttony: '폭식', lust: '색욕', pride: '교만'
 };
 
+/** 7죄종 × 7영역 매핑 (2026-04-21) */
+export const SIN_DOMAIN = {
+    wrath: 'combat',        // 전투
+    pride: 'command',       // 명성·지휘
+    greed: 'economy',       // 자원·경제
+    envy: 'scouting',       // 정찰·정보
+    lust: 'social',         // 사회·관계
+    gluttony: 'food',       // 식량·체력
+    sloth: 'recovery'       // 회복·관조
+};
+
+/** 7죄종 × 7스탯 매핑 (2026-04-21) */
+export const SIN_STAT = {
+    wrath: 'strength',      // 힘
+    pride: 'leadership',    // 통솔
+    greed: 'intellect',     // 지능
+    envy: 'agility',        // 민첩
+    lust: 'charisma',       // 매력
+    gluttony: 'vitality',   // 건강
+    sloth: 'perception'     // 감각
+};
+
+/** 구간 이름 */
+export const SIN_TIER = {
+    CLEAN: 'clean',         // 0~4
+    MANIFEST: 'manifest',   // 5~11
+    ELEVATED: 'elevated',   // 12~17
+    RAMPAGE: 'rampage',     // 18~19
+    CRITICAL: 'critical'    // 20
+};
+
+/**
+ * 죄종 수치를 구간으로 판정.
+ * @param {number} value - 0~20
+ * @param {object} balance - balance.csv
+ * @returns {string} SIN_TIER 값
+ */
+export function getSinTier(value, balance = {}) {
+    const v = value || 0;
+    const criticalT = balance.sin_critical_threshold ?? 20;
+    const rampageT = balance.sin_rampage_threshold ?? 18;
+    const elevatedT = balance.sin_elevated_threshold ?? 12;
+    const manifestT = balance.sin_manifest_threshold ?? 5;
+    if (v >= criticalT) return SIN_TIER.CRITICAL;
+    if (v >= rampageT) return SIN_TIER.RAMPAGE;
+    if (v >= elevatedT) return SIN_TIER.ELEVATED;
+    if (v >= manifestT) return SIN_TIER.MANIFEST;
+    return SIN_TIER.CLEAN;
+}
+
+/**
+ * 구간별 스탯 보너스 (치환형 — 누적 아님).
+ * @param {number} value - 죄종 수치
+ * @param {object} balance - balance.csv
+ * @returns {number} 0, 1, 2, 3
+ */
+export function getStatBonusForSinValue(value, balance = {}) {
+    const tier = getSinTier(value, balance);
+    if (tier === SIN_TIER.CRITICAL || tier === SIN_TIER.RAMPAGE) {
+        return balance.sin_rampage_stat_bonus ?? 3;
+    }
+    if (tier === SIN_TIER.ELEVATED) {
+        return balance.sin_elevated_stat_bonus ?? 2;
+    }
+    if (tier === SIN_TIER.MANIFEST) {
+        return balance.sin_manifest_stat_bonus ?? 1;
+    }
+    return 0;
+}
+
+/**
+ * 영웅의 모든 죄종 수치를 반영한 스탯 보너스 맵.
+ * @param {object} hero - hero 객체
+ * @param {object} balance - balance.csv
+ * @returns {object} {strength: +N, agility: +N, ...}
+ */
+export function getSinStatBonuses(hero, balance = {}) {
+    const result = {};
+    if (!hero || !hero.sinStats) return result;
+    for (const sinKey of SIN_KEYS) {
+        const bonus = getStatBonusForSinValue(hero.sinStats[sinKey], balance);
+        if (bonus > 0) {
+            const stat = SIN_STAT[sinKey];
+            result[stat] = (result[stat] || 0) + bonus;
+        }
+    }
+    return result;
+}
+
 /**
  * sinStats 7수치를 가중치로 사용하여 죄종 키 1개를 확률적으로 뽑는다.
  * 예: {wrath:18, greed:15, ...} → 총합 65, 분노 확률 28%, 탐욕 23%, ...
@@ -158,11 +247,17 @@ function _collectTraits(hero) {
 export default {
     SIN_KEYS,
     SIN_NAMES_KO,
+    SIN_DOMAIN,
+    SIN_STAT,
+    SIN_TIER,
     weightedSinRoll,
     sinChance,
     sinIntensity,
     topSin,
     topTwoSins,
     findRampageTrait,
-    findDesertionTrait
+    findDesertionTrait,
+    getSinTier,
+    getStatBonusForSinValue,
+    getSinStatBonuses
 };

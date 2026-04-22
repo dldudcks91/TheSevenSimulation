@@ -649,7 +649,7 @@ class ExpeditionScene extends Phaser.Scene {
     // ═══════════════════════════════════
     _close() {
         // 귀환 처리 — 영웅 상태 복구
-        this._nm.finalizeReturn(this._heroIds);
+        this._nm.finalizeReturn(this._heroIds, this._bal || {});
 
         const mapScene = this.scene.get('MapScene');
         this.scene.stop('ExpeditionScene');

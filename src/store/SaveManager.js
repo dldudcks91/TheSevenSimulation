@@ -16,6 +16,7 @@ const SaveManager = {
             base: store.getState('base'),
             expedition: store.getState('expedition'),
             edict: store.getState('edict'),
+            pendingCriticalEvents: store.getState('pendingCriticalEvents'),
             savedAt: new Date().toISOString()
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -29,7 +30,13 @@ const SaveManager = {
 
     restore(store, saveData) {
         if (!saveData) return false;
-        if (saveData.heroes) store.setState('heroes', saveData.heroes);
+        if (saveData.heroes) {
+            // 2026-04-21 마이그레이션: 기존 세이브에 bonds 필드가 없을 수 있음
+            saveData.heroes.forEach(h => {
+                if (!h.bonds || typeof h.bonds !== 'object') h.bonds = {};
+            });
+            store.setState('heroes', saveData.heroes);
+        }
         if (saveData.turn) store.setState('turn', saveData.turn);
         if (saveData.gold !== undefined) store.setState('gold', saveData.gold);
         if (saveData.base) {
@@ -49,6 +56,7 @@ const SaveManager = {
         if (saveData.wood !== undefined) store.setState('wood', saveData.wood);
         if (saveData.inventory) store.setState('inventory', saveData.inventory);
         if (saveData.edict !== undefined) store.setState('edict', saveData.edict);
+        if (saveData.pendingCriticalEvents) store.setState('pendingCriticalEvents', saveData.pendingCriticalEvents);
         // 2026-04-17: saveData.playerSins는 로드 시 단순 무시 (바알 죄종 수치 시스템 폐기)
         return true;
     },

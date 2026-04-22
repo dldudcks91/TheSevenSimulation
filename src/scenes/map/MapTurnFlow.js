@@ -5,6 +5,7 @@ import store from '../../store/Store.js';
 import SaveManager from '../../store/SaveManager.js';
 import MorningReport from '../../game_logic/MorningReport.js';
 import MorningReportPopup from '../MorningReportPopup.js';
+import CriticalEventPopup from '../CriticalEventPopup.js';
 import MapDefenseMode from '../MapDefenseMode.js';
 import { BATTLE_MODES } from '../../game_logic/BattleEngine.js';
 import { topSin } from '../../game_logic/SinUtils.js';
@@ -29,16 +30,39 @@ class MapTurnFlow {
 
         s._morningReportPopup = new MorningReportPopup(s, reportData, () => {
             s._morningReportPopup = null;
-            const events = s.eventSystem.generateEvents();
-            if (events.length > 0) {
-                this._eventQueue = [...events];
-                this._showNextEvent();
-            } else {
-                s.turnManager.advancePhase();
-                s.hud.updatePhaseDisplay();
-            }
+            this._showPendingCriticalThen(() => {
+                const events = s.eventSystem.generateEvents();
+                if (events.length > 0) {
+                    this._eventQueue = [...events];
+                    this._showNextEvent();
+                } else {
+                    s.turnManager.advancePhase();
+                    s.hud.updatePhaseDisplay();
+                }
+            });
         });
         s._morningReportPopup.show();
+    }
+
+    /** pending 임계 이벤트를 하나씩 소진한 뒤 콜백 */
+    _showPendingCriticalThen(next) {
+        const s = this.scene;
+        if (!s.criticalEventSystem) return next();
+        const pending = s.criticalEventSystem.peekNext();
+        if (!pending) return next();
+        const data = s.criticalEventSystem.buildEventData(pending.heroId, pending.sinKey);
+        if (!data) {
+            s.criticalEventSystem.dequeue(pending.heroId, pending.sinKey);
+            return this._showPendingCriticalThen(next);
+        }
+        const popup = new CriticalEventPopup(s, data, (choiceKey) => {
+            const result = s.criticalEventSystem.resolve(pending.heroId, pending.sinKey, choiceKey);
+            s.criticalEventSystem.dequeue(pending.heroId, pending.sinKey);
+            s.bottomPanel.refreshActiveTab();
+            s.hud.updateResources();
+            s.time.delayedCall(250, () => this._showPendingCriticalThen(next));
+        });
+        popup.show();
     }
 
     _showNextEvent() {
@@ -63,7 +87,7 @@ class MapTurnFlow {
         const s = this.scene;
         if (s.turnManager.getCurrentTurn().phase !== 'day') return;
 
-        const defenseCount = s.baseManager.getDefenseHeroIds().length;
+        const defenseCount = s.turnProcessor.getAutoDefenseCount();
         if (defenseCount === 0) {
             s._showConfirmPopup(
                 '⚠️ 방어 인원 없음',

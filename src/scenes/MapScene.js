@@ -14,6 +14,7 @@ import HeroManager from '../game_logic/HeroManager.js';
 import EventSystem from '../game_logic/EventSystem.js';
 import BaseManager from '../game_logic/BaseManager.js';
 import SinSystem from '../game_logic/SinSystem.js';
+import CriticalEventSystem from '../game_logic/CriticalEventSystem.js';
 import ExpeditionManager from '../game_logic/ExpeditionManager.js';
 import SpriteComposer from '../game_logic/SpriteComposer.js';
 import DayActions from '../game_logic/DayActions.js';
@@ -111,6 +112,7 @@ class MapScene extends Phaser.Scene {
         this.edictManager = new EdictManager(store, edictsData, balance);
         this.baseManager.setEdictManager(this.edictManager);
         this.sinSystem = new SinSystem(store, this.registry.get('sinRelations'), balance, desertionEffects);
+        this.criticalEventSystem = new CriticalEventSystem(store, this.heroManager, balance);
         this.expeditionManager = new ExpeditionManager(store, balance);
         this.expeditionManager.setStagesData(stagesData);
         this.expeditionManager.setEdictManager(this.edictManager);

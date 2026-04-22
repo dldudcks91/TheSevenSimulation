@@ -311,10 +311,11 @@ class ExpeditionNodeManager {
     }
 
     /**
-     * 귀환 — 원정 영웅을 거점 상태로 복구
+     * 귀환 — 원정 영웅을 거점 상태로 복구 + 같은 파티 bonds 상승
      * @param {string[]} heroIds  원정 파티 영웅 id
+     * @param {object} balance - balance.csv (선택)
      */
-    finalizeReturn(heroIds) {
+    finalizeReturn(heroIds, balance = {}) {
         const heroes = this.store.getState('heroes') || [];
         for (const id of heroIds) {
             const hero = heroes.find(h => h.id === id);
@@ -322,6 +323,23 @@ class ExpeditionNodeManager {
             // 이미 injured면 유지, 아니면 idle 복귀
             if (hero.status === 'expedition') hero.status = 'idle';
             hero.location = 'base';
+        }
+        // 같은 파티끼리 bonds +N (쌍방향)
+        const gain = balance.bonds_party_expedition_gain ?? 3;
+        const init = balance.bonds_initial ?? 50;
+        const min = balance.bonds_min ?? 0;
+        const max = balance.bonds_max ?? 100;
+        for (let i = 0; i < heroIds.length; i++) {
+            for (let j = 0; j < heroIds.length; j++) {
+                if (i === j) continue;
+                const fromId = heroIds[i];
+                const toId = heroIds[j];
+                const hero = heroes.find(h => h.id === fromId);
+                if (!hero) continue;
+                if (!hero.bonds) hero.bonds = {};
+                const cur = (toId in hero.bonds) ? hero.bonds[toId] : init;
+                hero.bonds[toId] = Math.max(min, Math.min(max, cur + gain));
+            }
         }
         this.store.setState('heroes', [...heroes]);
     }

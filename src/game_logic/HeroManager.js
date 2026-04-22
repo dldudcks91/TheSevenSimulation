@@ -3,7 +3,7 @@
  * 모든 상수는 balance 데이터에서 주입
  */
 
-import { topSin, topTwoSins, SIN_NAMES_KO } from './SinUtils.js';
+import { topSin, topTwoSins, SIN_NAMES_KO, getSinStatBonuses } from './SinUtils.js';
 
 const STAT_KEYS = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
 const SIN_STAT_KEYS = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'pride'];
@@ -136,7 +136,60 @@ class HeroManager {
             maxHp,
             stamina: this.balance.stamina_max ?? 100,
             sickTurns: 0,
+            bonds: {},
         };
+    }
+
+    /**
+     * 영웅의 "현재 발휘되는 스탯" — 기본 스탯 + 죄종 수치 보너스 (발현/고양/폭주 치환)
+     * @param {object} hero
+     * @returns {object} {strength, agility, intellect, ...}
+     */
+    getEffectiveStats(hero) {
+        if (!hero || !hero.stats) return {};
+        const result = { ...hero.stats };
+        const bonuses = getSinStatBonuses(hero, this.balance);
+        for (const [stat, bonus] of Object.entries(bonuses)) {
+            if (stat in result) result[stat] = (result[stat] || 0) + bonus;
+        }
+        return result;
+    }
+
+    /**
+     * 관계(bonds) 변동 — A → B 방향.
+     * @param {number} fromHeroId
+     * @param {number} toHeroId
+     * @param {number} delta - 양수/음수
+     * @returns {number} 변경된 값
+     */
+    adjustBonds(fromHeroId, toHeroId, delta) {
+        const hero = this.getHero(fromHeroId);
+        if (!hero || !delta || fromHeroId === toHeroId) return 0;
+        if (!hero.bonds) hero.bonds = {};
+        const min = this.balance.bonds_min ?? 0;
+        const max = this.balance.bonds_max ?? 100;
+        const init = this.balance.bonds_initial ?? 50;
+        const cur = (toHeroId in hero.bonds) ? hero.bonds[toHeroId] : init;
+        const next = Math.max(min, Math.min(max, cur + delta));
+        hero.bonds[toHeroId] = next;
+        this.store.setState('heroes', [...(this.store.getState('heroes') || [])]);
+        return next;
+    }
+
+    /**
+     * 영웅의 bonds 평균값 (타인들 기준, 미접촉은 초기값 50으로 가정).
+     * @param {object} hero
+     * @param {number[]} allHeroIds - 자신을 제외한 영웅 ID 목록
+     * @returns {number}
+     */
+    getAverageBonds(hero, allHeroIds = []) {
+        if (!hero) return 0;
+        const init = this.balance.bonds_initial ?? 50;
+        const others = allHeroIds.filter(id => id !== hero.id);
+        if (others.length === 0) return init;
+        const bonds = hero.bonds || {};
+        const sum = others.reduce((acc, id) => acc + ((id in bonds) ? bonds[id] : init), 0);
+        return sum / others.length;
     }
 
     /** HP 최대치 계산 — base + vitality × per_vit */

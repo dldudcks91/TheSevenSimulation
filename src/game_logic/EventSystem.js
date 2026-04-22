@@ -249,10 +249,24 @@ class EventSystem {
         };
 
         for (const effect of choice.effects) {
-            // sin_delta: 죄종 수치 변동 (신규 effect type)
-            // 구 morale effect는 주 성향 sinStat으로 전환
+            // sin_delta: 죄종 수치 변동 (단방향 누적 프레임)
+            // 구 morale 필드 호환 유지 (세이브/마이그레이션)
+            const rawDelta = effect.sin_delta ?? effect.morale ?? 0;
             const sinKey = effect.sin_key || null;
-            const sinDelta = effect.sin_delta || (effect.morale ? (effect.morale > 0 ? 1 : -1) : 0);
+            // target이 죄종 키면 해당 죄종에 직접 적용 (스케일: -5 ~ +5 범위로 축약)
+            if (SIN_KEYS.includes(effect.target)) {
+                const scaledDelta = Math.max(-5, Math.min(5, Math.round(rawDelta / 4)));
+                const pool = partyIds ? heroes.filter(h => partyIds.includes(h.id)) : heroes;
+                for (const hero of pool) {
+                    if (scaledDelta !== 0) {
+                        _applySinStatDelta(hero, effect.target, scaledDelta);
+                        results.push({ heroId: hero.id, name: hero.name, sinKey: effect.target, delta: scaledDelta });
+                    }
+                }
+                continue;
+            }
+            // 기존 로직: all/party/others/gold 등
+            const sinDelta = rawDelta > 0 ? 1 : rawDelta < 0 ? -1 : 0;
 
             if (effect.target === 'all') {
                 for (const hero of heroes) {
@@ -295,7 +309,7 @@ class EventSystem {
                 if (heroId) {
                     const hero = heroes.find(h => h.id === heroId);
                     if (hero) {
-                        const delta = effect.morale || 0;
+                        const delta = effect.sin_delta ?? effect.morale ?? 0;
                         if (delta <= -999) {
                             const idx = heroes.indexOf(hero);
                             if (idx !== -1) heroes.splice(idx, 1);
