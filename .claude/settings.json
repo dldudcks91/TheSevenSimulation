@@ -38,7 +38,9 @@
       "Edit(/.claude/skills/client-debug/**)",
       "Edit(/.claude/skills/design-review/**)",
       "Edit(/.claude/skills/sprite-compose/**)",
-      "Edit(/.claude/skills/design-hero/**)"
+      "Edit(/.claude/skills/design-hero/**)",
+      "Skill(design-review)",
+      "Skill(design-review:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\user\\Desktop\\python_text\\git\\TheSevenSimulation\\.claude",
