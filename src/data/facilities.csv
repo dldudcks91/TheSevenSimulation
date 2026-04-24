@@ -1,13 +1,13 @@
-id,name_ko,tier,requires,cost,build_cost,description,recruit_slots,feast_available,craft_weapon,repair,raid_info_level,heal_speed,morale_stabilize,trade_available,alchemy_available,gold_per_turn
-tavern,주점,1,,100,20,영웅 고용,2,false,,,,,,,
-smithy,대장간,1,,150,20,장비 제작/수리,,,true,true,,,,,,
-watchtower,감시탑,1,,100,20,습격 유무 알림,,,,,1,,,,,
-farm,농장,1,,80,20,턴당 식량 생산,,,,,,,,,,,
-lumber_mill,벌목장,1,,80,20,턴당 나무 생산,,,,,,,,,,,
-hospital,병원,2,tavern,200,25,부상 영웅 치료 (회복 턴 절반) + 사기 안정화,,,,,,2,true,,,
-stagecoach,역마차,2,tavern,150,25,"교역 상인 도착, 외부 정보",,,,,,,,true,,
-training_ground,훈련장,2,smithy,200,25,영웅 HP 회복 속도 +50%,,,,,,,,,,,
-watchtower_2,감시탑 Lv.2,2,watchtower,200,25,습격 규모 알림,,,,,2,,,,,
-alchemy_lab,연금술소,3,smithy|hospital,300,30,"소모품 제작 (치료약, 사기 물약 등)",,,,,,,,,true,
-market,시장,3,stagecoach,200,30,턴당 골드 수입,,,,,,,,,,20
-watchtower_3,감시탑 Lv.3,3,watchtower_2,350,30,적 구성 상세 공개,,,,,3,,,,,
+id,name_ko,tier,requires,cost,build_cost,description,recruit_slots,feast_available,craft_weapon,repair,raid_info_level,heal_speed,morale_stabilize,trade_available,alchemy_available,gold_per_turn,name_key,description_key
+tavern,주점,1,,100,20,영웅 고용,2,false,,,,,,,,facility.tavern.name,facility.tavern.desc
+smithy,대장간,1,,150,20,장비 제작/수리,,,true,true,,,,,,,facility.smithy.name,facility.smithy.desc
+watchtower,감시탑,1,,100,20,습격 유무 알림,,,,,1,,,,,,facility.watchtower.name,facility.watchtower.desc
+farm,농장,1,,80,20,턴당 식량 생산,,,,,,,,,,,,facility.farm.name,facility.farm.desc
+lumber_mill,벌목장,1,,80,20,턴당 나무 생산,,,,,,,,,,,,facility.lumber_mill.name,facility.lumber_mill.desc
+hospital,병원,2,tavern,200,25,부상 영웅 치료 (회복 턴 절반) + 사기 안정화,,,,,,2,true,,,,facility.hospital.name,facility.hospital.desc
+stagecoach,역마차,2,tavern,150,25,"교역 상인 도착, 외부 정보",,,,,,,,true,,,facility.stagecoach.name,facility.stagecoach.desc
+training_ground,훈련장,2,smithy,200,25,영웅 HP 회복 속도 +50%,,,,,,,,,,,,facility.training_ground.name,facility.training_ground.desc
+watchtower_2,감시탑 Lv.2,2,watchtower,200,25,습격 규모 알림,,,,,2,,,,,,facility.watchtower_2.name,facility.watchtower_2.desc
+alchemy_lab,연금술소,3,smithy|hospital,300,30,"소모품 제작 (치료약, 사기 물약 등)",,,,,,,,,true,,facility.alchemy_lab.name,facility.alchemy_lab.desc
+market,시장,3,stagecoach,200,30,턴당 골드 수입,,,,,,,,,,20,facility.market.name,facility.market.desc
+watchtower_3,감시탑 Lv.3,3,watchtower_2,350,30,적 구성 상세 공개,,,,,3,,,,,,facility.watchtower_3.name,facility.watchtower_3.desc

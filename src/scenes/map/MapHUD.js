@@ -5,6 +5,7 @@ import { C, HUD_H } from './MapConstants.js';
 import { FONT, FONT_BOLD } from '../../constants.js';
 import store from '../../store/Store.js';
 import SaveManager from '../../store/SaveManager.js';
+import locale from '../../game_logic/LocaleManager.js';
 
 class MapHUD {
     constructor(scene) {
@@ -65,13 +66,13 @@ class MapHUD {
         }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true }).setDepth(201);
         s.edictText.on('pointerdown', () => s._showPanelAction('edict'));
 
-        this._drawNavButton(width - 200, 4, 65, HUD_H - 8, '턴 종료', C.accentRed, () => s._onEndTurn());
-        this._drawNavButton(width - 128, 4, 45, HUD_H - 8, '저장', C.textMuted, () => { SaveManager.save(store); });
+        this._drawNavButton(width - 200, 4, 65, HUD_H - 8, locale.t('ui.hud.end_turn'), C.accentRed, () => s._onEndTurn());
+        this._drawNavButton(width - 128, 4, 45, HUD_H - 8, locale.t('ui.hud.save'), C.textMuted, () => { SaveManager.save(store); });
 
         // 전투씬 A/B 전환
         const currentScene = s.registry.get('battleScene') || 'BattleSceneA';
-        const btnLabel = currentScene === 'BattleSceneA' ? '전투:A' : '전투:B';
-        s._battleToggleBtn = s.add.text(width - 68, HUD_H / 2, `[${btnLabel}]`, {
+        const battleLabel = (sceneId) => sceneId === 'BattleSceneA' ? locale.t('ui.hud.battle_a') : locale.t('ui.hud.battle_b');
+        s._battleToggleBtn = s.add.text(width - 68, HUD_H / 2, `[${battleLabel(currentScene)}]`, {
             fontSize: '10px', fontFamily: FONT, color: '#f8c830'
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(201);
         s._battleToggleBtn.on('pointerdown', () => {
@@ -79,7 +80,7 @@ class MapHUD {
             const next = cur === 'BattleSceneA' ? 'BattleSceneB' : 'BattleSceneA';
             s.registry.set('battleScene', next);
             s.expeditionManager.setBattleMode(next === 'BattleSceneA' ? 'melee' : 'tag');
-            s._battleToggleBtn.setText(`[${next === 'BattleSceneA' ? '전투:A' : '전투:B'}]`);
+            s._battleToggleBtn.setText(`[${battleLabel(next)}]`);
         });
 
         // 원정 모드 토글 레이블
@@ -88,7 +89,7 @@ class MapHUD {
         }).setOrigin(0.5).setDepth(201);
         const updateExpLabel = () => {
             const mode = s.registry.get('expeditionMode') || 'node';
-            expModeLabel.setText(mode === 'node' ? '[원정:노드]' : '[원정:주사위]');
+            expModeLabel.setText(mode === 'node' ? locale.t('ui.hud.exp_node') : locale.t('ui.hud.exp_dice'));
         };
         updateExpLabel();
 
@@ -146,14 +147,15 @@ class MapHUD {
         const activeDef = em.getActiveDefinition();
         if (activeDef) {
             const remain = em.getRemainingTurns(day);
-            s.edictText.setText(`📜 ${activeDef.name_ko} (${remain}턴)`);
+            const edictName = activeDef.sin ? locale.edictName(activeDef.sin) : (activeDef.name_ko || '');
+            s.edictText.setText(locale.t('ui.hud.edict_active', { name: edictName, remain }));
             s.edictText.setColor('#f8c830');
         } else if (em.isCooldown(day)) {
             const cd = em.getCooldownTurns(day);
-            s.edictText.setText(`📜 쿨다운 ${cd}턴`);
+            s.edictText.setText(locale.t('ui.hud.edict_cooldown', { cd }));
             s.edictText.setColor('#808098');
         } else {
-            s.edictText.setText('📜 국시 없음');
+            s.edictText.setText(locale.t('ui.hud.edict_none'));
             s.edictText.setColor('#808098');
         }
     }
@@ -161,8 +163,11 @@ class MapHUD {
     updatePhaseDisplay() {
         const s = this.scene;
         const turn = s.turnManager.getCurrentTurn();
-        s.dayText.setText(`Day ${turn.day}`);
-        s.phaseText.setText(`[${s.turnManager.getPhaseName()}]`);
+        s.dayText.setText(locale.t('ui.hud.day', { day: turn.day }));
+        // phaseName은 현재 turnManager가 반환하는 한글 이름 사용 (Phase C2에서 locale 이관 예정)
+        const phaseId = s.turnManager.getCurrentTurn().phase;
+        const phaseLabel = phaseId ? locale.phaseName(phaseId) : s.turnManager.getPhaseName();
+        s.phaseText.setText(`[${phaseLabel}]`);
         if (s.world) s.world.drawApproachPath();
     }
 }

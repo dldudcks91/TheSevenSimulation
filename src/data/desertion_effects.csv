@@ -1,8 +1,8 @@
-sin,effect_type,target,value,description
-wrath,morale,all,-5,폭력적 탈영 — 전체 사기 하락
-greed,gold,self,-80,창고 털고 도주
-lust,morale,random_1,-20,다른 영웅 꼬여서 함께 떠남
-envy,none,,,사보타주 후 이탈
-sloth,none,,,조용히 사라짐
-gluttony,none,,,보급품 갖고 이탈
-pride,none,,,복종 거부 선언 후 이탈
+sin,effect_type,target,value,description,description_key
+wrath,morale,all,-5,폭력적 탈영 — 전체 사기 하락,desertion.wrath.desc
+greed,gold,self,-80,창고 털고 도주,desertion.greed.desc
+lust,morale,random_1,-20,다른 영웅 꼬여서 함께 떠남,desertion.lust.desc
+envy,none,,,사보타주 후 이탈,desertion.envy.desc
+sloth,none,,,조용히 사라짐,desertion.sloth.desc
+gluttony,none,,,보급품 갖고 이탈,desertion.gluttony.desc
+pride,none,,,복종 거부 선언 후 이탈,desertion.pride.desc

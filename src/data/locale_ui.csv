@@ -1,0 +1,44 @@
+key,ko,en
+ui.lang.ko,한국어,Korean
+ui.lang.en,영어,English
+ui.lang.label,언어,Language
+ui.title.sub,S I M U L A T I O N,S I M U L A T I O N
+ui.title.tagline,타락한 마왕이 결함 있는 인간들을 이끈다,A fallen demon lord leads flawed humans
+ui.btn.new_game,새  게  임,NEW  GAME
+ui.btn.continue,이  어  하  기,CONTINUE
+ui.title.save_info,{day}일차 | {date},Day {day} | {date}
+ui.credits.based_on,Based on TheSevenTactics,Based on TheSevenTactics
+ui.credits.phase,Phase 1 — Web Prototype,Phase 1 — Web Prototype
+log.hero.rampage,{hero|이} 분노로 폭발했다!,{hero} erupts in rage!
+log.hero.desert,{hero|이} 거점을 떠났다.,{hero} has left the base.
+ui.intro.hint,클릭하여 진행,Click to continue
+ui.intro.skip,SKIP >>,SKIP >>
+ui.hero_select.title,동 료  선 택,SELECT  ALLIES
+ui.hero_select.subtitle,바알과 함께할 세 명의 부하를 선택하십시오,Choose three servants to stand with Baal
+ui.hero_select.cost_per_turn,비용 {cost}/턴,Cost {cost}/turn
+ui.hero_select.reroll,🎲 다시 뽑기,🎲 Reroll
+ui.hero_select.start,▶ 여정 시작,▶ Begin
+ui.hud.end_turn,턴 종료,End Turn
+ui.hud.save,저장,Save
+ui.hud.battle_a,전투:A,Battle:A
+ui.hud.battle_b,전투:B,Battle:B
+ui.hud.exp_node,[원정:노드],[Exp:Node]
+ui.hud.exp_dice,[원정:주사위],[Exp:Dice]
+ui.hud.edict_active,📜 {name} ({remain}턴),📜 {name} ({remain}t)
+ui.hud.edict_cooldown,📜 쿨다운 {cd}턴,📜 Cooldown {cd}t
+ui.hud.edict_none,📜 국시 없음,📜 No Edict
+ui.hud.day,Day {day},Day {day}
+ui.tab.base,시설,Base
+ui.tab.hero,영웅,Heroes
+ui.tab.item,아이템,Items
+ui.tab.expedition,원정,Expedition
+ui.tab.edict,국시,Edict
+ui.tab.bestiary,도감,Bestiary
+ui.outside.defense,방어 배치,Defense
+ui.outside.gather,채집,Gather
+ui.outside.lumber,벌목,Lumber
+ui.outside.hunt,사냥,Hunt
+ui.outside.expedition,원정,Expedition
+ui.action.build,건설,Build
+ui.action.build_assign,건설 투입,Assign Build
+ui.action.research,연구,Research

@@ -7,6 +7,7 @@ import { C, HUD_H, MAP_VP_W, MAP_VP_H, MAP_WORLD_W, MAP_WORLD_H,
 } from './MapConstants.js';
 import { FONT, FONT_BOLD } from '../../constants.js';
 import store from '../../store/Store.js';
+import locale from '../../game_logic/LocaleManager.js';
 
 class MapWorld {
     constructor(scene) {
@@ -89,7 +90,7 @@ class MapWorld {
             container.add(bg);
             const iconT = s.add.text(0, -14, slot.icon, { fontSize: '22px', fontFamily: FONT }).setOrigin(0.5);
             container.add(iconT);
-            const titleT = s.add.text(0, 16, slot.title, {
+            const titleT = s.add.text(0, 16, slot.titleKey ? locale.t(slot.titleKey) : slot.title, {
                 fontSize: '10px', fontFamily: FONT, color: slot.colorHex,
                 shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
             }).setOrigin(0.5);

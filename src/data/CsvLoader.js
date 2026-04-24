@@ -128,7 +128,9 @@ async function loadAllCsv(basePath = './data/') {
         'items',
         'traits',
         'expedition_nodes',
-        'expedition_dice'
+        'expedition_dice',
+        'locale_ui',
+        'locale_data'
     ];
 
     const results = {};
@@ -160,18 +162,33 @@ function buildGameData(csvData) {
     const data = {};
 
     // ─── heroData (HeroManager용) ───
+    // name_pool: 한글 풀 (기존 소비자 호환용)
+    // name_pool_i18n: 언어별 풀 — HeroManager가 생성 시점 언어로 pick
     data.heroData = {
         name_pool: {
             first: csvData.hero_names.filter(r => r.type === 'first').map(r => r.name),
             last: csvData.hero_names.filter(r => r.type === 'last').map(r => r.name)
         },
+        name_pool_i18n: {
+            ko: {
+                first: csvData.hero_names.filter(r => r.type === 'first').map(r => r.name),
+                last: csvData.hero_names.filter(r => r.type === 'last').map(r => r.name)
+            },
+            en: {
+                first: csvData.hero_names.filter(r => r.type === 'first').map(r => r.name_en || r.name),
+                last: csvData.hero_names.filter(r => r.type === 'last').map(r => r.name_en || r.name)
+            }
+        },
         sin_types: csvData.sin_types.map(r => ({
-            id: r.id, name_ko: r.name_ko, flaw: r.flaw, rampage: r.rampage, desertion: r.desertion
+            id: r.id, name_ko: r.name_ko, flaw: r.flaw, rampage: r.rampage, desertion: r.desertion,
+            name_key: r.name_key, flaw_key: r.flaw_key, rampage_key: r.rampage_key, desertion_key: r.desertion_key
         })),
-        stat_names: {}
+        stat_names: {},
+        stat_name_keys: {}
     };
     for (const r of csvData.stat_names) {
         data.heroData.stat_names[r.id] = r.name_ko;
+        if (r.name_key) data.heroData.stat_name_keys[r.id] = r.name_key;
     }
 
     // ─── sinRelations (SinSystem용) ───
@@ -185,7 +202,11 @@ function buildGameData(csvData) {
     const relationEffects = {};
     for (const r of csvData.sin_relations) {
         if (!relationEffects[r.relation]) {
-            relationEffects[r.relation] = { morale_delta: r.morale_delta, description: r.description || '' };
+            relationEffects[r.relation] = {
+                morale_delta: r.morale_delta,
+                description: r.description || '',
+                description_key: r.description_key || null
+            };
         }
     }
 
@@ -199,12 +220,18 @@ function buildGameData(csvData) {
 
     const rampageChain = {};
     for (const r of csvData.sin_rampage_chain) {
-        rampageChain[r.sin] = { target: r.target, morale_delta: r.morale_delta, description: r.description };
+        rampageChain[r.sin] = {
+            target: r.target,
+            morale_delta: r.morale_delta,
+            description: r.description,
+            description_key: r.description_key || null
+        };
     }
 
     data.sinRelations = {
         sin_types: sinIds,
         sin_names_ko: {},
+        sin_name_keys: {},
         relations,
         relation_effects: relationEffects,
         satisfaction,
@@ -212,6 +239,7 @@ function buildGameData(csvData) {
     };
     for (const r of csvData.sin_types) {
         data.sinRelations.sin_names_ko[r.id] = r.name_ko;
+        if (r.name_key) data.sinRelations.sin_name_keys[r.id] = r.name_key;
     }
 
     // ─── eventsData (EventSystem용) ───
@@ -228,12 +256,19 @@ function buildGameData(csvData) {
                 chance: r.trigger_chance || null
             },
             scene: r.scene,
+            title_key: r.title_key || `event.${r.id}.title`,
+            scene_key: r.scene_key || `event.${r.id}.scene`,
             choices: []
         };
     }
     for (const r of csvData.event_choices) {
         if (!eventsMap[r.event_id]) continue;
-        const choice = { text: r.text, log: r.log, effects: [] };
+        const choice = {
+            text: r.text, log: r.log,
+            text_key: `event.${r.event_id}.${r.choice_index}.text`,
+            log_key: `event.${r.event_id}.${r.choice_index}.log`,
+            effects: []
+        };
         const effects = csvData.event_effects.filter(
             e => e.event_id === r.event_id && e.choice_index === r.choice_index
         );
@@ -256,13 +291,17 @@ function buildGameData(csvData) {
             requires: r.requires ? r.requires.split('|').filter(Boolean) : [],
             cost: r.cost, build_cost: r.build_cost,
             description: r.description,
+            name_key: r.name_key || null,
+            description_key: r.description_key || null,
             effects: {}
         })),
         research: csvData.research.map(r => ({
             id: r.id, name_ko: r.name_ko, category: r.category,
             requires_facility: r.requires_facility, cost: r.cost, research_cost: r.research_cost,
             effect: { type: r.effect_type, value: r.effect_value },
-            description: r.description
+            description: r.description,
+            name_key: r.name_key || null,
+            description_key: r.description_key || null
         }))
     };
     // 시설 effects 복원
@@ -314,10 +353,11 @@ function buildGameData(csvData) {
         if (!data.stagesData[chKey]) data.stagesData[chKey] = [];
         const enemies = csvData.stage_enemies
             .filter(e => e.stage_id === stage.id)
-            .map(e => ({ name: e.name, hp: e.hp, atk: e.atk, spd: e.spd }));
+            .map(e => ({ name: e.name, hp: e.hp, atk: e.atk, spd: e.spd, name_key: e.name_key || null }));
         data.stagesData[chKey].push({
             id: stage.id, name: stage.name, isBoss: stage.is_boss || false,
-            enemies, reward: stage.reward
+            enemies, reward: stage.reward,
+            name_key: stage.name_key || null
         });
     }
 
@@ -327,10 +367,16 @@ function buildGameData(csvData) {
         boss: r.boss,
         environment: {
             morale_modifier: {},
-            description: r.env_description
+            description: r.env_description,
+            description_key: r.env_description_key || null
         },
         boss_briefing: r.boss_briefing,
-        boss_dying_words: r.boss_dying_words
+        boss_dying_words: r.boss_dying_words,
+        name_key: r.name_key || null,
+        region_key: r.region_key || null,
+        boss_key: r.boss_key || null,
+        boss_briefing_key: r.boss_briefing_key || null,
+        boss_dying_words_key: r.boss_dying_words_key || null
     }));
     // 챕터별 환경 사기 보정
     for (const r of csvData.chapters) {
@@ -381,7 +427,8 @@ function buildGameData(csvData) {
         type: r.type,
         pro_effect: r.pro_effect,
         con_effect: r.con_effect,
-        earn_condition: r.earn_condition
+        earn_condition: r.earn_condition,
+        name_key: r.name_key || null
     }));
 
     // ─── itemsData (아이템) ───
@@ -417,8 +464,29 @@ function buildGameData(csvData) {
         // 경제
         cost: r.cost,
         craft_facility: r.craft_facility,
-        craft_stat: r.craft_stat
+        craft_stat: r.craft_stat,
+        // i18n keys
+        name_key: r.name_key || null,
+        description_key: r.description_key || null,
+        special_key: r.special_key || null
     }));
+
+    // ─── locale dictionaries (Godot 스타일 wide CSV) ───
+    // locale_ui.csv, locale_data.csv → { key: { ko, en, ... } }
+    data.uiLocale = {};
+    for (const r of (csvData.locale_ui || [])) {
+        if (!r.key) continue;
+        const entry = { ...r };
+        delete entry.key;
+        data.uiLocale[r.key] = entry;
+    }
+    data.dataLocale = {};
+    for (const r of (csvData.locale_data || [])) {
+        if (!r.key) continue;
+        const entry = { ...r };
+        delete entry.key;
+        data.dataLocale[r.key] = entry;
+    }
 
     return data;
 }

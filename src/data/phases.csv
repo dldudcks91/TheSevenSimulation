@@ -1,5 +1,5 @@
-id,name_ko,description
-morning,아침,소식 & 이벤트 — 판결의 시간
-day,낮,거점 운영 & 원정 파견
-evening,저녁,원정 결과 & 습격 정보
-night,밤,적 습격 & 결산
+id,name_ko,description,name_key,description_key
+morning,아침,소식 & 이벤트 — 판결의 시간,phase.morning.name,phase.morning.desc
+day,낮,거점 운영 & 원정 파견,phase.day.name,phase.day.desc
+evening,저녁,원정 결과 & 습격 정보,phase.evening.name,phase.evening.desc
+night,밤,적 습격 & 결산,phase.night.name,phase.night.desc

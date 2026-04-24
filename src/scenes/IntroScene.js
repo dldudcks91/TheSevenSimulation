@@ -5,38 +5,76 @@
  */
 
 import { FONT } from '../constants.js';
+import locale from '../game_logic/LocaleManager.js';
 
-const PROLOGUE_SCENES = [
-    {
-        title: '왕좌',
-        lines: [
-            '지옥에는 왕이 있었다.',
-            '',
-            '바알. 대악마.',
-            '이 땅의 모든 것은 그의 것이었고,',
-            '7개의 감정을 나누어 부하에게 깃들게 했다.',
-            '',
-            '분노, 시기, 탐욕, 나태, 폭식, 색욕, 오만.',
-            '',
-            '그것은 지옥을 유지하는 균형이었다.',
-        ],
-    },
-    {
-        title: '배신의 밤',
-        lines: [
-            '그 밤, 7개의 칼이 등에 꽂혔다.',
-            '',
-            '뒤를 돌아봤다.',
-            '전부 아는 얼굴이었다.',
-            '',
-            '싸웠다.',
-            '하지만 힘의 반이 이미 빠져나간 뒤였다.',
-            '묶여있던 것이 풀려있었다. 누군가가 열쇠를 넘겼다.',
-            '',
-            '밀려난다. 발밑이 무너진다.',
-        ],
-    },
-];
+const PROLOGUE_SCENES_BY_LANG = {
+    ko: [
+        {
+            title: '왕좌',
+            lines: [
+                '지옥에는 왕이 있었다.',
+                '',
+                '바알. 대악마.',
+                '이 땅의 모든 것은 그의 것이었고,',
+                '7개의 감정을 나누어 부하에게 깃들게 했다.',
+                '',
+                '분노, 시기, 탐욕, 나태, 폭식, 색욕, 오만.',
+                '',
+                '그것은 지옥을 유지하는 균형이었다.',
+            ],
+        },
+        {
+            title: '배신의 밤',
+            lines: [
+                '그 밤, 7개의 칼이 등에 꽂혔다.',
+                '',
+                '뒤를 돌아봤다.',
+                '전부 아는 얼굴이었다.',
+                '',
+                '싸웠다.',
+                '하지만 힘의 반이 이미 빠져나간 뒤였다.',
+                '묶여있던 것이 풀려있었다. 누군가가 열쇠를 넘겼다.',
+                '',
+                '밀려난다. 발밑이 무너진다.',
+            ],
+        },
+    ],
+    en: [
+        {
+            title: 'The Throne',
+            lines: [
+                'Hell had a king.',
+                '',
+                'Baal. The Great Demon.',
+                'All of this land was his,',
+                'and he split the seven emotions among his servants.',
+                '',
+                'Wrath, Envy, Greed, Sloth, Gluttony, Lust, Pride.',
+                '',
+                'That was the balance that held Hell together.',
+            ],
+        },
+        {
+            title: 'The Night of Betrayal',
+            lines: [
+                'That night, seven blades pierced his back.',
+                '',
+                'He turned.',
+                'Every face was known to him.',
+                '',
+                'He fought.',
+                'But half his power had already drained away.',
+                'Chains had been loosed. Someone had given them the key.',
+                '',
+                'He falls. The ground collapses beneath him.',
+            ],
+        },
+    ],
+};
+
+function getPrologueScenes() {
+    return PROLOGUE_SCENES_BY_LANG[locale.getLang()] || PROLOGUE_SCENES_BY_LANG.ko;
+}
 
 const TYPE_SPEED = 40;
 const BLANK_LINE_HEIGHT = 16;
@@ -133,7 +171,7 @@ class IntroScene extends Phaser.Scene {
         this._skipZone.on('pointerout', () => skipText.setColor('#505070'));
 
         // 푸터: 힌트
-        this._hintText = this.add.text(w / 2, h - 28, '클릭하여 진행', {
+        this._hintText = this.add.text(w / 2, h - 28, locale.t('ui.intro.hint'), {
             fontSize: '11px', fontFamily: FONT, color: '#505070'
         }).setOrigin(0.5).setDepth(10);
 
@@ -149,10 +187,10 @@ class IntroScene extends Phaser.Scene {
 
     /** 현재 씬 렌더링 */
     _renderScene() {
-        const scene = PROLOGUE_SCENES[this._sceneIdx];
+        const scene = getPrologueScenes()[this._sceneIdx];
         this._lineIdx = 0;
 
-        this._sceneNumText.setText(`${this._sceneIdx + 1} / ${PROLOGUE_SCENES.length}`);
+        this._sceneNumText.setText(`${this._sceneIdx + 1} / ${getPrologueScenes().length}`);
         this._titleText.setText(scene.title);
 
         // 기존 라인 제거
@@ -176,14 +214,14 @@ class IntroScene extends Phaser.Scene {
 
     /** 다음 라인으로 */
     _nextLine() {
-        const scene = PROLOGUE_SCENES[this._sceneIdx];
+        const scene = getPrologueScenes()[this._sceneIdx];
 
         if (this._lineIdx < scene.lines.length) {
             this._showNextLine();
         } else {
             // 다음 씬
             this._sceneIdx++;
-            if (this._sceneIdx < PROLOGUE_SCENES.length) {
+            if (this._sceneIdx < getPrologueScenes().length) {
                 this._fadeToNextScene();
             } else {
                 this._goToHeroSelect();
@@ -193,7 +231,7 @@ class IntroScene extends Phaser.Scene {
 
     /** 라인 하나를 타이핑 효과로 표시 */
     _showNextLine() {
-        const scene = PROLOGUE_SCENES[this._sceneIdx];
+        const scene = getPrologueScenes()[this._sceneIdx];
         const line = scene.lines[this._lineIdx];
         this._lineIdx++;
 

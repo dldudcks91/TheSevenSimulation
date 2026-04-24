@@ -21,9 +21,9 @@ export const SIN_COLOR_HEX = {
 };
 
 export const ACTION_STATS = {
-    build: { primary: ['strength', 'vitality'], label: '건설' },
-    buildAssign: { primary: ['strength', 'vitality'], label: '건설 투입' },
-    research: { primary: ['intellect', 'perception'], label: '연구' }
+    build: { primary: ['strength', 'vitality'], label: '건설', labelKey: 'ui.action.build' },
+    buildAssign: { primary: ['strength', 'vitality'], label: '건설 투입', labelKey: 'ui.action.build_assign' },
+    research: { primary: ['intellect', 'perception'], label: '연구', labelKey: 'ui.action.research' }
 };
 
 // ═══ 레이아웃 ═══
@@ -46,14 +46,14 @@ export const ZONE_OUTSIDE_START = 680;
 export const GATE_X = 445;
 export const APPROACH_Y = 213;
 
-// 탭 정의
+// 탭 정의 (label = ko fallback, labelKey = locale_ui.csv 키)
 export const TABS = [
-    { id: 'base', icon: '🏰', label: '시설' },
-    { id: 'hero', icon: '⚔', label: '영웅' },
-    { id: 'item', icon: '🎒', label: '아이템' },
-    { id: 'expedition', icon: '🗺', label: '원정' },
-    { id: 'edict', icon: '📜', label: '국시' },
-    { id: 'bestiary', icon: '📖', label: '도감' },
+    { id: 'base', icon: '🏰', label: '시설', labelKey: 'ui.tab.base' },
+    { id: 'hero', icon: '⚔', label: '영웅', labelKey: 'ui.tab.hero' },
+    { id: 'item', icon: '🎒', label: '아이템', labelKey: 'ui.tab.item' },
+    { id: 'expedition', icon: '🗺', label: '원정', labelKey: 'ui.tab.expedition' },
+    { id: 'edict', icon: '📜', label: '국시', labelKey: 'ui.tab.edict' },
+    { id: 'bestiary', icon: '📖', label: '도감', labelKey: 'ui.tab.bestiary' },
 ];
 
 // ═══ 영웅 인스펙터 (맵 영역 가로 오버레이) ═══
@@ -93,9 +93,9 @@ const _OS_TOTAL = _OS_COUNT * _OS_W + (_OS_COUNT - 1) * _OS_GAP;
 const _OS_START_X = (1280 - _OS_TOTAL) / 2 + _OS_W / 2;
 const _OS_Y = 60;
 export const OUTSIDE_SLOTS = [
-    { x: _OS_START_X + 0 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🛡️', title: '방어 배치', color: 0x4080e0, colorHex: '#4080e0', action: 'defense' },
-    { x: _OS_START_X + 1 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🌿', title: '채집', color: 0x30b050, colorHex: '#30b050', action: 'gather' },
-    { x: _OS_START_X + 2 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🪓', title: '벌목', color: 0x8a6a3a, colorHex: '#8a6a3a', action: 'lumber' },
-    { x: _OS_START_X + 3 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🏹', title: '사냥', color: 0xd0a020, colorHex: '#d0a020', action: 'hunt' },
-    { x: _OS_START_X + 4 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '⚔️', title: '원정', color: 0xe03030, colorHex: '#e03030', action: 'expeditionList' },
+    { x: _OS_START_X + 0 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🛡️', title: '방어 배치', titleKey: 'ui.outside.defense',   color: 0x4080e0, colorHex: '#4080e0', action: 'defense' },
+    { x: _OS_START_X + 1 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🌿', title: '채집',       titleKey: 'ui.outside.gather',    color: 0x30b050, colorHex: '#30b050', action: 'gather' },
+    { x: _OS_START_X + 2 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🪓', title: '벌목',       titleKey: 'ui.outside.lumber',    color: 0x8a6a3a, colorHex: '#8a6a3a', action: 'lumber' },
+    { x: _OS_START_X + 3 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '🏹', title: '사냥',       titleKey: 'ui.outside.hunt',      color: 0xd0a020, colorHex: '#d0a020', action: 'hunt' },
+    { x: _OS_START_X + 4 * (_OS_W + _OS_GAP), y: _OS_Y, icon: '⚔️', title: '원정',       titleKey: 'ui.outside.expedition', color: 0xe03030, colorHex: '#e03030', action: 'expeditionList' },
 ];

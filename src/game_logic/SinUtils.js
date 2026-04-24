@@ -6,14 +6,30 @@
  *   (RimWorld 특성 우선 + DD 이력 누적 패턴)
  */
 
+import locale from './LocaleManager.js';
+
 /** 7대 죄종 키 목록 */
 export const SIN_KEYS = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'pride'];
 
-/** 죄종 한글명 */
-export const SIN_NAMES_KO = {
-    wrath: '분노', envy: '시기', greed: '탐욕',
-    sloth: '나태', gluttony: '폭식', lust: '색욕', pride: '교만'
-};
+/**
+ * 죄종 이름 Proxy — `SIN_NAMES_KO[key]` 접근 시 현재 언어로 조회.
+ * 역사적 이름을 유지하되, 실제 값은 locale.sinName(key)로 동적 해석된다.
+ */
+export const SIN_NAMES_KO = new Proxy({}, {
+    get(_, key) {
+        if (typeof key !== 'string') return undefined;
+        if (!SIN_KEYS.includes(key)) return undefined;
+        return locale.sinName(key);
+    },
+    has(_, key) {
+        return typeof key === 'string' && SIN_KEYS.includes(key);
+    },
+    ownKeys() { return [...SIN_KEYS]; },
+    getOwnPropertyDescriptor(_, key) {
+        if (typeof key !== 'string' || !SIN_KEYS.includes(key)) return undefined;
+        return { enumerable: true, configurable: true, value: locale.sinName(key) };
+    }
+});
 
 /** 7죄종 × 7영역 매핑 (2026-04-21) */
 export const SIN_DOMAIN = {

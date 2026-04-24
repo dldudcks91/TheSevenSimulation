@@ -1,6 +1,6 @@
-name,base_hp,base_atk,spd
-들늑대,40,8,7
-야생 멧돼지,55,10,5
-독거미,30,12,9
-어둠 박쥐,25,14,10
-변이 곰,70,11,4
+name,base_hp,base_atk,spd,name_key
+들늑대,40,8,7,hunt.wolf.name
+야생 멧돼지,55,10,5,hunt.boar.name
+독거미,30,12,9,hunt.spider.name
+어둠 박쥐,25,14,10,hunt.bat.name
+변이 곰,70,11,4,hunt.bear.name

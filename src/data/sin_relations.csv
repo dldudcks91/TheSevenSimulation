@@ -1,43 +1,43 @@
-from,to,relation,morale_delta,description
-pride,envy,create,5,강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음
-pride,wrath,amplify,3,시너지 — 합치면 더 위험
-pride,sloth,oppose,-5,갈등 — 표면적 모순
-pride,greed,amplify,3,시너지 — 합치면 더 위험
-pride,gluttony,neutral,0,직접적 관계 없음
-pride,lust,amplify,3,시너지 — 합치면 더 위험
-envy,pride,require,5,강한 시너지
-envy,wrath,create,5,강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음
-envy,sloth,neutral,0,직접적 관계 없음
-envy,greed,amplify,3,시너지 — 합치면 더 위험
-envy,gluttony,neutral,0,직접적 관계 없음
-envy,lust,neutral,0,직접적 관계 없음
-wrath,pride,amplify,3,시너지 — 합치면 더 위험
-wrath,envy,amplify,3,시너지 — 합치면 더 위험
-wrath,sloth,oppose,-5,갈등 — 표면적 모순
-wrath,greed,amplify,3,시너지 — 합치면 더 위험
-wrath,gluttony,neutral,0,직접적 관계 없음
-wrath,lust,neutral,0,직접적 관계 없음
-sloth,pride,oppose,-5,갈등 — 표면적 모순
-sloth,envy,neutral,0,직접적 관계 없음
-sloth,wrath,oppose,-5,갈등 — 표면적 모순
-sloth,greed,oppose,-5,갈등 — 표면적 모순
-sloth,gluttony,amplify,3,시너지 — 합치면 더 위험
-sloth,lust,oppose,-5,갈등 — 표면적 모순
-greed,pride,amplify,3,시너지 — 합치면 더 위험
-greed,envy,amplify,3,시너지 — 합치면 더 위험
-greed,wrath,amplify,3,시너지 — 합치면 더 위험
-greed,sloth,oppose,-5,갈등 — 표면적 모순
-greed,gluttony,oppose,-5,갈등 — 표면적 모순
-greed,lust,amplify,3,시너지 — 합치면 더 위험
-gluttony,pride,neutral,0,직접적 관계 없음
-gluttony,envy,neutral,0,직접적 관계 없음
-gluttony,wrath,neutral,0,직접적 관계 없음
-gluttony,sloth,amplify,3,시너지 — 합치면 더 위험
-gluttony,greed,oppose,-5,갈등 — 표면적 모순
-gluttony,lust,create,5,강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음
-lust,pride,amplify,3,시너지 — 합치면 더 위험
-lust,envy,neutral,0,직접적 관계 없음
-lust,wrath,neutral,0,직접적 관계 없음
-lust,sloth,oppose,-5,갈등 — 표면적 모순
-lust,greed,amplify,3,시너지 — 합치면 더 위험
-lust,gluttony,create,5,강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음
+from,to,relation,morale_delta,description,description_key
+pride,envy,create,5,강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음,relation.create.desc
+pride,wrath,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+pride,sloth,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+pride,greed,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+pride,gluttony,neutral,0,직접적 관계 없음,relation.neutral.desc
+pride,lust,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+envy,pride,require,5,강한 시너지,relation.require.desc
+envy,wrath,create,5,강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음,relation.create.desc
+envy,sloth,neutral,0,직접적 관계 없음,relation.neutral.desc
+envy,greed,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+envy,gluttony,neutral,0,직접적 관계 없음,relation.neutral.desc
+envy,lust,neutral,0,직접적 관계 없음,relation.neutral.desc
+wrath,pride,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+wrath,envy,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+wrath,sloth,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+wrath,greed,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+wrath,gluttony,neutral,0,직접적 관계 없음,relation.neutral.desc
+wrath,lust,neutral,0,직접적 관계 없음,relation.neutral.desc
+sloth,pride,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+sloth,envy,neutral,0,직접적 관계 없음,relation.neutral.desc
+sloth,wrath,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+sloth,greed,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+sloth,gluttony,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+sloth,lust,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+greed,pride,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+greed,envy,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+greed,wrath,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+greed,sloth,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+greed,gluttony,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+greed,lust,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+gluttony,pride,neutral,0,직접적 관계 없음,relation.neutral.desc
+gluttony,envy,neutral,0,직접적 관계 없음,relation.neutral.desc
+gluttony,wrath,neutral,0,직접적 관계 없음,relation.neutral.desc
+gluttony,sloth,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+gluttony,greed,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+gluttony,lust,create,5,강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음,relation.create.desc
+lust,pride,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+lust,envy,neutral,0,직접적 관계 없음,relation.neutral.desc
+lust,wrath,neutral,0,직접적 관계 없음,relation.neutral.desc
+lust,sloth,oppose,-5,갈등 — 표면적 모순,relation.oppose.desc
+lust,greed,amplify,3,시너지 — 합치면 더 위험,relation.amplify.desc
+lust,gluttony,create,5,강한 시너지 — 앞의 죄가 뒤의 죄를 직접 낳음,relation.create.desc

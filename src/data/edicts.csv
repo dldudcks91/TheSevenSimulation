@@ -1,8 +1,8 @@
-sin,name_ko,opposite_sin,battle_power_mult,resource_gain_mult,food_consume_mult,build_research_mult,morale_tick,exp_mult,high_level_power_mult,low_level_morale_tick,morale_swing_mult,description
-wrath,강병령,sloth,0.15,0,0,0,-2,0,0,0,0,전투력 +15% / 매턴 사기 -2
-gluttony,풍요령,greed,0,0,0.3,0,3,0,0,0,0,매턴 사기 +3 / 식량 소모 +30%
-greed,축재령,gluttony,0,0.2,0,0,-3,0,0,0,0,자원 획득 +20% / 매턴 사기 -3
-sloth,안식령,wrath,-0.1,0,0,0.2,0,0,0,0,0,건설/연구 +20% / 전투력 -10%
-envy,경쟁령,lust,0,0,0,0,0,0.25,0,0,0,영웅 경험치 +25% / 갈등 증가(미구현)
-lust,열정령,envy,0,0,0,0,0,0,0,0,1.3,사기 변동폭 ×1.3(미구현)
-pride,위광령,,0,0,0,0,0,0,0.1,-3,0,Lv5+ 영웅 능력 +10% / 저렙 사기 -3(미구현)
+sin,name_ko,opposite_sin,battle_power_mult,resource_gain_mult,food_consume_mult,build_research_mult,morale_tick,exp_mult,high_level_power_mult,low_level_morale_tick,morale_swing_mult,description,name_key,description_key
+wrath,강병령,sloth,0.15,0,0,0,-2,0,0,0,0,전투력 +15% / 매턴 사기 -2,edict.wrath.name,edict.wrath.desc
+gluttony,풍요령,greed,0,0,0.3,0,3,0,0,0,0,매턴 사기 +3 / 식량 소모 +30%,edict.gluttony.name,edict.gluttony.desc
+greed,축재령,gluttony,0,0.2,0,0,-3,0,0,0,0,자원 획득 +20% / 매턴 사기 -3,edict.greed.name,edict.greed.desc
+sloth,안식령,wrath,-0.1,0,0,0.2,0,0,0,0,0,건설/연구 +20% / 전투력 -10%,edict.sloth.name,edict.sloth.desc
+envy,경쟁령,lust,0,0,0,0,0,0.25,0,0,0,영웅 경험치 +25% / 갈등 증가(미구현),edict.envy.name,edict.envy.desc
+lust,열정령,envy,0,0,0,0,0,0,0,0,1.3,사기 변동폭 ×1.3(미구현),edict.lust.name,edict.lust.desc
+pride,위광령,,0,0,0,0,0,0,0.1,-3,0,Lv5+ 영웅 능력 +10% / 저렙 사기 -3(미구현),edict.pride.name,edict.pride.desc

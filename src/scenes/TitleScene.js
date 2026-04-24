@@ -4,7 +4,8 @@
  */
 import SaveManager from '../store/SaveManager.js';
 import store from '../store/Store.js';
-import { FONT } from '../constants.js';
+import locale from '../game_logic/LocaleManager.js';
+import { FONT, LANG_KO, LANG_EN } from '../constants.js';
 
 const SIN_SYMBOLS = [
     { name: '분노', color: 0xe03030, char: '⚔' },
@@ -33,6 +34,15 @@ class TitleScene extends Phaser.Scene {
         this._drawTitle(width, height);
         this._drawButtons(width, height);
         this._drawCredits(width, height);
+        this._drawLangToggle(width, height);
+
+        // 언어 변경 시 씬 재시작하여 전체 UI 재렌더
+        this._langUnsub = store.subscribe('lang', () => {
+            this.scene.restart();
+        });
+        this.events.once('shutdown', () => {
+            if (this._langUnsub) this._langUnsub();
+        });
     }
 
     // ─── 배경 ───
@@ -198,7 +208,7 @@ class TitleScene extends Phaser.Scene {
         }).setOrigin(0.5).setAlpha(0).setDepth(-1);
 
         // 서브타이틀
-        const subtitle = this.add.text(w / 2, 290, 'S I M U L A T I O N', {
+        const subtitle = this.add.text(w / 2, 290, locale.t('ui.title.sub'), {
             fontSize: '16px', fontFamily: FONT, color: '#a0a0c0',
             letterSpacing: 8
         }).setOrigin(0.5).setAlpha(0);
@@ -208,7 +218,7 @@ class TitleScene extends Phaser.Scene {
         lineG.setAlpha(0);
 
         // 태그라인
-        const tagline = this.add.text(w / 2, 336, '타락한 마왕이 결함 있는 인간들을 이끈다', {
+        const tagline = this.add.text(w / 2, 336, locale.t('ui.title.tagline'), {
             fontSize: '11px', fontFamily: FONT, color: '#606080',
             fontStyle: 'italic'
         }).setOrigin(0.5).setAlpha(0);
@@ -269,7 +279,7 @@ class TitleScene extends Phaser.Scene {
         const btnDelay = 1600;
 
         // 새 게임
-        const newGameBtn = this._createBtn(w / 2, 440, '새  게  임', () => {
+        const newGameBtn = this._createBtn(w / 2, 440, locale.t('ui.btn.new_game'), () => {
             this._fadeOut(() => {
                 this.scene.start('IntroScene');
             });
@@ -285,9 +295,14 @@ class TitleScene extends Phaser.Scene {
         // 이어하기
         if (hasSave) {
             const saveData = SaveManager.load();
-            const info = saveData ? `${saveData.turn?.day || '?'}일차 | ${saveData.savedAt?.split('T')[0] || ''}` : '';
+            const info = saveData
+                ? locale.t('ui.title.save_info', {
+                    day: saveData.turn?.day ?? '?',
+                    date: saveData.savedAt?.split('T')[0] ?? ''
+                })
+                : '';
 
-            const continueBtn = this._createBtn(w / 2, 510, '이  어  하  기', () => {
+            const continueBtn = this._createBtn(w / 2, 510, locale.t('ui.btn.continue'), () => {
                 this._fadeOut(() => {
                     const data = SaveManager.load();
                     if (data) {
@@ -319,11 +334,11 @@ class TitleScene extends Phaser.Scene {
 
     // ─── 하단 ───
     _drawCredits(w, h) {
-        const credit1 = this.add.text(w / 2, h - 44, 'Based on TheSevenTactics', {
+        const credit1 = this.add.text(w / 2, h - 44, locale.t('ui.credits.based_on'), {
             fontSize: '9px', fontFamily: FONT, color: '#242438'
         }).setOrigin(0.5).setAlpha(0);
 
-        const credit2 = this.add.text(w / 2, h - 28, 'Phase 1 — Web Prototype', {
+        const credit2 = this.add.text(w / 2, h - 28, locale.t('ui.credits.phase'), {
             fontSize: '9px', fontFamily: FONT, color: '#242438'
         }).setOrigin(0.5).setAlpha(0);
 
@@ -333,6 +348,44 @@ class TitleScene extends Phaser.Scene {
             duration: 1000,
             delay: 2200
         });
+    }
+
+    // ─── 언어 토글 (우측 상단 KO | EN) ───
+    _drawLangToggle(w, h) {
+        const cur = locale.getLang();
+        const pad = 20;
+        const y = 24;
+        const gap = 8;
+
+        const makeLangBtn = (label, langId, xRight) => {
+            const active = cur === langId;
+            const txt = this.add.text(xRight, y, label, {
+                fontSize: '12px', fontFamily: FONT,
+                color: active ? '#e03030' : '#606080',
+                fontStyle: active ? 'bold' : 'normal'
+            }).setOrigin(1, 0.5).setAlpha(0);
+
+            const zone = this.add.zone(xRight - txt.width / 2, y, txt.width + 10, 22)
+                .setInteractive({ useHandCursor: true });
+
+            zone.on('pointerover', () => { if (!active) txt.setColor('#a0a0c0'); });
+            zone.on('pointerout',  () => { if (!active) txt.setColor('#606080'); });
+            zone.on('pointerdown', () => {
+                if (active) return;
+                locale.setLang(langId);
+                // store 'lang' 구독이 scene.restart()를 호출
+            });
+
+            this.tweens.add({ targets: txt, alpha: 1, duration: 600, delay: 1800 });
+            return { txt, zone };
+        };
+
+        const en = makeLangBtn('EN', LANG_EN, w - pad);
+        const sep = this.add.text(w - pad - en.txt.width - gap / 2, y, '|', {
+            fontSize: '12px', fontFamily: FONT, color: '#303048'
+        }).setOrigin(1, 0.5).setAlpha(0);
+        this.tweens.add({ targets: sep, alpha: 1, duration: 600, delay: 1800 });
+        makeLangBtn('KO', LANG_KO, w - pad - en.txt.width - gap);
     }
 
     // ─── 페이드 아웃 전환 ───

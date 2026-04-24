@@ -6,6 +6,7 @@ import { C, SIN_COLOR_HEX, PANEL_Y, PANEL_H, PANEL_TAB_H, PANEL_CONTENT_Y, TABS 
 import { FONT, FONT_BOLD } from '../../constants.js';
 import store from '../../store/Store.js';
 import { topSin, weightedSinRoll, SIN_NAMES_KO } from '../../game_logic/SinUtils.js';
+import locale from '../../game_logic/LocaleManager.js';
 
 const SIN_THOUGHTS = {
     wrath: {
@@ -109,7 +110,8 @@ class MapBottomPanel {
             const icon = s.add.text(tx + tw / 2 - 10, PANEL_Y + PANEL_TAB_H / 2, tab.icon, {
                 fontSize: '13px', fontFamily: FONT
             }).setOrigin(0.5).setDepth(201);
-            const label = s.add.text(tx + tw / 2 + 10, PANEL_Y + PANEL_TAB_H / 2, tab.label, {
+            const label = s.add.text(tx + tw / 2 + 10, PANEL_Y + PANEL_TAB_H / 2,
+                tab.labelKey ? locale.t(tab.labelKey) : tab.label, {
                 fontSize: '11px', fontFamily: FONT, color: C.textMuted
             }).setOrigin(0, 0.5).setDepth(201);
 

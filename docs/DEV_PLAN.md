@@ -179,6 +179,10 @@ src/
 | 69 | **죄종 × Stamina 보정** — 주 성향별 소모/회복 배율 CSV(`stamina_mult_<sin>_*`) + HeroManager 적용 (2026-04-16) | [x] |
 | 70 | **UI 정보 계층 정리** — HUD 병사 카운터 제거, Stamina 아이콘 경고 전환, HP 바 영웅 상시 표시 (2026-04-16) | [x] |
 | 71 | **사기 시스템 완전 제거 + 죄종 수치 동적화** — HeroManager/SinSystem/TurnProcessor/DayActions/ExpeditionNodeManager/EventSystem/MorningReport 전면 재작성. balance.csv morale 키 제거, sin_rampage_*/sin_*_rise/fall 키 신규. UI 6개 씬 사기 바 → 죄종 수치 바 교체 (2026-04-17) | [x] |
+| 72 | **i18n 시스템 Phase A — Godot 스타일 Wide CSV 기반** — LocaleManager.js(t/dataText/field/josa), locale_ui.csv + locale_data.csv, CsvLoader/app.js 연동, TitleScene KO/EN 토글 (2026-04-24) | [x] |
+| 73 | **i18n Phase B — CSV `_key` 컬럼 추가 + locale_data 번역 채우기** — sin_types/stat_names/facilities/research/chapters/edicts/phases/hunt_enemies/stages/stage_enemies/desertion_effects/sin_relations/sin_rampage_chain/items/traits 15개 CSV 전환. locale_data.csv 226키 영문 번역 (2026-04-24) | [x] |
+| 74 | **i18n Phase B 2차 — events/event_choices/hero_names** — events.csv title_key/scene_key 추가, hero_names.csv name_en 영문 이름 풀 54개, event_choices는 CsvLoader에서 key 자동 합성, locale_data 이벤트 타이틀 33개 번역 (2026-04-24) | [x] |
+| 75 | **i18n Phase C 1차 — 주요 씬 하드코딩 이관** — SinUtils.SIN_NAMES_KO Proxy 전환 (20+ 소비자 자동 i18n), LocaleManager 헬퍼 (sinName/statName/traitName/edictName/phaseName), IntroScene 프롤로그 한/영 분기, HeroSelectScene 완전 이관, MapHUD 완전 이관, MapConstants TABS/OUTSIDE_SLOTS/ACTION_STATS에 labelKey 추가, MapWorld/MapBottomPanel 라벨 locale 연동 (2026-04-24) | [x] |
 
 ---
 
@@ -194,6 +198,11 @@ src/
 | 6 | **밸런싱 수치 적용** | 초안 완료 | balance_design.md 작성 완료. 수치 적용 미착수 |
 | 7 | **MapScene 분리** | ✅ 완료 | 2979줄 → 278줄 코디네이터 + 11개 모듈(map/) + game_logic 2개(DayActions/TurnProcessor). 백테스팅 가능 구조 |
 | 8 | **죄종 수치화 + 특성 시스템** | 기획 확정, 구현 일부 잔여 | 죄종 7수치 + 주 성향 고정. 고유 특성 21종(장점 전용, 영웅별 고정) + 후천 폭주 7종. **미완료: hero_names.csv 21명 축소 + 매핑, traits.csv 정리, 배정 코드 변경** |
+| 9 | **i18n Phase B 1차 — 15개 CSV `_key` 컬럼 추가** | ✅ 2026-04-24 | sin_types/stat_names/facilities/research/chapters/edicts/phases/hunt_enemies/stages/stage_enemies/desertion_effects/sin_relations/sin_rampage_chain/items/traits. 기존 한글 컬럼 유지 (비파괴), `_key` 추가 + CsvLoader 전달 |
+| 10 | **i18n Phase B 2차 — 일부 완료** | ✅ 2026-04-24 | events/hero_names 완료. hero_epithets/sin_satisfaction/traits의 pro_effect/con_effect/event_choices 영문은 Phase D로 |
+| 11 | **i18n Phase C 1차 — 주요 씬 하드코딩 이관** | ✅ 2026-04-24 | SinUtils Proxy, IntroScene, HeroSelectScene, MapHUD, MapConstants 완료. MapBottomPanel 탭만 (본문 미이관), PopupsBuild/Hero/Action, 배틀 씬들, MapDefenseMode/HuntPopup/ActionPopup, MorningReport, ResultScene, SettlementScene, GameOverScene, CriticalEventPopup, ExpeditionScene은 미이관 |
+| 12 | **i18n Phase C 2차 — 나머지 UI 이관** | 미구현 | MapBottomPanel 탭 본문 (SIN_THOUGHTS 63 phrases/sin), PopupsBuild/Hero/Action, 전투씬, 원정 씬, 팝업들, MorningReport 영문. 각 파일 순차 이관 |
+| 13 | **i18n Phase D — 잔여 번역 채우기 + 완결성 검증** | 미구현 | event_choices 228건, traits pro/con, hero_epithets, SIN_THOUGHTS 번역. `[locale] missing` 경고 zero 달성 |
 
 ---
 

@@ -5,7 +5,153 @@
 
 ---
 
-## 현재 진행 중인 작업 — 죄종 시스템 세부 확정 (2026-04-21)
+## 현재 진행 중인 작업 — i18n 시스템 도입 Phase A (2026-04-24)
+
+### 🟢 확정된 내용 (2026-04-24)
+
+#### i18n 아키텍처 확정 — Godot 스타일 Wide CSV
+- **목적**: Reddit 출시 대응 — 한국어/영어 2개 언어 지원
+- **구조**: Wide CSV (key, ko, en, ...) — Godot TranslationServer와 동일 포맷 → Phase 2 이식 시 drop-in
+- **파일 분리**:
+  - `locale_ui.csv` — UI 고정 문구 + 동적 템플릿 (버튼/라벨/로그)
+  - `locale_data.csv` — 게임 데이터 텍스트 (죄종명/시설명/아이템명 등)
+- **언어 추가 시**: 두 CSV에 열 1개 추가 + `constants.SUPPORTED_LANGS`에 추가 → 끝
+
+#### LocaleManager API (`src/game_logic/LocaleManager.js`)
+- `t(key, params)` — UI 문구 조회 + 파라미터 치환
+- `dataText(key)` — 데이터 문구 조회
+- `field(obj, 'name')` — CSV 객체에서 `obj.name_key` → dataText 조회
+- `setLang(lang)` — localStorage 저장 + `store.setState('lang', ...)` 알림
+- `toggle()` — KO ↔ EN 순환
+- `josa(word, type)` — 한국어 조사 자동 처리 (받침 감지 + ㄹ 예외)
+- **템플릿 치환 문법**: `{name}` 단순 치환, `{name|을}` 조사 자동 (ko만)
+
+#### 자동 언어 감지
+- localStorage `theseven_lang` 우선 → `navigator.language.startsWith('ko')` → default `ko`
+
+#### Phase A 완료 (2026-04-24) — 기반 구축 + TitleScene 데모
+- ✅ `src/constants.js` — LANG_KO/LANG_EN/SUPPORTED_LANGS
+- ✅ `src/data/locale_ui.csv` — 12개 키 (UI + 로그 템플릿)
+- ✅ `src/data/locale_data.csv` — 7죄종명
+- ✅ `src/game_logic/LocaleManager.js` — 신규 (195줄)
+- ✅ `src/data/CsvLoader.js` — locale_ui/locale_data 로딩 추가
+- ✅ `src/app.js` — `locale.init()` 호출, registry에 등록
+- ✅ `src/scenes/TitleScene.js` — 우측 상단 KO | EN 토글, 모든 텍스트 `locale.t()` 전환, 언어 변경 시 `scene.restart()` 재렌더
+
+### 🟢 Phase B 1차 완료 (2026-04-24) — 15개 CSV `_key` 컬럼 추가
+
+**처리된 CSV (비파괴 — 기존 한글 컬럼 유지)**:
+- sin_types → name_key, flaw_key, rampage_key, desertion_key
+- stat_names → name_key
+- facilities → name_key, description_key
+- research → name_key, description_key
+- chapters → name_key, region_key, boss_key, env_description_key, boss_briefing_key, boss_dying_words_key
+- edicts → name_key, description_key
+- phases → name_key, description_key
+- hunt_enemies → name_key
+- stages → name_key
+- stage_enemies → name_key
+- desertion_effects → description_key
+- sin_relations → description_key (relation 타입별 5종)
+- sin_rampage_chain → description_key
+- items → name_key, description_key, special_key (44개)
+- traits → name_key (45개)
+
+**locale_data.csv**: 226개 키 + 영문 번역 완료
+
+**CsvLoader.js**: 각 CSV에서 `_key` 컬럼을 buildGameData 출력 객체에 전달. 예:
+- `data.heroData.sin_types[i].name_key`
+- `data.facilitiesData.facilities[i].name_key`, `.description_key`
+- `data.chapters[i].name_key`, `.environment.description_key` 등
+
+**비파괴 보장**: 기존 `name_ko`/`description` 필드 그대로 유지 → 기존 소비자 코드는 무영향. Phase C에서 `locale.field(obj, 'name')`로 점진 전환.
+
+### 🟢 Phase B 2차 완료 (2026-04-24)
+- **events.csv**: title_key/scene_key 컬럼 추가 (33 이벤트)
+- **hero_names.csv**: name_en 컬럼 추가 (영문 이름 풀 54개 — Kael/Dran/Flamehand 등 로마자 transliteration)
+- **event_choices**: CSV 수정 없음 — CsvLoader에서 `event.{id}.{idx}.text/log` 자동 합성
+- **locale_data.csv**: 33개 이벤트 타이틀 영문 번역 추가 (예: "주먹다짐" → "Brawl")
+- **미처리**: event_choices 228건 실제 영문 번역 (키만 있고 번역 비어있어 ko fallback), traits pro_effect/con_effect, hero_epithets, sin_satisfaction — Phase D로
+
+### 🟢 Phase C 1차 완료 (2026-04-24) — 주요 씬 i18n
+**구조 개선**:
+- `SinUtils.SIN_NAMES_KO` → Proxy로 변환 (20+ 소비자 코드 변경 없이 자동 i18n)
+- `LocaleManager`에 헬퍼 추가: `sinName/sinFlaw/sinRampage/sinDesertion/statName/traitName/edictName/edictDesc/phaseName`
+- `MapConstants` TABS/OUTSIDE_SLOTS/ACTION_STATS에 `labelKey` 속성 추가
+
+**씬 이관 완료**:
+- `IntroScene.js` — 2개 프롤로그 씬 × 각 10라인 한/영 분기 (`PROLOGUE_SCENES_BY_LANG`)
+- `HeroSelectScene.js` — 영웅 선택 UI 완전 이관 (제목/부제/스토리 7개×2언어/스탯명/버튼)
+- `MapHUD.js` — HUD 전체 이관 (턴 종료/저장/전투 토글/원정 모드/국시 배지/Day 표시)
+- `MapBottomPanel.js` — 탭 라벨만 이관 (SIN_THOUGHTS/STATUS_ACTIVITY 본문은 Phase D)
+- `MapWorld.js` — 영외 슬롯 라벨 locale 연동
+
+**locale_ui.csv 확장**: 12 → 44 키 (UI 버튼/탭/HUD/행동)
+
+**언어 전환 UX**: TitleScene 우측 상단 `KO | EN` 토글 (게임 시작 전 선택). 이후 세션 내 변경은 restart 필요.
+
+### 🟡 남은 작업 (Phase C 2차 + Phase D)
+- **Phase C 2차**: MapBottomPanel SIN_THOUGHTS (63 phrases/sin 영문), STATUS_ACTIVITY (9), PopupsBuild/Hero/Action, BattleSceneA/B, DuelBattleScene, MapDefenseMode, MapHuntPopup, MapActionPopup, MorningReportPopup+MorningReport.js, ResultScene, SettlementScene, GameOverScene, CriticalEventPopup+CriticalEventSystem, ExpeditionScene, EventScene
+- **Phase D**: 잔여 번역 (event_choices 228건, traits pro/con, hero_epithets 63조합), `[locale] missing` 경고 zero 달성
+
+### 테스트 방법
+1. `src/` 폴더에서 로컬 서버 실행 (`python -m http.server` 등)
+2. 브라우저에서 타이틀 화면 진입
+3. 우측 상단 `KO | EN` 토글 클릭 → 씬 재시작하며 전체 텍스트 영/한 전환 확인
+4. 새로고침 후에도 선택 언어 유지되는지 확인 (localStorage)
+
+---
+
+## 이전 작업 — bonds 판정 + 관계 매트릭스 재설계 (2026-04-24)
+
+### 🟢 확정된 내용 (2026-04-24)
+
+#### 관계 매트릭스 전면 재설계
+- 기존 "생성" 관계 **완전 삭제**
+- **교만 완전 고립** — 타 6개 죄종 모두 대립 ("모든 죄의 근원", 루시퍼 추락 모티프)
+- **동류 (같은 topSin)** 추가 — 같은 감정 공유자끼리 가장 강한 결속
+- **4가지 관계 유형**: 동류 ×2 / 강화 ×1.5 / 중립 ×1 / 대립 ×-2
+- **강화 3쌍**: 분노↔시기, 탐욕↔색욕, 폭식↔나태
+- **대립 9쌍**: 교만↔타6(6쌍) + 분노↔나태, 탐욕↔폭식, 시기↔색욕(3쌍)
+
+#### bonds 성향 판정 규칙
+- **판정 본체 = 현재 `topSin()`** — sinStats 최고값 죄종
+- **동률 해체 = `hero.sinPriority`** — 영웅 생성 시 7죄종 랜덤 셔플 영구 저장된 숨은 우선순위
+- **시작특성(trait)은 bonds 판정에 개입하지 않음** — 시작특성은 sinStats 쌓임 속도 편향 역할만
+- **판정 시점**: 사건 발생 순간 스냅샷 (매 턴 자동 변동 없음 → 순환 피드백 방지)
+
+#### 매트릭스 적용 범위
+- **긍정 사건 ✅ 적용** — 같은 경험도 성향에 따라 반응이 다름
+- **부정 사건 ❌ 미적용** — 배신/폭주 피해는 누구에게나 배신, 원본 Δ 그대로
+- **상시 특성 배경 ❌ 미적용** — 특성 자체가 성격 표현, 이중 적용 방지
+
+#### 계산 순서
+```
+기본Δ × 관계배율(긍정 사건만) × 색욕고양(×2) × 열정령국시(×1.5)
+→ Math.round → 분노고양 가드(Δ>0 차단) → clamp[0, 100]
+```
+
+#### 문서 반영 완료
+- `sin_system.md` §3 매트릭스 전면 교체 (4관계 유형 + 교만 고립 + 대칭 3+3 페어)
+- `sin_system.md` §2-A 판정 규칙 + 배율 규칙 추가
+- `hero_design.md` §6 관계 시스템 섹션 재작성 (sinPriority 데이터 구조 추가)
+- `GAME_DESIGN.md` 죄종 간 관계 매트릭스 섹션 전면 교체
+
+### 🟡 다음 세션 우선
+- **bonds 사건별 Δ 수치표** — 원정 귀환/사냥/연회/방어전/이벤트/폭주 등 실제 메커닉별 기본 Δ 확정
+  - 기획 방향: 실제 게임 메커닉과 1:1 매핑 (추상적 "위기 구조·복수·두둔" 같은 거 배제)
+  - 현재 구현된 원정 귀환 ±3만 유지, 나머지는 플레이테스트 후 결정 추천
+
+### 🔴 코드 반영 대기
+- [ ] `hero.sinPriority` 필드 추가 (영웅 생성 시 랜덤 셔플 영구 저장)
+- [ ] bonds 성향 판정 함수 (topSin + sinPriority 동률 해체)
+- [ ] bonds 관계 매트릭스 상수 (SIN_RELATION_MATRIX)
+- [ ] bonds 변동 시 매트릭스·글로벌 배율 스택 적용 (HeroManager.adjustBonds 확장)
+- [ ] bonds 사건별 훅 연결 (사건 수치 확정 후)
+
+---
+
+## 이전 진행 — 죄종 시스템 세부 확정 (2026-04-21)
 
 ### 🟢 확정된 내용
 
@@ -87,8 +233,11 @@
 - [x] **시기/색욕 장점 단순화** — 단일화 완료 (2026-04-21)
 - [x] **정화 수단 카탈로그** — 반대 행동 원칙 확정, 문서·balance.csv 반영 완료 (2026-04-21)
 - [x] **20 도달 이벤트 7개 세부** — 선택지 텍스트 + 확률 수치 확정 (2026-04-21)
-- [ ] **bonds 변동 규칙표** — 사건별 ±N 구체화
+- [x] **bonds 판정 규칙** — topSin + sinPriority 숨은 우선순위 확정 (2026-04-24)
+- [x] **관계 매트릭스 재설계** — 생성 삭제, 교만 고립, 4유형 배율 확정 (2026-04-24)
+- [ ] **bonds 사건별 Δ 수치표** — 실제 메커닉별 기본 Δ 추후 확정
 - [x] **시작특성 21종 편향/저항/중립 재분류** — 편향8/저항5/중립8 확정 (2026-04-21)
+- [ ] **시작특성 편향 8종 → 구체 죄종 매핑** — 8종이 어느 죄종에 편향인지 (8:7 비대칭 해소)
 - [ ] 숙소 티어 수치 (수용/배율/1인실 개수) 플레이테스트 후 조정
 
 ### 🔴 코드 반영 대기
@@ -206,21 +355,18 @@ _없음_
 
 ## 다음 할 일
 
-### 우선 — 쌓임 프레임 세부 확정 (다음 세션 예정)
-- [ ] 수치 구간 경계값 확정 (0~?/?~?/?~17/18+)
-- [ ] 정화 수단 카탈로그 작성 (어떤 수단이 어떤 죄종을 얼마나 감소시키는지)
-- [ ] 폭주 트리거 범위 확정 (어느 죄종이든 vs 특정 조건)
-- [ ] 연쇄 전파 패턴 확정 (같은 죄종만 vs 연관 죄종까지)
-- [ ] 후천특성 기존 기획과의 병합 설계
-- [ ] 시작특성 21종 → 편향/저항/중립 재분류
+### 우선 — bonds 시스템 코드 반영 + 구체 수치
+- [ ] `hero.sinPriority` 필드 추가 (HeroManager._generateHero, 7죄종 랜덤 셔플)
+- [ ] 성향 판정 함수 `getSinDisposition(hero)` — topSin + sinPriority 동률 해체
+- [ ] `SIN_RELATION_MATRIX` 상수 (동류/강화/중립/대립 × 배율)
+- [ ] `HeroManager.adjustBonds` 확장 — 매트릭스·글로벌 배율 스택 적용
+- [ ] balance.csv에 배율 키 추가 (bonds_mult_kin / bonds_mult_enhance / bonds_mult_neutral / bonds_mult_conflict)
+- [ ] sinPriority 세이브/로드 (SaveManager)
+- [ ] **bonds 사건별 Δ 수치표 기획 확정 (플레이테스트 후 구체 사건 맵핑)**
 
-### 쌓임 프레임 확정 후 구현 작업
-- [ ] `_rollSinStats()` → 모두 0으로 초기화
-- [ ] `SinDynamics`/TurnProcessor "내리는 조건" 제거, 정화 수단 경로만 유지
-- [ ] `DayActions` 자동 감소 로직 제거
-- [ ] `balance.csv` 감소 상수 정리 + 정화 수단 전용 상수 추가
-- [ ] UI 저수치 경고 제거
-- [ ] 이벤트 30개 본문 `morale` → `sin_delta` 재태깅
+### 시작특성 편향 8종 죄종 매핑 (아직 미확정)
+- [ ] 8종이 어느 죄종에 편향인지 (8:7 비대칭이므로 어느 한 죄종 2개 편향 or 재배치)
+- [ ] 저항 5종이 어느 죄종에 저항인지
 
 ### 기존 TODO (유지)
 - [ ] 국시 효과 "경쟁령 갈등↑", "열정령 관계 효과", "위광령 저렙 영웅" 실제 적용 처리
@@ -251,3 +397,8 @@ _없음_
 | 2026-04-17 | 메인 죄종 개념 완전 폐기, topSin()은 상태 표현으로만 | 정체성은 **특성(trait)**이 담당. 0-시작 + 쌓임 프레임과 "고정 주 성향"은 개념적으로 충돌. 플레이어 행동이 영웅의 현재 상태를 결정 → 타락 서사 가능. |
 | 2026-04-17 | 특성 3슬롯 구조 확정 (시작 1 + 후천 2) | 시작특성(이름별 고정)이 정체성 + 죄종 쌓임 편향. 후천특성(Lv5/Lv10)이 플레이 선택의 성장. 기존 고유 특성 21종 풀은 유지, 편향/저항/중립 재분류는 다음 세션. |
 | 2026-04-17 | 기획서 뼈대 먼저 반영, 세부 수치는 다음 세션 확정 | 수치 구간/정화 카탈로그가 결정되기 전 기획서 전면 업데이트 시 TBD 마커 남발 + 이중 작업. 뼈대(개념/프레임)만 우선 반영. |
+| 2026-04-24 | bonds 성향 판정은 현재 topSin만 사용 (시작특성 무관) | 시작특성 21종 재분류(편향8/저항5/중립8) 상태에서 매트릭스를 시작특성 기반으로 돌리면 86% 페어가 중립 판정 → 기능 작동 불가. topSin 기반이면 쌓임 프레임과 정합, 시간에 따라 관계가 극적으로 변함. |
+| 2026-04-24 | 동률 해체 = `hero.sinPriority` 숨은 우선순위 순열 | sinStats 모두 0인 초반에도 영웅마다 다른 성향 판정 가능 → 초반 무력화 문제 자연 해결. 플레이어 비공개 "숨은 기질" = 결함 있는 인간 테마와 일치. |
+| 2026-04-24 | 관계 매트릭스 재설계 — 생성 삭제, 교만 완전 고립 | 기존 TheSevenTactics 매트릭스는 복잡하고 교만이 여러 강화/대립 혼재. "교만 = 모든 죄의 근원(루시퍼)"이라는 성경 모티프를 메커니즘으로 표현 → 교만 영웅 = 로스터 붕괴 가속기. 각 비교만 죄종은 1강화/2대립/3중립으로 단순. |
+| 2026-04-24 | 배율 ×2/×1.5/×1/×-2 (동류/강화/중립/대립) | 이전 ×1.5/×1.3/×1/×-0.5 대비 2배 증폭. 관계 표현을 더 강렬하게 — "같은 사건도 극단적으로 다른 결과" 재미 극대화. |
+| 2026-04-24 | 매트릭스 배율은 긍정 사건에만 적용, 부정 사건은 원본 Δ 유지 | 배신·폭주 피해는 누구에게나 배신. 성향 배율로 완화/증폭하면 서사 희석. 책임 분리: 매트릭스 = 공유 경험 해석, 부정 사건 = 무조건 악화. |

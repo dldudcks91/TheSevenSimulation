@@ -1,12 +1,12 @@
-stage_id,name,hp,atk,spd
-ch1_s1,분노의 졸개,60,12,5
-ch1_s1,분노의 졸개,60,12,5
-ch1_s1,화염 사냥개,40,15,8
-ch1_s2,분노의 전사,80,16,6
-ch1_s2,분노의 전사,80,16,6
-ch1_s2,화염 마법사,50,20,4
-ch1_s3,분노의 근위병,100,18,5
-ch1_s3,분노의 근위병,100,18,5
-ch1_s3,화염의 정예,70,22,7
-ch1_s3,불꽃 사냥개,50,20,9
-ch1_boss,사탄 — 분노의 화신,300,30,6
+stage_id,name,hp,atk,spd,name_key
+ch1_s1,분노의 졸개,60,12,5,enemy.wrath_grunt.name
+ch1_s1,분노의 졸개,60,12,5,enemy.wrath_grunt.name
+ch1_s1,화염 사냥개,40,15,8,enemy.flame_hound.name
+ch1_s2,분노의 전사,80,16,6,enemy.wrath_warrior.name
+ch1_s2,분노의 전사,80,16,6,enemy.wrath_warrior.name
+ch1_s2,화염 마법사,50,20,4,enemy.flame_mage.name
+ch1_s3,분노의 근위병,100,18,5,enemy.wrath_guard.name
+ch1_s3,분노의 근위병,100,18,5,enemy.wrath_guard.name
+ch1_s3,화염의 정예,70,22,7,enemy.flame_elite.name
+ch1_s3,불꽃 사냥개,50,20,9,enemy.fire_hound.name
+ch1_boss,사탄 — 분노의 화신,300,30,6,enemy.satan_boss.name

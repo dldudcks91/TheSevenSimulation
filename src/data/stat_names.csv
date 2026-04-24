@@ -1,8 +1,8 @@
-id,name_ko,abbreviation
-strength,힘,힘
-agility,민첩,민
-intellect,지능,지
-health,건강,건
-perception,감각,감
-leadership,통솔,솔
-charisma,매력,매
+id,name_ko,abbreviation,name_key
+strength,힘,힘,stat.strength.name
+agility,민첩,민,stat.agility.name
+intellect,지능,지,stat.intellect.name
+health,건강,건,stat.health.name
+perception,감각,감,stat.perception.name
+leadership,통솔,솔,stat.leadership.name
+charisma,매력,매,stat.charisma.name

@@ -11,6 +11,7 @@ import DuelBattleScene from './scenes/DuelBattleScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 import ExpeditionScene from './scenes/ExpeditionScene.js';
 import { loadAllCsv, buildGameData } from './data/CsvLoader.js';
+import locale from './game_logic/LocaleManager.js';
 
 /**
  * 전투씬 A/B 전환
@@ -27,6 +28,9 @@ async function boot() {
     // 모든 CSV 한번에 로드
     const csvData = await loadAllCsv('./data/');
     const gameData = buildGameData(csvData);
+
+    // LocaleManager 초기화 (Phaser 생성 전에 — 씬에서 locale.t() 사용 가능해야 함)
+    locale.init(gameData.uiLocale, gameData.dataLocale);
 
     const config = {
         type: Phaser.AUTO,
@@ -71,6 +75,7 @@ async function boot() {
     game.registry.set('traitsData', gameData.traitsData || []);
     game.registry.set('expeditionNodesData', gameData.expeditionNodesData || {});
     game.registry.set('expeditionDiceData', gameData.expeditionDiceData || {});
+    game.registry.set('locale', locale);
 }
 
 boot();

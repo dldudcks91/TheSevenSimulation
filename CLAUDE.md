@@ -60,22 +60,19 @@ TheSevenSimulation/
 │   ├── extract_lpc_parts.py   # LPC 파츠 추출
 │   └── convert_monsters.py    # 몬스터 변환
 ├── .claude/
-│   ├── rules/
-│   │   ├── client.md          # 클라이언트 JS 규칙
-│   │   ├── game-design.md     # 기획 논의 규칙
-│   │   └── workflow.md        # 구현 워크플로우
-│   └── skills/                # 10개 전문 스킬 (하단 목록 참조)
+│   └── skills/                # 11개 전문 스킬 (하단 목록 참조) — 규칙은 각 SKILL.md에 내재
 └── src/                       # 소스 코드 (Phase 1: Phaser.js)
     ├── app.js                 # 진입점, CSV 전체 로드 + Phaser 초기화
     ├── constants.js           # 공유 상수
     ├── index.html
-    ├── game_logic/            # 순수 게임 로직 (Godot 이식 대상, 12개)
+    ├── game_logic/            # 순수 게임 로직 (Godot 이식 대상, 13개)
     │   ├── BaseManager.js     # 거점/건설/연구/포고령 (policies 주입)
     │   ├── BattleEngine.js    # 전투 계산 (MELEE/TAG/DUEL 3모드 + SP/죄종 반응)
     │   ├── DayActions.js      # 낮 행동 순수 로직 (채집/벌목/연회/사냥)
     │   ├── EventSystem.js     # 이벤트/선택지
     │   ├── ExpeditionManager.js # 원정/방어전 (stagesData 주입)
     │   ├── HeroManager.js     # 영웅 랜덤 생성, 사기 관리
+    │   ├── LocaleManager.js   # i18n (t/dataText/field/josa) — Godot wide CSV 스타일
     │   ├── MorningReport.js   # 아침 보고 생성
     │   ├── SinSystem.js       # 죄종/사기/폭주/이탈/연쇄반응
     │   ├── SinUtils.js        # 죄종 유틸리티 함수
@@ -109,7 +106,7 @@ TheSevenSimulation/
     │   ├── Store.js           # Central Store (pub/sub)
     │   └── SaveManager.js     # LocalStorage 세이브/로드
     ├── assets/                # 게임 에셋
-    └── data/                  # 게임 데이터 CSV (28개 — expedition_nodes/dice 추가 2026-04-16) + CsvLoader.js
+    └── data/                  # 게임 데이터 CSV (30개 — locale_ui/locale_data 추가 2026-04-24) + CsvLoader.js
 ```
 
 ## 기획 문서 위치
@@ -143,9 +140,12 @@ TheSevenSimulation/
 ## 개발 규칙
 - 기획서는 한국어로 작성
 - 문서 변경 시 마지막 업데이트 날짜 기재
-- **기획/코드 변경 시 파급 문서 확인** — 변경 내용이 `CLAUDE.md`, `.claude/rules/`, `.claude/skills/`에도 반영되어야 하는지 점검
-- 기획 논의 시 `game-design` 규칙을 따른다
-- 구현 시 `workflow` 규칙을 따른다
+- **기획/코드 변경 시 파급 문서 확인** — 변경 내용이 `CLAUDE.md`, `.claude/skills/`에도 반영되어야 하는지 점검
 - 게임 데이터는 **CSV**로 관리 (JSON 아님)
 - 밸런스 수치는 `balance.csv`에서 로드, **코드 내 하드코딩 금지**
 - game_logic 모듈은 생성자에서 데이터를 주입받음 (`balance`, `policies` 등)
+- **i18n 규칙**: 신규 UI 텍스트는 `locale.t('key')`로 작성, 하드코딩 한글 금지.
+  - UI 문구 / 로그 템플릿 → `src/data/locale_ui.csv` (key, ko, en)
+  - 게임 데이터 텍스트 (영웅/시설/아이템 이름 등) → `src/data/locale_data.csv`
+  - CSV 데이터 객체는 `_key` 컬럼 사용 후 `locale.field(obj, 'name')`로 조회
+  - 템플릿 치환: `{name}` 단순, `{name|을}` 조사 자동 (ko만)

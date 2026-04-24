@@ -1,7 +1,7 @@
-id,name_ko,category,requires_facility,cost,research_cost,effect_type,effect_value,description
-trade_route,교역로 개척,economy,market,200,20,income_bonus,0.5,시장 수입 +50%
-loot_appraise,전리품 감정,economy,market,250,30,loot_bonus,0.3,원정 골드 보상 +30%
-efficient_build,효율적 건설,economy,market,300,30,build_discount,0.2,건설 비용 -20%
-morale_mgmt,사기 관리,hero,hospital,250,30,morale_dampen,0.3,사기 변동폭 -30%
-sin_study,죄종 이해,hero,hospital,400,40,rampage_threshold,105,폭주 임계 105로 상향
-bonding,결속 의식,hero,hospital,300,30,satisfaction_bonus,0.5,죄종 만족 시 사기 상승량 +50%
+id,name_ko,category,requires_facility,cost,research_cost,effect_type,effect_value,description,name_key,description_key
+trade_route,교역로 개척,economy,market,200,20,income_bonus,0.5,시장 수입 +50%,research.trade_route.name,research.trade_route.desc
+loot_appraise,전리품 감정,economy,market,250,30,loot_bonus,0.3,원정 골드 보상 +30%,research.loot_appraise.name,research.loot_appraise.desc
+efficient_build,효율적 건설,economy,market,300,30,build_discount,0.2,건설 비용 -20%,research.efficient_build.name,research.efficient_build.desc
+morale_mgmt,사기 관리,hero,hospital,250,30,morale_dampen,0.3,사기 변동폭 -30%,research.morale_mgmt.name,research.morale_mgmt.desc
+sin_study,죄종 이해,hero,hospital,400,40,rampage_threshold,105,폭주 임계 105로 상향,research.sin_study.name,research.sin_study.desc
+bonding,결속 의식,hero,hospital,300,30,satisfaction_bonus,0.5,죄종 만족 시 사기 상승량 +50%,research.bonding.name,research.bonding.desc

@@ -9,15 +9,34 @@ import SpriteRenderer from './SpriteRenderer.js';
 import SaveManager from '../store/SaveManager.js';
 import { FONT, FONT_BOLD } from '../constants.js';
 import { topSin, SIN_NAMES_KO } from '../game_logic/SinUtils.js';
+import locale from '../game_logic/LocaleManager.js';
 
 const SIN_COLOR_HEX = {
     wrath: '#e03030', envy: '#30b050', greed: '#d0a020',
     sloth: '#808898', gluttony: '#e07020', lust: '#e03080', pride: '#8040e0'
 };
 
-const STAT_LABELS = {
-    strength: '힘', agility: '민', intellect: '지',
-    vitality: '체', perception: '감', leadership: '솔', charisma: '매'
+const HERO_STORIES_BY_LANG = {
+    ko: {
+        wrath: '전쟁에서 돌아온 뒤로 분노를 멈출 수 없었다.\n칼을 내려놓으면 손이 떨렸고,\n결국 바알의 부름에 응했다.',
+        envy: '언제나 형의 그림자 속에 있었다.\n인정받지 못한 재능은 독이 되어\n결국 그를 이곳으로 이끌었다.',
+        greed: '가진 것을 모두 잃은 날,\n다시는 빈손이 되지 않겠다고 맹세했다.\n그 집착이 바알의 눈에 띄었다.',
+        sloth: '한때 뛰어난 학자였으나 모든 것을 포기했다.\n세상에 지쳐 쓰러진 그를\n바알이 주워 담았다.',
+        gluttony: '굶주림의 기억은 지워지지 않았다.\n아무리 채워도 부족했고,\n결국 악마의 식탁에 앉게 되었다.',
+        lust: '사랑에 실패한 뒤 혼자가 되는 것이 두려웠다.\n누군가 곁에 있어야만 했고,\n그 절박함이 이곳까지 왔다.',
+        pride: '왕좌에서 쫓겨난 지휘관.\n자신이 옳다는 확신은 변하지 않았고,\n바알 아래서라도 증명하려 한다.',
+        default: '어둠 속에서 바알의 부름을 들었다.\n갈 곳 없는 자에게 선택지란 없었다.'
+    },
+    en: {
+        wrath: 'After returning from war, the rage would not stop.\nHis hands trembled when he laid down the sword,\nso he answered Baal\'s call.',
+        envy: 'Always in his elder\'s shadow.\nTalent that went unrecognized turned to poison\nand led him here.',
+        greed: 'The day he lost everything,\nhe swore never to be empty-handed again.\nThat obsession caught Baal\'s eye.',
+        sloth: 'Once a brilliant scholar, he gave it all up.\nWorn out by the world,\nhe was scooped up by Baal.',
+        gluttony: 'The memory of hunger never faded.\nNo matter how much he ate, it was not enough —\nand so he sat at the demon\'s table.',
+        lust: 'After heartbreak, being alone was unbearable.\nHe needed someone beside him,\nand that desperation brought him here.',
+        pride: 'A commander cast down from his throne.\nHis certainty never wavered —\nhe would prove it, even under Baal.',
+        default: 'He heard Baal\'s call in the dark.\nOne with nowhere to go had no choice.'
+    }
 };
 
 const C = {
@@ -62,13 +81,13 @@ class HeroSelectScene extends Phaser.Scene {
         this._drawBgParticles(width, height);
 
         // 제목
-        this.add.text(width / 2, 40, '동 료  선 택', {
+        this.add.text(width / 2, 40, locale.t('ui.hero_select.title'), {
             fontSize: '28px', fontFamily: FONT_BOLD, color: C.accentRed,
             shadow: { offsetX: 2, offsetY: 2, color: '#400000', blur: 0, fill: true },
             letterSpacing: 6
         }).setOrigin(0.5);
 
-        this.add.text(width / 2, 72, '바알과 함께할 세 명의 부하를 선택하십시오', {
+        this.add.text(width / 2, 72, locale.t('ui.hero_select.subtitle'), {
             fontSize: '11px', fontFamily: FONT, color: C.textMuted
         }).setOrigin(0.5);
 
@@ -199,7 +218,8 @@ class HeroSelectScene extends Phaser.Scene {
                 if (tip) { tip.destroy(); tip = null; }
             });
         }
-        this._cardElements.push(this.add.text(x + w - 12, ty + 18, `비용 ${hero.foodCost ?? '?'}/턴`, {
+        this._cardElements.push(this.add.text(x + w - 12, ty + 18,
+            locale.t('ui.hero_select.cost_per_turn', { cost: hero.foodCost ?? '?' }), {
             fontSize: '10px', fontFamily: FONT, color: '#a08040'
         }).setOrigin(1, 0));
         ty += 48;
@@ -283,15 +303,13 @@ class HeroSelectScene extends Phaser.Scene {
 
         // ── 하단: 스탯 (세로 1열, 풀 이름, 크게) ──
         const statKeys = ['strength', 'agility', 'intellect', 'vitality', 'perception', 'leadership', 'charisma'];
-        const STAT_FULL = {
-            strength: '힘', agility: '민첩', intellect: '지능',
-            vitality: '체력', perception: '감각', leadership: '통솔', charisma: '매력'
-        };
+        // vitality는 locale_data에 stat.health.name으로 등록됨 (별칭 매핑)
+        const statToLocale = { vitality: 'health' };
         const barW = w - 90;
 
         for (const key of statKeys) {
             const val = hero.stats[key];
-            const label = STAT_FULL[key];
+            const label = locale.statName(statToLocale[key] || key);
 
             // 라벨
             this._cardElements.push(this.add.text(x + 12, ty, label, {
@@ -325,29 +343,21 @@ class HeroSelectScene extends Phaser.Scene {
     }
 
     _getHeroStory(primarySin) {
-        const stories = {
-            wrath: '전쟁에서 돌아온 뒤로 분노를 멈출 수 없었다.\n칼을 내려놓으면 손이 떨렸고,\n결국 바알의 부름에 응했다.',
-            envy: '언제나 형의 그림자 속에 있었다.\n인정받지 못한 재능은 독이 되어\n결국 그를 이곳으로 이끌었다.',
-            greed: '가진 것을 모두 잃은 날,\n다시는 빈손이 되지 않겠다고 맹세했다.\n그 집착이 바알의 눈에 띄었다.',
-            sloth: '한때 뛰어난 학자였으나 모든 것을 포기했다.\n세상에 지쳐 쓰러진 그를\n바알이 주워 담았다.',
-            gluttony: '굶주림의 기억은 지워지지 않았다.\n아무리 채워도 부족했고,\n결국 악마의 식탁에 앉게 되었다.',
-            lust: '사랑에 실패한 뒤 혼자가 되는 것이 두려웠다.\n누군가 곁에 있어야만 했고,\n그 절박함이 이곳까지 왔다.',
-            pride: '왕좌에서 쫓겨난 지휘관.\n자신이 옳다는 확신은 변하지 않았고,\n바알 아래서라도 증명하려 한다.',
-        };
-        return stories[primarySin] || '어둠 속에서 바알의 부름을 들었다.\n갈 곳 없는 자에게 선택지란 없었다.';
+        const stories = HERO_STORIES_BY_LANG[locale.getLang()] || HERO_STORIES_BY_LANG.ko;
+        return stories[primarySin] || stories.default;
     }
 
     _drawButtons(width, height) {
         const btnY = height - 90;
 
         // 다시 뽑기
-        this._createBtn(width / 2 - 140, btnY, 180, 40, '🎲 다시 뽑기', '#f8c830', () => {
+        this._createBtn(width / 2 - 140, btnY, 180, 40, locale.t('ui.hero_select.reroll'), '#f8c830', () => {
             this._heroes = this.heroManager.previewStartingHeroes();
             this._drawHeroCards(width, height);
         });
 
         // 시작
-        this._createBtn(width / 2 + 140, btnY, 180, 40, '▶ 여정 시작', '#e03030', () => {
+        this._createBtn(width / 2 + 140, btnY, 180, 40, locale.t('ui.hero_select.start'), '#e03030', () => {
             // 기존 세이브를 여기서 삭제하지 않음 — MapScene 진입 시 자동 저장으로 덮어씀
             const balance = this.registry.get('balance') || {};
             store.setState('gold', balance.starting_gold ?? 500);
