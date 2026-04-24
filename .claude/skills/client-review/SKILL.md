@@ -1,6 +1,6 @@
 ---
 name: client-review
-description: 코드 리뷰 — 아키텍처 정합성, client.md 규칙 준수, game_logic/scenes 분리 검증
+description: 코드 리뷰 — 아키텍처 정합성, 코딩 규칙 준수, game_logic/scenes 분리 검증
 user-invocable: true
 ---
 
@@ -16,14 +16,16 @@ user-invocable: true
 - [ ] 상태 변경이 Store를 통하는지
 - [ ] Manager 간 직접 참조 없는지 (Store 통해 통신)
 
-### client.md 규칙 준수
+### 코딩 규칙 준수
 - [ ] ES Modules (`import`/`export`) 사용
 - [ ] `var` 미사용 → `const` 우선, 필요 시 `let`
 - [ ] `===` 사용 (== 금지)
-- [ ] 매직 넘버 없음 → 상수 정의
+- [ ] 매직 넘버 없음 → `balance.csv`에서 로드
 - [ ] 전역 변수 없음
-- [ ] 네이밍 규칙 준수 (camelCase 변수, PascalCase 클래스, UPPER_SNAKE 상수)
-- [ ] 이벤트 위임 (`data-action`) 사용
+- [ ] 네이밍 규칙 준수 (camelCase 변수, PascalCase 클래스, UPPER_SNAKE 상수, snake_case CSV/data 속성)
+- [ ] 이벤트 위임 (`data-action`) + `pointerdown` 사용
+- [ ] 배포용 `console.log` 없음
+- [ ] i18n 규칙 준수 — 하드코딩 한글 없음, `locale.t()` / `locale.field()` 사용
 
 ### 데이터 안전성
 - [ ] CSV 데이터 런타임 수정 없음
@@ -35,11 +37,10 @@ user-invocable: true
 - [ ] 에러 처리 적절성
 
 ## 행동 규칙
-1. 먼저 `.claude/rules/client.md`를 읽는다
-2. 리뷰 대상 코드를 읽는다
-3. 체크리스트 기준으로 문제점을 찾는다
-4. **문제점 + 수정 방안**을 구체적으로 제시한다
-5. 수정은 사용자가 요청할 때만 진행한다
+1. 리뷰 대상 코드를 읽는다
+2. 체크리스트 기준으로 문제점을 찾는다
+3. **문제점 + 수정 방안**을 구체적으로 제시한다
+4. 수정은 사용자가 요청할 때만 진행한다
 
 ## 다음 추천 행동
 

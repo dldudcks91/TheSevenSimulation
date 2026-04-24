@@ -25,11 +25,12 @@ user-invocable: true
 ## 행동 규칙
 1. 먼저 관련 기획 문서를 읽는다:
    - `docs/GAME_DESIGN.md` (게임 루프, 플레이어 행동)
+   - `docs/game_design/ui_design.md` (현재 화면 설계)
    - `docs/game_design/base_design.md` (행동 목록, 턴 제한)
    - `docs/DEV_PLAN.md` (기술 스택)
-   - `.claude/rules/client.md` (JS 규칙)
 2. 현재 기획 상태를 파악한 뒤 분석/제안한다
 3. **문서 수정은 사용자가 명시적으로 요청할 때만** 진행한다
+4. 실제 구현은 `client-implement`로 넘긴다 (UX는 설계·문서 단계만 담당)
 
 ## 핵심 원칙
 - Phase 1은 **Phaser.js 웹 프로토타입** (서버 없음)

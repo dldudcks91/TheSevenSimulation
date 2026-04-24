@@ -1,0 +1,10 @@
+# Claude Code agent worktrees (ephemeral sandboxes, contain full project copies)
+.claude/worktrees/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
