@@ -106,7 +106,9 @@ class MapScene extends Phaser.Scene {
         this.heroManager.setSpriteComposer(spriteComposer);
         this.heroManager.setEpithets(this.registry.get('heroEpithets') || []);
         this.heroManager.setItemsData(this.registry.get('itemsData') || []);
-        this.heroManager.setTraitsData(this.registry.get('traitsData') || []);
+        const traitsData = this.registry.get('traitsData') || [];
+        this.heroManager.setTraitsData(traitsData);
+        store.setState('traitsData', traitsData);
         this.eventSystem = new EventSystem(store, eventsData, balance);
         this.baseManager = new BaseManager(store, facilitiesData, balance);
         this.edictManager = new EdictManager(store, edictsData, balance);

@@ -428,6 +428,14 @@ function buildGameData(csvData) {
         pro_effect: r.pro_effect,
         con_effect: r.con_effect,
         earn_condition: r.earn_condition,
+        xp_category: r.xp_category || null,
+        rampage_sin: r.rampage_sin || null,
+        rampage_action: r.rampage_action || null,
+        desertion_sin: r.desertion_sin || null,
+        desertion_action: r.desertion_action || null,
+        sin_category: r.sin_category || 'neutral',
+        target_sin: r.target_sin || null,
+        sin_mult: (r.sin_mult !== null && r.sin_mult !== undefined) ? Number(r.sin_mult) : 1.0,
         name_key: r.name_key || null
     }));
 

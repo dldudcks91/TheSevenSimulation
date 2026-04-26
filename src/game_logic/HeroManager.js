@@ -118,7 +118,17 @@ class HeroManager {
             primarySin, // DEPRECATED: UI fallback only
             sinName: sinDef?.name_ko || '',
             sinFlaw: sinDef?.flaw || '',
-            trait: trait ? { id: trait.id, name: trait.name, category: trait.category, pro_effect: trait.pro_effect, con_effect: trait.con_effect } : null,
+            trait: trait ? {
+                id: trait.id, name: trait.name, category: trait.category,
+                pro_effect: trait.pro_effect, con_effect: trait.con_effect,
+                sin_category: trait.sin_category || 'neutral',
+                target_sin: trait.target_sin || null,
+                sin_mult: typeof trait.sin_mult === 'number' ? trait.sin_mult : 1.0,
+                rampage_sin: trait.rampage_sin || null,
+                rampage_action: trait.rampage_action || null,
+                desertion_sin: trait.desertion_sin || null,
+                desertion_action: trait.desertion_action || null
+            } : null,
             acquiredTraits: [],
             stats,
             subStats: sinStats,
@@ -245,9 +255,9 @@ class HeroManager {
         return topSin(sinStats);
     }
 
-    /** 선천 특성 1개 랜덤 선택 (innate 타입만) */
+    /** 선천 특성 1개 랜덤 선택 (innate 타입만, 구원 제외) */
     _randomTrait() {
-        const innate = this._traitsData.filter(t => t.type === 'innate');
+        const innate = this._traitsData.filter(t => t.type === 'innate' && t.sin_category !== 'salvation');
         if (innate.length === 0) return null;
         return innate[Math.floor(Math.random() * innate.length)];
     }
@@ -443,18 +453,60 @@ class HeroManager {
         };
     }
 
-    /** 죄종 수치 변동 (0~20 클램프) */
+    /**
+     * 죄종 수치 변동 (0~20 클램프) + 특성 배수 적용 (편향/저항/구원).
+     * - delta > 0 (쌓임): 편향 ×1.3 / 저항 ×0.7 / 구원 ×0.5 (target_sin 일치 시)
+     * - delta < 0 (정화): 배수 미적용 (정화는 그대로)
+     */
     updateSinStat(heroId, sinKey, delta) {
         const heroes = this.store.getState('heroes');
         const hero = heroes.find(h => h.id === heroId);
         if (!hero || !hero.sinStats || !(sinKey in hero.sinStats)) return null;
 
+        let effDelta = delta;
+        if (delta > 0) {
+            const mult = this._calcSinMult(hero, sinKey);
+            effDelta = delta * mult;
+            // 정수 단위 유지 (소수점은 확률 라운딩)
+            const floor = Math.floor(effDelta);
+            const frac = effDelta - floor;
+            effDelta = floor + (Math.random() < frac ? 1 : 0);
+        }
+
         const oldVal = hero.sinStats[sinKey];
-        hero.sinStats[sinKey] = Math.max(0, Math.min(this.SIN_MAX, oldVal + delta));
+        hero.sinStats[sinKey] = Math.max(0, Math.min(this.SIN_MAX, oldVal + effDelta));
         hero.isRampaging = this.isRampaging(hero);
 
         this.store.setState('heroes', [...heroes]);
-        return { heroId, sinKey, oldVal, newVal: hero.sinStats[sinKey] };
+        return { heroId, sinKey, oldVal, newVal: hero.sinStats[sinKey], effDelta };
+    }
+
+    /**
+     * 특성(시작 + 후천) 기반 죄종 쌓임 배수 계산.
+     * 가장 강한 영향 1개만 적용 (구원 > 저항 > 편향 우선순위).
+     */
+    _calcSinMult(hero, sinKey) {
+        const traits = [];
+        if (hero.trait) traits.push(hero.trait);
+        if (Array.isArray(hero.acquiredTraits)) traits.push(...hero.acquiredTraits);
+
+        let salvationMult = null;
+        let resistMult = null;
+        let biasMult = null;
+        for (const t of traits) {
+            if (!t) continue;
+            const tgt = t.target_sin;
+            const matches = tgt === sinKey || tgt === 'all';
+            if (!matches) continue;
+            const mult = (typeof t.sin_mult === 'number') ? t.sin_mult : 1.0;
+            if (t.sin_category === 'salvation' && (salvationMult === null || mult < salvationMult)) salvationMult = mult;
+            else if (t.sin_category === 'resist' && (resistMult === null || mult < resistMult)) resistMult = mult;
+            else if (t.sin_category === 'bias' && (biasMult === null || mult > biasMult)) biasMult = mult;
+        }
+        if (salvationMult !== null) return salvationMult;
+        if (resistMult !== null) return resistMult;
+        if (biasMult !== null) return biasMult;
+        return 1.0;
     }
 
     /** 영웅이 폭주 상태인지 판정 (어떤 죄종이든 18 이상이면 폭주) */

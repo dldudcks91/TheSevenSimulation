@@ -1,49 +1,56 @@
-id,name,category,type,pro_effect,con_effect,xp_category,rampage_sin,rampage_action,desertion_sin,desertion_action,name_key
-1,호전적,양면성,innate,전투 데미지 +15%,3일 미파견 시 사기↓↓,combat,,,,,trait.1.name
-2,겁쟁이,양면성,innate,위험 감지(기습 방지) 정찰↑,방어전 배치 시 사기↓ 도주 확률↑,combat,,,,,trait.2.name
-3,야행성,양면성,innate,밤 방어전 스탯↑,낮 작업 효율↓,combat,,,,,trait.3.name
-4,수집광,양면성,innate,채집 효율↑,장비 해제 시 사기↓↓,gather,,,,,trait.4.name
-5,벌목꾼,양면성,innate,벌목 효율↑,채집 효율↓,lumber,,,,,trait.5.name
-6,완벽주의자,양면성,innate,건설/연구 품질↑,건설/연구 속도↓,build,,,,,trait.6.name
-7,독불장군,양면성,innate,단독 원정/사냥 보너스,팀 시너지↓ 같은 시설 배치 효과↓,hunt,,,,,trait.7.name
-8,사교적,양면성,innate,연회 효과↑ 영웅 간 관계 보너스,혼자 배치 시 사기↓,social,,,,,trait.8.name
-9,시비꾼,양면성,innate,대립 이벤트 촉발(드라마),같은 시설 영웅 사기↓,social,,,,,trait.9.name
-10,의리있는,양면성,innate,동료 폭주 시 사기하락 면역,동료 이탈/사망 시 사기↓↓↓,social,,,,,trait.10.name
-11,낙천적,양면성,innate,사기 하락폭 -30%,사기 상승폭 -20% (둔감),general,,,,,trait.11.name
-12,변덕쟁이,양면성,innate,사기 상승폭 +50%,사기 하락폭도 +50%,general,,,,,trait.12.name
-13,둔감한,양면성,innate,폭주/이탈 임계값 넓음 (안정적),이벤트 반응↓ 드라마 비참여,general,,,,,trait.13.name
-14,예민한,양면성,innate,이벤트 보정↑ 연쇄 반응 참여,폭주/이탈 임계값 좁음,general,,,,,trait.14.name
-15,자비로운,양면성,innate,동료 치료 효율↑ 관계↑,적 처치 시 사기 소폭↓,general,,,,,trait.15.name
-16,강인한,순장점,innate,전투 피해 -20%,,combat,,,,,trait.16.name
-17,빠른 학습,순장점,innate,XP 획득량 +30%,,research,,,,,trait.17.name
-18,행운아,순장점,innate,모든 확률 판정 +10% 보정,,general,,,,,trait.18.name
-19,허약한,순단점,innate,,전투 피해 +20%,combat,,,,,trait.19.name
-20,게으른,순단점,innate,,모든 작업 효율 -20%,gather|lumber,,,,,trait.20.name
-21,유리멘탈,순단점,innate,,사기 하락폭 +30%,general,,,,,trait.21.name
-22,방화광,행동강박,innate,화염 전투↑,폭주 시 시설 방화,combat,wrath,rampage_arson,,,trait.22.name
-23,도벽,행동강박,innate,채집/전리품↑,자원 획득 시 일부 착복,gather,greed,rampage_steal,,greed,desertion_steal,trait.23.name
-24,선동가,행동강박,innate,사교 보너스,폭주 시 반란 선동,social,pride,rampage_rebel,,pride,desertion_declare,trait.24.name
-25,뒷공작,행동강박,innate,정보 수집↑,폭주 시 장비 파괴/사보타주,research,envy,rampage_sabotage,,envy,desertion_sabotage,trait.25.name
-26,탐닉자,행동강박,innate,스태미나 회복↑,폭주 시 식량 폭식,general,gluttony,rampage_devour,,,trait.26.name
-27,집착광,행동강박,innate,관계 형성 빠름,폭주 시 동료 분쟁 유발,social,lust,rampage_seduce,,lust,desertion_lure,trait.27.name
-28,체념자,행동강박,innate,혼자 작업↑,폭주 시 무기력 전염,gather|lumber,sloth,rampage_spread,,sloth,desertion_vanish,trait.28.name
-29,역전의 용사,후천행동,earned_action,원정 전투 데미지 +10% 전투 사기↑,,combat,,,,,trait.29.name
-30,수호자,후천행동,earned_action,방어전 스탯↑ 방어 배치 사기↑,,combat,,,,,trait.30.name
-31,채집의 달인,후천행동,earned_action,채집 효율↑↑ 채집 시 사기↑,,gather,,,,,trait.31.name
-32,나무꾼,후천행동,earned_action,벌목 효율↑↑ 벌목 시 사기↑,,lumber,,,,,trait.32.name
-33,연구자,후천행동,earned_action,연구 속도↑,,research,,,,,trait.33.name
-34,건축가,후천행동,earned_action,건설 속도↑ 건설 비용↓,,build,,,,,trait.34.name
-35,사냥꾼,후천행동,earned_action,사냥 성공률↑ 전리품↑,,hunt,,,,,trait.35.name
-36,사교의 달인,후천행동,earned_action,연회 효과↑↑ 영웅 간 관계↑↑,,social,,,,,trait.36.name
-37,개심자,이벤트,event,사기 안정 고유 능력 해금,,,,,,,trait.37.name
-38,타락자,이벤트,event,능력 강화,폭주 재발 확률↑,,,,,,trait.38.name
-39,파괴자,후천폭주,earned_rampage,폭주 시 항상 파괴,,combat,wrath,rampage_destroy,,,trait.39.name
-40,약탈자,후천폭주,earned_rampage,폭주 시 항상 도난+도주,,gather,greed,rampage_steal,greed,desertion_steal,trait.40.name
-41,반역자,후천폭주,earned_rampage,폭주 시 항상 반란,,social,pride,rampage_rebel,pride,desertion_declare,trait.41.name
-42,방해꾼,후천폭주,earned_rampage,폭주 시 항상 장비 파괴,,research,envy,rampage_sabotage,envy,desertion_sabotage,trait.42.name
-43,탐식가,후천폭주,earned_rampage,폭주 시 항상 식량 폭식,,general,gluttony,rampage_devour,,,trait.43.name
-44,분쟁꾼,후천폭주,earned_rampage,폭주 시 항상 동료 분쟁,,social,lust,rampage_seduce,lust,desertion_lure,trait.44.name
-45,전염자,후천폭주,earned_rampage,폭주 시 항상 무기력 전염,,gather|lumber,sloth,rampage_spread,sloth,desertion_vanish,trait.45.name
+id,name,category,type,pro_effect,con_effect,xp_category,rampage_sin,rampage_action,desertion_sin,desertion_action,sin_category,target_sin,sin_mult,name_key
+1,호전적,양면성,innate,전투 데미지 +15%,3일 미파견 시 사기↓↓,combat,,,,,bias,wrath,1.3,trait.1.name
+2,겁쟁이,양면성,innate,위험 감지(기습 방지) 정찰↑,방어전 배치 시 사기↓ 도주 확률↑,combat,,,,,neutral,,1.0,trait.2.name
+3,야행성,양면성,innate,밤 방어전 스탯↑,낮 작업 효율↓,combat,,,,,bias,pride,1.3,trait.3.name
+4,수집광,양면성,innate,채집 효율↑,장비 해제 시 사기↓↓,gather,,,,,bias,greed,1.3,trait.4.name
+5,벌목꾼,양면성,innate,벌목 효율↑,채집 효율↓,lumber,,,,,neutral,,1.0,trait.5.name
+6,완벽주의자,양면성,innate,건설/연구 품질↑,건설/연구 속도↓,build,,,,,bias,pride,1.3,trait.6.name
+7,독불장군,양면성,innate,단독 원정/사냥 보너스,팀 시너지↓ 같은 시설 배치 효과↓,hunt,,,,,bias,sloth,1.3,trait.7.name
+8,사교적,양면성,innate,연회 효과↑ 영웅 간 관계 보너스,혼자 배치 시 사기↓,social,,,,,bias,lust,1.3,trait.8.name
+9,시비꾼,양면성,innate,대립 이벤트 촉발(드라마),같은 시설 영웅 사기↓,social,,,,,bias,wrath,1.2,trait.9.name
+10,의리있는,양면성,innate,동료 폭주 시 사기하락 면역,동료 이탈/사망 시 사기↓↓↓,social,,,,,neutral,,1.0,trait.10.name
+11,낙천적,양면성,innate,사기 하락폭 -30%,사기 상승폭 -20% (둔감),general,,,,,resist,all,0.7,trait.11.name
+12,변덕쟁이,양면성,innate,사기 상승폭 +50%,사기 하락폭도 +50%,general,,,,,bias,all,1.2,trait.12.name
+13,둔감한,양면성,innate,폭주/이탈 임계값 넓음 (안정적),이벤트 반응↓ 드라마 비참여,general,,,,,resist,all,0.7,trait.13.name
+14,예민한,양면성,innate,이벤트 보정↑ 연쇄 반응 참여,폭주/이탈 임계값 좁음,general,,,,,bias,all,1.2,trait.14.name
+15,자비로운,양면성,innate,동료 치료 효율↑ 관계↑,적 처치 시 사기 소폭↓,general,,,,,neutral,,1.0,trait.15.name
+16,강인한,순장점,innate,전투 피해 -20%,,combat,,,,,neutral,,1.0,trait.16.name
+17,빠른 학습,순장점,innate,XP 획득량 +30%,,research,,,,,neutral,,1.0,trait.17.name
+18,행운아,순장점,innate,모든 확률 판정 +10% 보정,,general,,,,,neutral,,1.0,trait.18.name
+19,허약한,순단점,innate,,전투 피해 +20%,combat,,,,,neutral,,1.0,trait.19.name
+20,게으른,순단점,innate,,모든 작업 효율 -20%,gather|lumber,,,,,bias,sloth,1.3,trait.20.name
+21,유리멘탈,순단점,innate,,사기 하락폭 +30%,general,,,,,neutral,,1.0,trait.21.name
+22,방화광,행동강박,innate,화염 전투↑,폭주 시 시설 방화,combat,wrath,rampage_arson,,,bias,wrath,1.3,trait.22.name
+23,도벽,행동강박,innate,채집/전리품↑,자원 획득 시 일부 착복,gather,greed,rampage_steal,greed,desertion_steal,bias,greed,1.3,trait.23.name
+24,선동가,행동강박,innate,사교 보너스,폭주 시 반란 선동,social,pride,rampage_rebel,pride,desertion_declare,bias,pride,1.3,trait.24.name
+25,뒷공작,행동강박,innate,정보 수집↑,폭주 시 장비 파괴/사보타주,research,envy,rampage_sabotage,envy,desertion_sabotage,bias,envy,1.3,trait.25.name
+26,탐닉자,행동강박,innate,스태미나 회복↑,폭주 시 식량 폭식,general,gluttony,rampage_devour,,,bias,gluttony,1.3,trait.26.name
+27,집착광,행동강박,innate,관계 형성 빠름,폭주 시 동료 분쟁 유발,social,lust,rampage_seduce,lust,desertion_lure,bias,lust,1.3,trait.27.name
+28,체념자,행동강박,innate,혼자 작업↑,폭주 시 무기력 전염,gather|lumber,sloth,rampage_spread,sloth,desertion_vanish,bias,sloth,1.3,trait.28.name
+29,역전의 용사,후천행동,earned_action,원정 전투 데미지 +10% 전투 사기↑,,combat,,,,,neutral,,1.0,trait.29.name
+30,수호자,후천행동,earned_action,방어전 스탯↑ 방어 배치 사기↑,,combat,,,,,neutral,,1.0,trait.30.name
+31,채집의 달인,후천행동,earned_action,채집 효율↑↑ 채집 시 사기↑,,gather,,,,,neutral,,1.0,trait.31.name
+32,나무꾼,후천행동,earned_action,벌목 효율↑↑ 벌목 시 사기↑,,lumber,,,,,neutral,,1.0,trait.32.name
+33,연구자,후천행동,earned_action,연구 속도↑,,research,,,,,neutral,,1.0,trait.33.name
+34,건축가,후천행동,earned_action,건설 속도↑ 건설 비용↓,,build,,,,,neutral,,1.0,trait.34.name
+35,사냥꾼,후천행동,earned_action,사냥 성공률↑ 전리품↑,,hunt,,,,,neutral,,1.0,trait.35.name
+36,사교의 달인,후천행동,earned_action,연회 효과↑↑ 영웅 간 관계↑↑,,social,,,,,neutral,,1.0,trait.36.name
+37,개심자,이벤트,event,사기 안정 고유 능력 해금,,,,,,,resist,all,0.8,trait.37.name
+38,타락자,이벤트,event,능력 강화,폭주 재발 확률↑,,,,,,bias,all,1.2,trait.38.name
+39,파괴자,후천폭주,earned_rampage,폭주 시 항상 파괴,,combat,wrath,rampage_destroy,,,bias,wrath,1.3,trait.39.name
+40,약탈자,후천폭주,earned_rampage,폭주 시 항상 도난+도주,,gather,greed,rampage_steal,greed,desertion_steal,bias,greed,1.3,trait.40.name
+41,반역자,후천폭주,earned_rampage,폭주 시 항상 반란,,social,pride,rampage_rebel,pride,desertion_declare,bias,pride,1.3,trait.41.name
+42,방해꾼,후천폭주,earned_rampage,폭주 시 항상 장비 파괴,,research,envy,rampage_sabotage,envy,desertion_sabotage,bias,envy,1.3,trait.42.name
+43,탐식가,후천폭주,earned_rampage,폭주 시 항상 식량 폭식,,general,gluttony,rampage_devour,,,bias,gluttony,1.3,trait.43.name
+44,분쟁꾼,후천폭주,earned_rampage,폭주 시 항상 동료 분쟁,,social,lust,rampage_seduce,lust,desertion_lure,bias,lust,1.3,trait.44.name
+45,전염자,후천폭주,earned_rampage,폭주 시 항상 무기력 전염,,gather|lumber,sloth,rampage_spread,sloth,desertion_vanish,bias,sloth,1.3,trait.45.name
+46,평정,구원,salvation,분노 쌓임 -50% 전투 중 아군 오사 면역,,,,,,,salvation,wrath,0.5,trait.46.name
+47,현자,구원,salvation,교만 쌓임 -50% 파티 전체 경험치 +10%,,,,,,,salvation,pride,0.5,trait.47.name
+48,청빈,구원,salvation,탐욕 쌓임 -50% 다른 영웅 bonds +1/턴,,,,,,,salvation,greed,0.5,trait.48.name
+49,대범,구원,salvation,시기 쌓임 -50% 강한 영웅 bonds +1/턴,,,,,,,salvation,envy,0.5,trait.49.name
+50,순결,구원,salvation,색욕 쌓임 -50% 숙소 품질 효과 +50%,,,,,,,salvation,lust,0.5,trait.50.name
+51,단식자,구원,salvation,폭식 쌓임 -50% 식량 소비 -50%,,,,,,,salvation,gluttony,0.5,trait.51.name
+52,명상가,구원,salvation,나태 쌓임 -50% 발병 면역,,,,,,,salvation,sloth,0.5,trait.52.name
 #── 예비 (미사용, 추후 복귀 가능) ──
 #101,잔인한,양면성,reserved,전투 승리 시 사기↑↑,동료 부상/사망에 무반응 (관계↓),combat,,,,
 #102,대충대충,양면성,reserved,건설/연구 속도↑,시설 고장/연구 실패 확률 소폭↑,build,,,,

@@ -164,14 +164,18 @@ class CriticalEventSystem {
 
         const trait = hero.trait;
         if (trait) {
-            if (trait.category === 'resist' && (trait.resist_sin === sinKey || trait.resist_sin === 'all')) {
+            const tgt = trait.target_sin;
+            const matches = tgt === sinKey || tgt === 'all';
+            if (matches && trait.sin_category === 'resist') {
                 chance += (b.critical_event_resist_trait_bonus ?? 0.20);
-            } else if (trait.category === 'bias' && (trait.bias_sin === sinKey || trait.bias_sin === 'all')) {
+            } else if (matches && trait.sin_category === 'bias') {
                 chance -= (b.critical_event_bias_trait_penalty ?? 0.10);
             }
         }
 
-        const hasSalvation = (hero.acquiredTraits || []).some(t => t.id === SALVATION_TRAITS[sinKey]?.id);
+        const hasSalvation = (hero.acquiredTraits || []).some(t =>
+            t.sin_category === 'salvation' && t.target_sin === sinKey
+        );
         if (hasSalvation) chance += (b.critical_event_salvation_trait_bonus ?? 0.15);
 
         const minC = b.critical_event_min_chance ?? 0.05;
@@ -289,12 +293,21 @@ class CriticalEventSystem {
     }
 
     _applySalvation(hero, sinKey, chance) {
-        const trait = SALVATION_TRAITS[sinKey];
+        // traits 데이터에서 해당 죄종의 구원 특성 조회 → 폴백 하드코딩
+        const traitsData = this.store.getState('traitsData') || [];
+        const dataTrait = traitsData.find(t => t.sin_category === 'salvation' && t.target_sin === sinKey);
+        const trait = dataTrait || SALVATION_TRAITS[sinKey];
         if (trait) {
             if (!hero.acquiredTraits) hero.acquiredTraits = [];
             const has = hero.acquiredTraits.some(t => t.id === trait.id);
             if (!has) {
-                hero.acquiredTraits.push({ id: trait.id, name: trait.name, salvation_sin: sinKey });
+                hero.acquiredTraits.push({
+                    id: trait.id,
+                    name: trait.name,
+                    sin_category: 'salvation',
+                    target_sin: sinKey,
+                    sin_mult: typeof trait.sin_mult === 'number' ? trait.sin_mult : 0.5
+                });
             }
         }
         hero.sinStats[sinKey] = 0;
