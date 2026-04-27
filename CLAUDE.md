@@ -121,6 +121,7 @@ TheSevenSimulation/
 - 스킬을 호출하지 않고 직접 작업하지 말 것
 - 매칭되는 스킬이 없을 때만 직접 작업
 - **씬(Scene) 변경 시** → `docs/game_design/ui_design.md`를 **먼저 업데이트**한 후 코드 구현
+- **git 커밋/푸시는 사용자가 명시적으로 요청할 때만 실행** — 작업 완료 후 자동 커밋·푸시 금지. 이전 대화에서 받은 커밋 지시는 **그 작업에만 한정**되며, 이후 작업에 자동 적용 금지
 
 ### 스킬 목록
 | 접두어 | 스킬 | 용도 |
@@ -142,7 +143,15 @@ TheSevenSimulation/
 - 문서 변경 시 마지막 업데이트 날짜 기재
 - **기획/코드 변경 시 파급 문서 확인** — 변경 내용이 `CLAUDE.md`, `.claude/skills/`에도 반영되어야 하는지 점검
 - 게임 데이터는 **CSV**로 관리 (JSON 아님)
-- 밸런스 수치는 `balance.csv`에서 로드, **코드 내 하드코딩 금지**
+- 밸런스 수치는 `balance.csv` 등 CSV에서 로드, **코드 내 하드코딩 금지**
+- **기획 문서에도 절대 수치 기재 금지** — 모든 수치는 CSV(SSOT). 기획서는 다음 4가지 표기만 허용:
+  1. 키 참조: `[balance.csv:sin_rampage_threshold]`
+  2. 체감 범위: `~5턴`, `약 60~90분`
+  3. 공식의 변수명: `HP = base + vitality × per_vitality (값: balance.csv)`
+  4. 테이블 링크: `→ facilities.csv 참조`
+  - 예외: 자명한 구조 카운트 (`7대 죄악`, `4구간`)는 본문 노출 가능 — 단 그 4구간의 경계값은 키로
+  - 이유: 수치가 두 곳에 있으면 반드시 어긋난다. 기획서는 "왜"를 답하고, CSV는 "얼마"를 답한다.
+  - 기획서 수치와 CSV 값이 다르면 **CSV가 진실**. 발견 시 `docs/_migration_findings.md`에 기록 + 사용자에게 보고
 - game_logic 모듈은 생성자에서 데이터를 주입받음 (`balance`, `policies` 등)
 - **i18n 규칙**: 신규 UI 텍스트는 `locale.t('key')`로 작성, 하드코딩 한글 금지.
   - UI 문구 / 로그 템플릿 → `src/data/locale_ui.csv` (key, ko, en)

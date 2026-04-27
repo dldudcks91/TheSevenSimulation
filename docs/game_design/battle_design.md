@@ -2,7 +2,9 @@
 
 > 상태: **확정** — X축 오토배틀 + 죄종 반응 시스템
 > 작성일: 2026-03-24
-> 확정일: 2026-03-27 (죄종 반응 전환: 2026-04-13 / 전투씬 통합: 2026-04-15)
+> 확정일: 2026-03-27 (죄종 반응 전환: 2026-04-13 / 전투씬 통합: 2026-04-15 / 최종 동기화: 2026-04-27 — Phase F1 CSV SSOT 분리)
+>
+> **데이터 SSOT**: 전투 공식 계수·HP·일기토 확률·습격 간격은 모두 `src/data/balance.csv`. 본문 표의 절대 수치는 설계 의도 표현이며, 코드는 CSV를 따름.
 
 ---
 
@@ -159,19 +161,21 @@ SP 시스템, 죄종 반응, 일기토는 양쪽에서 동일하게 작동한다
 
 ### 죄종별 일기토 성향
 
-| 죄종 | 확률 | 대상 선택 |
+| 죄종 | 확률 (CSV 키) | 대상 선택 |
 |------|------|----------|
-| 분노 | 50% | 랜덤 (싸우고 싶어 못 참음) |
-| 교만 | 35% | 가장 강한 적 (자존심) |
-| 시기 | 25% | 랜덤 (다른 영웅이 활약하면) |
-| 탐욕 | 20% | 랜덤 |
-| 폭식 | 15% | 가장 약한 적 (확실한 먹잇감) |
-| 나태 | 5% | 거의 안 함 |
-| 색욕 | 5% | 거의 안 함 |
+| 분노 | `[balance.csv:duel_chance_wrath]` | 랜덤 (싸우고 싶어 못 참음) |
+| 교만 | `[balance.csv:duel_chance_pride]` | 가장 강한 적 (자존심) |
+| 시기 | `[balance.csv:duel_chance_envy]` | 랜덤 (다른 영웅이 활약하면) |
+| 탐욕 | `[balance.csv:duel_chance_greed]` | 랜덤 |
+| 폭식 | `[balance.csv:duel_chance_gluttony]` | 가장 약한 적 (확실한 먹잇감) |
+| 나태 | `[balance.csv:duel_chance_sloth]` | 거의 안 함 |
+| 색욕 | `[balance.csv:duel_chance_lust]` | 거의 안 함 |
+
+> 전체 일기토 신청 베이스 확률은 `[balance.csv:duel_request_chance]`, 1회당 스킵 라운드는 `[balance.csv:duel_skip_rounds]`.
 
 ### 적 수락/거부
-- 수락 확률: 70%
-- 거부 시: 적 ATK 소폭↓ + 신청 영웅 해당 죄종 +1 (예: 교만)
+- 수락 확률: `[balance.csv:duel_accept_chance]`
+- 거부 시: 적 ATK 소폭↓ + 신청 영웅 해당 죄종 누적 (정확한 Δ는 sin_system / event_effects 참조)
 
 ### 일기토 시각 연출
 1. 오토배틀 일시정지
@@ -208,11 +212,14 @@ SP 시스템, 죄종 반응, 일기토는 양쪽에서 동일하게 작동한다
 
 ### 공식 (balance.csv 기반)
 ```
-영웅 HP = hero_hp_base(50) + 건강(vitality) × hero_hp_per_vitality(5)
-매 턴 HP 자연 회복 = hero_hp_regen_per_turn(10)
-ATK(원정) = 힘 × atk_expedition_str_mult(0.7) + 민첩 × atk_expedition_agi_mult(0.4)
-ATK(방어) = 힘 × atk_defense_str_mult(0.8) + 통솔 × atk_defense_lead_mult(0.4)
-데미지 = ATK × (0.8~1.2 랜덤) × 버프배율 × (1 - 피해경감) × 죄종 파워 보너스
+영웅 HP        = [balance.csv:hero_hp_base] + 건강 × [balance.csv:hero_hp_per_vitality]
+매 턴 HP 회복  = [balance.csv:hero_hp_regen_per_turn]
+ATK(원정)      = 힘 × [balance.csv:atk_expedition_str_mult] + 민첩 × [balance.csv:atk_expedition_agi_mult]
+ATK(방어)      = 힘 × [balance.csv:atk_defense_str_mult]    + 통솔 × [balance.csv:atk_defense_lead_mult]
+데미지         = ATK × U([balance.csv:damage_variance_min], [balance.csv:damage_variance_max])
+                    × 버프배율 × (1 - 피해경감) × 죄종 파워 보너스
+최대 라운드    = [balance.csv:max_battle_rounds]
+틱 간격(ms)    = [balance.csv:battle_tick_ms]
 ```
 
 ### 죄종 파워 보너스 (쌓임 프레임 핵심 시스템)
@@ -254,12 +261,12 @@ ATK(방어) = 힘 × atk_defense_str_mult(0.8) + 통솔 × atk_defense_lead_mult
 
 ## 8. 영웅 HP 시스템
 
-| 항목 | 값 |
+| 항목 | 값 (CSV 키) |
 |------|-----|
-| 최대 HP | 50 + 건강(vitality) × 5 (기본 vitality 10 → HP 100) |
-| 매 턴 자연 회복 | 10 (`hero_hp_regen_per_turn`) |
-| 회복 가속 | 병원 시설(회복 턴 절반), 훈련장(+50%), 연금술소 치료약 |
-| HP 0 | `knocked_out` → 귀환 시 `injured` (회복 턴 소요) |
+| 최대 HP | `[balance.csv:hero_hp_base] + 건강 × [balance.csv:hero_hp_per_vitality]` |
+| 매 턴 자연 회복 | `[balance.csv:hero_hp_regen_per_turn]` |
+| 회복 가속 | facilities.csv 시설 컬럼 (`heal_speed` 등) |
+| HP 0 | `knocked_out` → 귀환 시 `injured` → `[balance.csv:recovery_default_turns]` 턴 소요 |
 
 - 영웅이 전투 피격 대상. 스프라이트 위에 HP 바 상시 표시
 - 낮 거점 행동으로 깎인 **Stamina**와 분리 — HP는 순수 전투 내구, Stamina는 활동 자원
@@ -281,10 +288,10 @@ ATK(방어) = 힘 × atk_defense_str_mult(0.8) + 통솔 × atk_defense_lead_mult
 
 ## 10. 밤 습격 (거점 방어전)
 
-- **3~5일 간격**으로 습격 발생 (매일 밤 아님, balance.csv: raid_interval_min/max)
+- 습격 간격: `[balance.csv:raid_interval_min]` ~ `[balance.csv:raid_interval_max]` (매일 밤 아님)
 - 습격 없는 밤: 평화롭게 결산으로 넘어감
 - **MapScene 위 오버레이**로 전투 진행 (별도 씬 전환 없음, MapDefenseMode)
-- 규모: 소규모 정찰 ~ 대규모 공성 (day + 챕터 기반 스케일링)
+- 규모 스케일링: `[balance.csv:raid_scale_divisor]`, `raid_scale_small`, `raid_scale_medium` 키 (day + 챕터 기반)
 - **방어: 낮에 "방어" 임무에 배치된 영웅만 참전** (자동 참여 아님)
 - 방어 배치 0명 = 무방비 → 습격 자동 패배
 - 감시탑 레벨에 따라 습격 정보 제공
@@ -315,8 +322,8 @@ ATK(방어) = 힘 × atk_defense_str_mult(0.8) + 통솔 × atk_defense_lead_mult
 
 ---
 
-*마지막 업데이트: 2026-04-17 (쌓임 프레임 반영 — 죄종 파워 보너스 섹션 추가, 죄종 반응/일기토 결과를 사기→죄종 수치 변동으로 재표현, 구체 수치 TBD)*
+*마지막 업데이트: 2026-04-27 (Phase F1 — CSV SSOT 분리: 일기토 확률 표·전투 공식·HP 시스템·습격 간격을 `[balance.csv:키]` 참조로 치환.)*
 
----
+*2026-04-17 쌓임 프레임 반영 — 죄종 파워 보너스 섹션 추가, 죄종 반응/일기토 결과를 사기→죄종 수치 변동으로 재표현, 구체 수치 TBD*
 
-*마지막 업데이트: 2026-04-15 (카드 기획 전면 삭제 / 원정+방어전 통합 전투씬 설계)*
+*2026-04-15 카드 기획 전면 삭제 / 원정+방어전 통합 전투씬 설계*

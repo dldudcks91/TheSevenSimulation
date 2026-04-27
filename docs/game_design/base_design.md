@@ -1,8 +1,10 @@
 # 거점(림보) 시설 설계
 
 > 상태: 구조 확정, 수치 미확정
-> 작성일: 2026-03-24
+> 작성일: 2026-03-24 (최종 동기화: 2026-04-27 — Phase D CSV SSOT 분리)
 > 참고: HOMM3(건설 트리), DD(시설 운영), Frostpunk(정책), CK3(결단), RimWorld(밤 자율 행동)
+>
+> **데이터 SSOT**: 시설 카탈로그 = `src/data/facilities.csv` / 연구 = `research.csv` / 국시 = `edicts.csv`. 본문에 절대 비용·진행도가 표시되어 있어도 코드는 CSV를 따름. 두 곳이 어긋나면 CSV가 진실.
 
 ---
 
@@ -24,10 +26,10 @@
 
 | 항목 | 값 |
 |------|-----|
-| 최대 HP | 50 + 건강(vitality) × 5 (balance.csv: `hero_hp_base`, `hero_hp_per_vitality`) |
-| 매 턴 자연 회복 | 10 (balance.csv: `hero_hp_regen_per_turn`) |
-| 회복 가속 | 병원(회복 턴 절반), 훈련장(+50%), 연금술소 치료약 |
-| HP 0 | `knocked_out` → 귀환 시 `injured` → `recovery_default_turns` 턴 소요 |
+| 최대 HP | `[balance.csv:hero_hp_base] + 건강 × [balance.csv:hero_hp_per_vitality]` |
+| 매 턴 자연 회복 | `[balance.csv:hero_hp_regen_per_turn]` |
+| 회복 가속 | 병원/훈련장/연금술소 치료약 — facilities.csv 컬럼별 배율 |
+| HP 0 | `knocked_out` → 귀환 시 `injured` → `[balance.csv:recovery_default_turns]` 턴 소요 |
 
 핵심 딜레마: 원정으로 HP가 깎인 영웅은 방어·차기 원정에서 먼저 쓰러진다. 거점 행동에 무리하게 투입하면 Stamina 탈진으로 죄종 수치까지 흔들린다.
 
@@ -46,15 +48,15 @@
 
 | 항목 | 값 |
 |------|-----|
-| 시작 영웅 | 3명 |
+| 시작 영웅 | `[balance.csv:starting_heroes]` 명 |
 | 초기 숙소 | 2인용 임시막사 2채 (총 4슬롯, 건설 없이 기본 제공) |
 | 전략 의도 | 1슬롯 여유 → 4번째 영웅 즉시 고용 or 위험 개체 격리(2+1 배치) |
 
 ### 영웅 식량 비용
 
-스탯 총합은 **70 고정**. 모든 영웅의 턴당 식량 비용은 **8**로 동일.
+영웅의 스탯 총합은 `[balance.csv:stat_total_min]` ~ `[balance.csv:stat_total_max]` 범위에서 랜덤 생성.
 
-공식: `비용 = balance.food_cost_base(5) + round((70 - 60) / balance.food_cost_divisor(4))` = 8
+공식: `비용 = [balance.csv:food_cost_base] + round((총합 - [balance.csv:stat_total_min]) / [balance.csv:food_cost_divisor])`
 
 ---
 
@@ -101,7 +103,13 @@
 
 ### 시설 목록
 
-| 시설 | Tier | 카테고리 | 전제 | 비용 (골드) | 필요 진행도 | 기능 | 밤 이용 |
+> **SSOT**: `src/data/facilities.csv` (id, name_ko, tier, requires, cost, build_cost, description, recruit_slots, feast_available, craft_weapon, repair, raid_info_level, heal_speed, morale_stabilize, trade_available, alchemy_available, gold_per_turn, *_key).
+>
+> ⚠️ 현재 `facilities.csv`는 12행 등록. 본 표의 23개 시설(Tier 2/3 다수 포함)이 미반영 — `_migration_findings.md` F-D1 참조.
+>
+> 아래 비용/필요 진행도 컬럼은 **설계 의도 스냅샷**. 코드는 facilities.csv를 따름 → 미등록 시설은 게임에 존재하지 않음.
+
+| 시설 | Tier | 카테고리 | 전제 | 비용 (cost) | 필요 진행도 (build_cost) | 기능 | 밤 이용 |
 |------|------|---------|------|-----------|-----------|------|--------|
 | **임시막사** | 0 | Management | 기본 | - | - | 2인용 숙소 (시작 시 2채 제공) | ★ |
 | **주점** | 1 | Action | - | 100 | 20 | 영웅 고용 + 연회 개최 (폭식/색욕 수치 변동) | ★ |
@@ -149,21 +157,12 @@
 
 ### 연구 목록
 
-#### 경제 연구 (전제: 시장)
+> **SSOT**: `src/data/research.csv` (id, name_ko, category, requires_facility, cost, research_cost, effect_type, effect_value, description). 현재 6개 등록.
 
-| 연구 | 비용 | 소요 | 효과 |
-|------|------|------|------|
-| 교역로 개척 | 200G | 2턴 | 시장 수입 +50% |
-| 전리품 감정 | 250G | 3턴 | 원정 골드 보상 +30% |
-| 효율적 건설 | 300G | 3턴 | 건설 비용 -20% |
+- **경제 연구** (requires_facility=시장): 교역로 개척 / 전리품 감정 / 효율적 건설
+- **영웅 연구** (requires_facility=병원): 죄종 이해 / 폭주 억제 / 결속 의식
 
-#### 영웅 연구 (전제: 병원)
-
-| 연구 | 비용 | 소요 | 효과 |
-|------|------|------|------|
-| 죄종 이해 | 250G | 3턴 | 죄종 수치 상승폭 -30% |
-| 폭주 억제 | 400G | 4턴 | 폭주 임계 +2 상향 |
-| 결속 의식 | 300G | 3턴 | 죄종 누적 속도 -50% |
+각 연구의 비용·소요 턴·효과량은 research.csv 컬럼이 SSOT. 본문에는 효과의 **방향성**만 표기 (수입↑, 비용↓ 등).
 
 ### 연구력 공식
 
@@ -285,30 +284,24 @@
 ### 국시(Edict) — 바알의 통치 정책 (2026-04-17 도입)
 
 > 포고령 3축(배급/훈련/경계)은 제거됨. 바알의 통치는 **단일 국시**로 일원화.
-> 7죄종 중 1개를 선포하여 거점 전반에 효과 적용. **기간형 5턴 지속**.
-> 상세: [sin_system.md](sin_system.md) §5 국시(Edict) 시스템
+> 7죄종 중 1개를 선포하여 거점 전반에 효과 적용. **기간형** (지속 턴 = `[balance.csv:edict_duration]`).
+> 상세 규칙·설계 의도·매트릭스: → [sin_system.md §5 국시 시스템](sin_system.md)
+> 효과 수치 SSOT: `src/data/edicts.csv` (battle_power_mult / resource_gain_mult / food_consume_mult / build_research_mult / morale_tick / exp_mult / high_level_power_mult / low_level_morale_tick / morale_swing_mult)
 
-| 국시 | 죄종 | 주요 효과 | 대립 국시 |
-|------|------|---------|---------|
-| 강병령 | 분노 | 전투력 +15%, 분노 수치 누적 가속 | 안식령 |
-| 축재령 | 탐욕 | 자원 획득 +20%, 탐욕 수치 누적 가속 | 풍요령 |
-| 풍요령 | 폭식 | 죄종 정화 효과 부여, 식량 소모 +30% | 축재령 |
-| 안식령 | 나태 | 건설/연구 +20%, 전투력 -10% | 강병령 |
-| 경쟁령 | 시기 | 영웅 경험치 +25% | 열정령 |
-| 열정령 | 색욕 | 죄종 누적 속도 ×1.3 | 경쟁령 |
-| 위광령 | 교만 | Lv5+ 영웅 능력 +10%, 저렙 영웅 죄종 누적 가속 | (없음) |
-
-효과값은 `src/data/edicts.csv`에서 관리, 밸런싱은 추후.
+본 거점 문서에서는 **거점 운영 관점의 영향 요약**만 둠:
+- 강병령/축재령/안식령: 거점 전반 자원·건설 속도 변화
+- 풍요령: 식량 소모 가중 + 죄종 정화 효과
+- 경쟁령/열정령/위광령: 영웅 성장·관계·고렙 보정
 
 ### 연회 개최 (전제: 주점)
 
 | 항목 | 내용 |
 |------|------|
-| 비용 | 골드 (높음) |
-| 효과 | 폭식/색욕 죄종 수치 상승, 탐욕 수치 소폭 하락 |
+| 비용 | 골드 `[balance.csv:feast_cost]` |
+| 효과 | 폭식/색욕 죄종 수치 상승, 탐욕 수치 정화 |
+| 죄종 반응 (키) | `[balance.csv:gluttony_feast_rise]` / `[balance.csv:lust_feast_rise]` / `-[balance.csv:purify_feast_greed]` |
 | 위험 | 폭식/색욕 수치 높은 영웅 → 폭주 접근 위험 |
-| 죄종 반응 | 폭식+2, 색욕+1, 탐욕-1 (개인 죄종 수치 기준) |
-| 제한 | 5턴에 1회 |
+| 제한 | 쿨다운 (sin_system §2-B 정화 표 참조) |
 
 ### 치료 지시 (전제: 병원 or 연금술소)
 
@@ -360,7 +353,7 @@
 | 외교 | 1명 |
 | **방어 배치** | 제한 없음 (낮에 배치, 밤에 참전) |
 | **개척** | 턴당 1칸 (영웅 1명 투입) |
-| 국시 | 쿨다운 없으면 언제든 선포 가능 (기간형 5턴 지속) |
+| 국시 | 쿨다운 없으면 언제든 선포 가능 (지속 턴 = `[balance.csv:edict_duration]`) |
 | 교역 | 상인 방문 시만 |
 | 영웅 영입 | 턴당 1명 (영웅 1명 투입, 낮 행동 소모) |
 | 영웅 해고 | 제한 없음 |
@@ -419,8 +412,8 @@
 
 ### 개척 규칙
 - 턴당 1칸, 영웅 1명 투입
-- 비용: 나무 (balance.csv: `pioneer_cost_wood`)
-- 필요 진행도: balance.csv: `pioneer_build_cost` (기본 30)
+- 비용: 나무 `[balance.csv:pioneer_cost_wood]`
+- 필요 진행도: `[balance.csv:pioneer_build_cost]`
 - 조건: 해금된 셀과 상하좌우 인접해야 함
 - 개척력: (힘 + 건강) / 2 → 턴당 진행도 누적
 - 잠긴 셀에는 건물 배치 불가
@@ -543,8 +536,10 @@
 
 ---
 
-*마지막 업데이트: 2026-04-09 (건물 카테고리 4분류, 신규 시설 11종 추가, 숙소/격리 시스템, 밤 자율 행동 시스템)*
+*마지막 업데이트: 2026-04-27 (Phase D — CSV SSOT 분리: facilities.csv / research.csv / edicts.csv를 SSOT로 명시, 본문 표는 설계 의도 스냅샷으로 표기. 식량 공식·HP·개척·연회·국시·턴 제한을 `[balance.csv:키]` 참조로 치환. 시설 23개 ↔ csv 12행 미반영은 F-D1 등록.)*
+
+*2026-04-20 사기 표현 → 죄종 수치 변동 전환*
 
 *2026-04-16: 감시탑 Lv.1/2/3에 원정 맵 미리보기 효과 추가 (+1/+2/전체 스텝 공개)*
 
-*2026-04-20 업데이트: 사기 표현 → 죄종 수치 변동 전환*
+*2026-04-09 건물 카테고리 4분류, 신규 시설 11종 추가, 숙소/격리 시스템, 밤 자율 행동 시스템*

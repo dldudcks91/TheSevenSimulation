@@ -2,7 +2,9 @@
 
 > 상태: 프로토타입 구현 완료 (노드/주사위 2모드)
 > 작성일: 2026-03-24
-> 마지막 업데이트: 2026-04-15
+> 마지막 업데이트: 2026-04-27 (Phase F2 — CSV SSOT 분리)
+>
+> **데이터 SSOT**: `expedition_nodes.csv` (챕터별 노드 구성) / `expedition_dice.csv` (주사위 시퀀스) / `chapters.csv` (챕터 메타·보스명) / `stages.csv` / `stage_enemies.csv`. 보상·죄종 변동량은 `balance.csv` `exp_node_*` 키.
 
 ---
 
@@ -95,15 +97,19 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 
 ## 5. 7챕터 구조 (TheSevenTactics 계승)
 
-| 챕터 | 죄종 | 지역 | 보스 | 스테이지 |
-|------|------|------|------|---------|
-| 1 | 분노 | 불타는 전장 | 사탄 | 3 + 보스 |
-| 2 | 시기 | 뒤틀린 숲 | 레비아탄 | 3 + 보스 |
-| 3 | 탐욕 | 황금의 사막 | 맘몬 | 3 + 보스 |
-| 4 | 나태 | 망각의 동토 | 벨페고르 | 3 + 보스 |
-| 5 | 폭식 | 심연의 동굴 | 바알제붑 | 3 + 보스 |
-| 6 | 색욕 | 타락한 궁전 | 아스모데우스 | 3 + 보스 |
-| 7 | 교만 | 신의 폐허 | 루시퍼 | 3 + 보스 |
+> **SSOT**: `chapters.csv` (id, sin, name_ko, region, boss, env_morale_sin1/2, env_morale_val1/2, env_description, boss_briefing, boss_dying_words). 본 표는 의미 요약 — 정확한 지역/보스명은 chapters.csv가 진실.
+
+| 챕터 | 죄종 | 지역 (요약) | 보스 |
+|------|------|------|------|
+| 1 | 분노 | 불타는 전장 | 사탄 |
+| 2 | 시기 | 뒤틀린 숲 | 레비아탄 |
+| 3 | 탐욕 | 황금의 사막 | 맘몬 |
+| 4 | 나태 | 망각의 동토 | 벨페고르 |
+| 5 | 폭식 | 심연의 동굴 | 바알제붑 |
+| 6 | 색욕 | 타락한 궁전 | 아스모데우스 |
+| 7 | 교만 | 신의 폐허 | 루시퍼 |
+
+각 챕터: 일반 스테이지 + 보스 (수는 stages.csv 참조).
 
 ---
 
@@ -139,11 +145,13 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 
 | 노드 | 효과 | balance.csv 키 |
 |------|------|---------------|
-| combat 승리 | 골드 `base + day×per_day`, 파티 분노+1 / 교만+1 | `exp_node_combat_gold_base`(40) / `exp_node_combat_gold_per_day`(4) / `exp_node_victory_sin_restore`(TBD) |
-| combat 패배 | 파티 분노+1 / 교만+1 (죄종 수치 증가), 쓰러진 영웅 `status='injured'` | `exp_node_defeat_sin_gain`(TBD) |
-| boss 승리 | 골드 `120 + day×10`, 챕터 +1, 맵 리셋 | `exp_node_boss_gold_base` / `exp_node_boss_gold_per_day` |
-| rest | 파티 나태+1 / 폭식+1 (죄종 수치 증가), 분노/교만 죄종 수치 감소 (정화) | `exp_node_rest_sin_restore`(TBD) |
-| 영웅 HP | 전투별 피해 누적, 귀환 후 매 턴 자연 회복 | `hero_hp_regen_per_turn` |
+| combat 승리 | 골드 `[balance.csv:exp_node_combat_gold_base] + day × [balance.csv:exp_node_combat_gold_per_day]`, 파티 분노/교만 누적 | `exp_node_victory_sin_restore` (TBD — 사기 잔재) |
+| combat 패배 | 파티 분노/교만 누적, 쓰러진 영웅 `status='injured'` | `exp_node_defeat_sin_gain` (TBD — 사기 잔재) |
+| boss 승리 | 골드 `[balance.csv:exp_node_boss_gold_base] + day × [balance.csv:exp_node_boss_gold_per_day]`, 챕터 +1, 맵 리셋 | — |
+| rest | 파티 나태/폭식 누적, 분노/교만 정화 | `exp_node_rest_sin_restore` (TBD — 사기 잔재) |
+| 영웅 HP | 전투별 피해 누적, 귀환 후 매 턴 자연 회복 | `[balance.csv:hero_hp_regen_per_turn]` |
+
+> `exp_node_*_sin_restore` / `exp_node_*_sin_gain` 키는 옛 사기 시스템 잔재로 명명만 새로워짐. 실 누적·정화량은 balance_design.md §N "원정 노드 보상 도메인" 참조.
 
 ### 조우 이벤트 (encounter) — 2026-04-16 구현
 
@@ -169,5 +177,8 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 
 ---
 
-*마지막 업데이트: 2026-04-16*
+*마지막 업데이트: 2026-04-27 (Phase F2 — CSV SSOT 분리: 챕터 표·노드 결과 공식·골드 보상을 `[balance.csv:키]` 참조 + chapters.csv/expedition_nodes.csv SSOT 명시)*
+
 *2026-04-20 사기 → 죄종 수치 전환 — combat 패배 효과 교만-1→죄종 수치 증가, rest 노드 설명 정화 용어로 정비, 신규 balance.csv 키 명시*
+
+*2026-04-16 챕터별 노드 구성 CSV화*

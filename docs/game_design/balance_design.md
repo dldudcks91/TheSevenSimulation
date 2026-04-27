@@ -2,8 +2,11 @@
 
 > 상태: 초안 — 3개 영역 예시 + 방향성
 > 작성일: 2026-03-29
-> 최종 수정: 2026-04-16 (병사 시스템 제거 — 영웅 HP 직격 구조로 통일)
-> 대상: Phase 1 프로토타입 (챕터 1, 영웅 7명, 30일 기준)
+> 최종 수정: 2026-04-27 (Phase B — CSV SSOT 분리: 시뮬 표를 "근거 스냅샷" 으로 명시, 절대 수치는 `[balance.csv:키]` 참조)
+> 대상: Phase 1 프로토타입 (챕터 1, 영웅 7명, ~30턴 기준)
+>
+> **본 문서의 역할**: "왜 이 곡선·이 비용·이 임계값인가"의 **설계 근거**.
+> 실제 적용 수치의 SSOT는 `src/data/balance.csv` / `facilities.csv` / `defense_scaling.csv` / `desertion_effects.csv`. 본문 표 안 절대값은 **설계 당시 스냅샷**이며, 코드는 CSV를 따름. 두 곳이 어긋나면 CSV가 진실.
 
 ---
 
@@ -18,16 +21,18 @@
 - **실패해도 복구 가능** — 영웅 1명 이탈/사망이 즉시 게임오버가 아님
 - **점진적 긴장** — 초반은 여유, 중반부터 압박, 보스전 전 최대 긴장
 
-### 밸런스 목표 수치
+### 밸런스 목표 (체감 지표)
+
+> 아래는 **체감 목표** — 정확한 수치가 아닌 "이 정도 느낌이면 성공"의 범위. CSV 키로 표현되지 않으며, 플레이테스트 검증 항목.
 
 | 지표 | 목표 | 이유 |
 |------|------|------|
-| 1회차 플레이 | 25~35턴 (챕터 1 클리어) | 60~90분 세션 |
-| 첫 폭주 발생 | 5~8턴 | 시스템 체감 타이밍 |
-| 첫 이탈 위험 | 10~15턴 | 경영 압박 체감 |
-| 영웅 사망 경험 | 15~25턴 (보스전 근처) | 상실감 → 재도전 동기 |
-| 방어전 패배 | 10% 이하 (준비한 경우) | 너무 쉬워도, 너무 어려워도 안 됨 |
-| 게임오버 빈도 | 20~30% (첫 플레이) | 적절한 도전감 |
+| 1회차 플레이 | ~25~35턴 (챕터 1 클리어) | ~60~90분 세션 |
+| 첫 폭주 발생 | ~5~8턴 | 시스템 체감 타이밍 |
+| 첫 이탈 위험 | ~10~15턴 | 경영 압박 체감 |
+| 영웅 사망 경험 | ~15~25턴 (보스전 근처) | 상실감 → 재도전 동기 |
+| 방어전 패배율 (준비한 경우) | 낮음 (소수) | 너무 쉬워도, 너무 어려워도 안 됨 |
+| 게임오버 빈도 (첫 플레이) | 중간대 (1/3 안팎) | 적절한 도전감 |
 
 ### 밸런싱 방법론
 
@@ -54,14 +59,13 @@
 
 ### 1-1. 문제 정의
 
-현재 전투 관련 수치:
-- 영웅: HP = 50 + 건강(vitality) × 5 (기본 vitality 10 → HP 100). 영웅이 직접 피격 → HP 0 시 knocked_out → 귀환 후 injured
-- 매 턴 HP 자연 회복 10 (병원 시설 배율 가중)
-- 적 (챕터1): HP 40~300, ATK 8~30
-- 방어전 적: HP 120+day×8, ATK 12+day×2
-- 사냥 적: HP 25~70, ATK 8~14
+현재 전투 관련 수치 출처:
+- 영웅 HP 공식: `[balance.csv:hero_hp_base] + vitality × [balance.csv:hero_hp_per_vitality]`. 영웅이 직접 피격 → HP 0 시 knocked_out → 귀환 후 injured
+- 매 턴 HP 자연 회복: `[balance.csv:hero_hp_regen_per_turn]` (병원 시설 배율 가중)
+- 적 수치: 챕터1 스테이지·방어전·사냥 — 각각 `stage_enemies.csv`, `defense_scaling.csv`(`defense_enemy_*` 키), `hunt_enemies.csv` 참조
+- 방어전 스케일링 공식: HP/ATK = base + day × per_day (정확한 키는 `defense_enemy_hp_base / hp_per_day / atk_base / atk_per_day`)
 
-**문제**: 영웅이 성장하지 않는데(레벨업 없음), 적은 일수에 비례해 강해짐 → 언제 역전되는가? 그 곡선이 재밌는가?
+**문제**: 영웅 성장(레벨업)이 완만한 반면 적은 일수 비례로 강해짐. 역전·교차 시점이 재미의 핵심.
 
 ### 1-2. 설계 방향
 
@@ -76,99 +80,87 @@
 
 ### 1-3. 영웅 전투력 기준값
 
-스탯 총합 70, 7스탯에 배분 (최소 2, 최대 18):
+- 스탯 총합 범위: `[balance.csv:stat_total_min]` ~ `[balance.csv:stat_total_max]`
+- 메인 스탯 범위: `[balance.csv:stat_main_min]` ~ `[balance.csv:stat_main_max]`
+- 공식:
+  - `ATK(원정) = 힘 × [balance.csv:atk_expedition_str_mult] + 민첩 × [balance.csv:atk_expedition_agi_mult]`
+  - `ATK(방어) = 힘 × [balance.csv:atk_defense_str_mult] + 통솔 × [balance.csv:atk_defense_lead_mult]`
+  - `HP = [balance.csv:hero_hp_base] + 건강 × [balance.csv:hero_hp_per_vitality]`
+- 건강은 전투 미반영 — 스태미나 풀 + 발병 저항 전용
+
+#### 근거 시뮬 스냅샷 (설계 당시)
+
+> 이 표는 공식 검증용 스냅샷 — 실제 적용 수치는 위 공식 + balance.csv가 SSOT.
 
 | 영웅 유형 | 힘 | 민첩 | 건강 | ATK(원정) | ATK(방어) |
 |---|---|---|---|---|---|
 | 근접형 (힘 특화) | 16 | 10 | 12 | 15.2 | 12.8+통솔 |
 | 균형형 | 10 | 10 | 10 | 11.0 | 8.0+통솔 |
 | 허약형 (지능 특화) | 4 | 6 | 6 | 5.2 | 3.2+통솔 |
-| **평균** | **10** | **10** | **10** | **11.0** | - |
 
-> 공식: ATK(원정) = 힘×0.7 + 민첩×0.4
-> 건강은 전투 미반영 — 스태미나(체력) 풀 + 발병 저항 전용
-> 성장 반영: Lv3~4 시 관련 스탯 +2~3 → 근접형 ATK 16~17 수준
+- 성장 반영: 레벨업 시 관련 스탯 증가 → 후반엔 근접형 ATK가 더 높아짐
 
 ### 1-4. 적 난이도 곡선 (챕터 1)
 
 #### 원정 (스테이지 1~3 + 보스)
 
-| 스테이지 | 적 수 | 적 HP | 적 ATK | 적 합산 전투력 | 아군 3명 합산 | 난이도 비율 |
-|---|---|---|---|---|---|---|
-| ch1_s1 | 3 | 40~60 | 12~15 | ~480 | ~1,050 | **0.46** (여유) |
-| ch1_s2 | 3 | 50~80 | 16~20 | ~660 | ~1,050 | **0.63** (적절) |
-| ch1_s3 | 4 | 50~100 | 18~22 | ~1,080 | ~1,050 | **1.03** (긴장) |
-| ch1_boss | 1 | 300 | 30 | ~900 | ~1,050 | **0.86** (보스전) |
+- 적 정의 SSOT: `stage_enemies.csv` (stage_id별 HP/ATK/SPD)
+- 챕터/스테이지 메타: `stages.csv`, `chapters.csv`
+- **의도**: s1 튜토리얼 → s2 카드 1장 클리어 → s3 카드 2장 + 좋은 편성 → 보스 풀 카드 + 최적 편성
 
-> 합산 전투력 = Σ(HP × ATK) / 100 (대략적 지표)
-> 난이도 비율 < 0.7 = 쉬움, 0.7~1.0 = 적절, 1.0+ = 어려움
+> **근거 시뮬 스냅샷** — 실 수치는 stage_enemies.csv가 SSOT.
+>
+> 합산 전투력 = Σ(HP × ATK) / 100 (대략적 지표). 난이도 비율 < 0.7 쉬움 / 0.7~1.0 적절 / 1.0+ 어려움.
+>
+> | 스테이지 | 적 수 | 적 HP | 적 ATK | 난이도 비율 |
+> |---|---|---|---|---|
+> | ch1_s1 | 3 | 40~60 | 12~15 | ~0.46 (여유) |
+> | ch1_s2 | 3 | 50~80 | 16~20 | ~0.63 (적절) |
+> | ch1_s3 | 4 | 50~100 | 18~22 | ~1.03 (긴장) |
+> | ch1_boss | 1 | 300 | 30 | ~0.86 (보스전) |
 
-**의도**: s1은 튜토리얼, s2는 카드 1장 쓰면 클리어, s3는 카드 2장 + 좋은 편성 필요, 보스는 풀 카드 + 최적 편성
+#### 방어전 (간격 = `[balance.csv:raid_interval_min]` ~ `raid_interval_max`)
 
-#### 방어전 (3~5일 간격)
+**현재 적용 공식** (defense_scaling.csv + balance.csv):
+- `적 HP = [balance.csv:defense_enemy_hp_base] + day × [balance.csv:defense_enemy_hp_per_day]`
+- `적 ATK = [balance.csv:defense_enemy_atk_base] + day × [balance.csv:defense_enemy_atk_per_day]`
+- `적 수 = floor(day / [balance.csv:raid_scale_divisor]) + 보정` (raid_scale_small / raid_scale_medium)
+- `적 SPD = [balance.csv:defense_enemy_spd]`
 
-현재 공식: `적 수 = floor(day/3)+2`, `HP = 120+day×8`, `ATK = 12+day×2`
+**설계 이슈** (옛 가파른 곡선): 단순 선형은 후반 너무 가파름 — 영웅 HP를 2타에 소멸시키는 구간 발생.
 
-**문제**: day 20이면 적 HP=280, ATK=52 → 영웅 HP 100을 2타에 소멸. 너무 가파름.
-
-**제안 — 로그 곡선 적용**:
-
+**해결 방향 — 로그 곡선 + 단계 점프**:
 ```
-적 수  = floor(day/4) + 2                     (기존보다 느리게 증가)
-적 HP  = 80 + day × 5 + floor(day/5) × 10     (단계적 점프)
-적 ATK = 10 + day × 1.2                        (선형이지만 완만)
-적 SPD = 4 + floor(day/10)                     (거의 고정)
+적 HP  = base + day × per_day + floor(day / step_days) × step_bonus
+적 ATK = base + day × per_day  (선형이지만 완만)
+적 수  = floor(day / divisor) + count_base
 ```
+> step_days / step_bonus 키는 아직 balance.csv에 미반영 — `_migration_findings.md` F-B1 참조.
 
-| Day | 적 수 | 적 HP | 적 ATK | 영웅 3명 생존 가능? |
-|---|---|---|---|---|
-| 3 | 2 | 110 | 14 | O (여유) |
-| 6 | 3 | 120 | 17 | O (카드 1장이면 OK) |
-| 10 | 4 | 150 | 22 | △ (카드 + 풀 편성 필요) |
-| 15 | 5 | 185 | 28 | △ (풀 방어 필수) |
-| 20 | 7 | 210 | 34 | X (영웅 4명 + 카드 필수) |
-| 25 | 8 | 245 | 40 | X (풀 편성 + 카드 풀) |
-| 30 | 9 | 280 | 46 | 보스전급 (클리어 직전) |
+> **근거 시뮬 스냅샷** — 로그 곡선 제안 적용 시 예상 곡선 (실 수치는 적용 후 CSV 따름).
+>
+> | Day | 적 수 | 적 HP | 적 ATK | 체감 |
+> |---|---|---|---|---|
+> | 3 | 2 | 110 | 14 | 여유 |
+> | 6 | 3 | 120 | 17 | 카드 1장이면 OK |
+> | 10 | 4 | 150 | 22 | 카드 + 풀 편성 |
+> | 15 | 5 | 185 | 28 | 풀 방어 필수 |
+> | 20 | 7 | 210 | 34 | 영웅 다수 + 카드 필수 |
+> | 25 | 8 | 245 | 40 | 풀 편성 + 카드 풀 |
+> | 30 | 9 | 280 | 46 | 보스전급 |
 
-**핵심**: Day 10 이전은 원정에 집중 가능, Day 15부터 방어에 신경 써야 함, Day 25+ 는 원정 vs 방어 딜레마 최대화
+**핵심**: Day 10 이전은 원정 집중 가능 → Day 15부터 방어 신경 → Day 25+ 원정 vs 방어 딜레마 최대화.
 
 #### 사냥 (1:1)
 
-| 적 | HP | ATK | SPD | 의도 |
-|---|---|---|---|---|
-| 들늑대 | 40 | 8 | 7 | 누구나 잡음 (튜토리얼) |
-| 야생 멧돼지 | 55 | 10 | 5 | 약간 세지만 느림 |
-| 독거미 | 30 | 12 | 9 | 낮은 HP, 높은 딜 (리스크) |
-| 어둠 박쥐 | 25 | 14 | 10 | 빠르고 아픔, HP 낮음 |
-| 변이 곰 | 70 | 11 | 4 | 탱키, 힘 특화 영웅용 |
+- 적 정의 SSOT: `hunt_enemies.csv` (name, base_hp, base_atk, spd)
+- 사냥 보상: `[balance.csv:hunt_gold_base] + day × [balance.csv:hunt_gold_per_day]` + 죄종별 일기토 확률 키 (`duel_chance_*`)
+- **의도**: 평균 영웅(ATK 평균) vs 약한 적 → 압승 / 허약형 vs 강한 적 → 이기지만 부상 위험. 위험·보상 비대칭.
 
-**현재 수치 적절함.** 다만 난이도 표기가 필요:
+### 1-5. balance.csv 반영 상태
 
-```
-영웅 ATK 11 (평균) vs 들늑대 HP 40 → 약 4턴 킬
-들늑대 ATK 8 → 영웅 직접 피격. 4턴 내 킬 → 피해 32 (HP 100 중 32% 소모)
-→ 영웅 압승. 의도대로.
-
-영웅 ATK 5 (허약형) vs 변이 곰 HP 70 → 약 14턴 킬
-변이 곰 ATK 11 → 영웅 직접 피격 14회. 다수 피격 누적 시 부상 리스크
-→ 허약형은 이기긴 하지만 부상 위험. 의도대로.
-```
-
-### 1-5. balance.csv 반영 제안
-
-```csv
-# 방어전 스케일링 (로그 곡선)
-defense_enemy_hp_base,80
-defense_enemy_hp_per_day,5
-defense_enemy_hp_step_days,5
-defense_enemy_hp_step_bonus,10
-defense_enemy_atk_base,10
-defense_enemy_atk_per_day,1.2
-defense_enemy_spd,4
-defense_enemy_spd_step_days,10
-defense_enemy_count_divisor,4
-defense_enemy_count_base,2
-```
+- 등록 완료 (`balance.csv`): `defense_enemy_hp_base`, `defense_enemy_hp_per_day`, `defense_enemy_atk_base`, `defense_enemy_atk_per_day`, `defense_enemy_spd`, `raid_scale_divisor`, `raid_scale_small`, `raid_scale_medium`
+- **미반영 (로그 곡선용)**: `defense_enemy_hp_step_days`, `defense_enemy_hp_step_bonus`, `defense_enemy_spd_step_days`, `defense_enemy_count_divisor`, `defense_enemy_count_base` — `_migration_findings.md` F-B1 참조
 
 ---
 
@@ -193,134 +185,41 @@ defense_enemy_count_base,2
 | **나무** | 투자 자원 — 건설에만 사용, 획득은 안정적 | "뭘 먼저 지을까" |
 | **골드** | 만능 자원 — 연구/고용/연회/교역 | "뭐에 쓸까" |
 
-### 2-3. 턴당 수입/지출 시뮬레이션
+### 2-3. 턴당 수입/지출 — 공식과 핵심 딜레마
 
-#### 전제 조건
-- 영웅 수: 3명(초기) → 5명(day 10) → 7명(day 15+)
-- 영웅 턴당 식량 비용: 8
-- 행동 배분: 채집 1명, 벌목 1명, 나머지 = 원정/건설/연구/사냥/방어
+#### 전제
+- 영웅 수: 시작 `[balance.csv:starting_heroes]` → 후반 최대 `[balance.csv:max_heroes]`
+- 영웅 턴당 식량 비용: 동적 식 = `food_cost_base + round((총합-min)/divisor)` (`[balance.csv:food_cost_base]`, `food_cost_divisor`, 총합/min은 stat_total)
 
-#### 식량 수지
+#### 공식 출처
 
-```
-채집 수익 = base(10) + 영웅 적합도 보정
-             평균 영웅: (민첩10 + 감각10) / 2 = 10 → 채집량 ~15
-             (보정 공식: base + floor(적합도/5) × 3)
+| 항목 | 공식 / 키 |
+|---|---|
+| 채집 (식량) | `[balance.csv:gather_base_food]` + 적합도 보정 (보정 키 미반영 — F-B2) |
+| 벌목 (나무) | `[balance.csv:lumber_base_wood]` + 적합도 보정 (보정 키 미반영 — F-B2) |
+| 농장 시설 | `[balance.csv:farm_food_per_turn]` /턴 |
+| 벌목소 시설 | `[balance.csv:lumber_mill_wood_per_turn]` /턴 |
+| 사냥 골드 | `[balance.csv:hunt_gold_base] + day × [balance.csv:hunt_gold_per_day]` |
+| 방어전 골드 | `[balance.csv:defense_victory_gold_base] + day × [balance.csv:defense_victory_gold_per_day]` |
+| 원정 노드 | combat: `exp_node_combat_gold_base + day × per_day` / boss: `exp_node_boss_gold_base + day × per_day` |
+| 식량 부족 임계 | `[balance.csv:food_shortage_threshold]` |
+| 시작 자원 | `starting_food`, `starting_wood`, `starting_gold` |
+| 연회 비용 | `[balance.csv:feast_cost]` |
+| 고용 비용 | `[balance.csv:recruit_cost]` |
 
-식량 소비 = 영웅 수 × 8 (포고령 보통 기준)
-           풍족: ×2 = 영웅 수 × 16
-           긴축: ×0.5 = 영웅 수 × 4
-```
+#### 핵심 딜레마
 
-| Day | 영웅 수 | 턴 소비 (보통) | 턴 수입 (채집 1명) | 순수지 | 누적 식량 |
-|---|---|---|---|---|---|
-| 1 | 3 | -24 | +15 | **-9** | 91 |
-| 5 | 3 | -24 | +15 | -9 | 55 |
-| 10 | 5 | -40 | +15 | **-25** | -70 ❌ |
+- **식량**: 영웅이 늘면 채집 1명으로 부족 → 채집 2명(원정 인력 부족) 또는 긴축(탐욕·폭식 가속) 또는 농장 건설(나무·턴 투자) 중 선택
+- **나무**: 시작 자원만으로 Tier 1 전부 못 지음 → 벌목 꾸준히 + Tier 우선순위 결정
+- **골드**: 매 시점 "하나만 선택" — 고용 vs 연구 vs 연회 vs 치료/장비
 
-**문제 발견**: 영웅 5명이 되면 채집 1명으로는 식량이 바닥남. **의도적 설계**:
+> **근거 시뮬 스냅샷** — 자원 수지 시뮬은 "공식이 의도대로 작동하는가"를 검증할 때 별도 도구로 재실행. 본문에서 결과 수치 표는 제거(과거 시뮬 표는 옛 수치라 신뢰도 낮음).
 
-**해법 — 채집을 2명 투입하거나, 긴축 정책 사용**
+### 2-4. balance.csv 반영 상태
 
-| 전략 | 턴 소비 | 턴 수입 | 순수지 | 대가 |
-|---|---|---|---|---|
-| 채집 2명 | -40 | +30 | -10 | 다른 행동 인력 부족 |
-| 긴축 배급 | -20 | +15 | -5 | 폭식 수치 하락 |
-| 채집 1 + 긴축 | -20 | +15 | -5 | 폭식 수치 점진 하락 |
-| 채집 2 + 풍족 | -80 | +30 | -50 | 빠르게 고갈 |
-
-**이것이 바로 핵심 딜레마**: 식량을 위해 인력을 쓰면 원정/건설이 느려지고, 긴축하면 탐욕·폭식 누적 가속.
-
-#### 나무 수지
-
-```
-벌목 수익 = base(12) + 영웅 적합도 보정
-            평균 영웅: (힘10 + 민첩10) / 2 = 10 → 벌목량 ~18
-```
-
-| 건설 | 나무 비용 | 소요 일 | 누적 벌목 필요 |
-|---|---|---|---|
-| 주점 (Tier 1) | 100 | ~6일 벌목 | 1명 6일 |
-| 대장간 (Tier 1) | 150 | ~9일 벌목 | |
-| 감시탑 (Tier 1) | 100 | ~6일 벌목 | |
-| **Tier 1 전부** | **350** | | **~20일** |
-| 병원 (Tier 2) | 200 | | |
-| 역마차 (Tier 2) | 150 | | |
-| **Tier 2까지** | **700** | | **~39일** |
-
-**시사점**: 벌목 1명으로 Tier 1을 다 짓는 데 20일. 챕터 1이 25~35일이면, Tier 2까지 가려면 벌목을 거의 매일 해야 함.
-
-**제안**: 시작 나무를 100으로 올리거나, Tier 1 비용을 낮춤 (주점 60, 대장간 80, 감시탑 60 = 200)
-
-```
-Tier 1 비용 제안:
-  주점    60 (영웅 고용이 급하므로 싸게)
-  대장간  100
-  감시탑  60
-  합계: 220 → 시작 나무 100 + 벌목 7일 ≈ day 8~9에 Tier 1 완성
-
-Tier 2 비용 (유지):
-  병원   200
-  역마차 150
-
-Tier 3 비용 (유지):
-  연금술소 300
-  시장    200
-  감시탑3  350
-```
-
-#### 골드 수지
-
-```
-골드 수입:
-  사냥    = 15 + day × 3 (성공 시, 실패 시 0)
-  원정    = 스테이지 보상 (80~300)
-  방어전  = 10 + day × 2 (승리 시)
-  시장    = 20/턴 (건설 후)
-  교역    = 가변
-
-골드 지출:
-  연구    = 200~400 (총 6개)
-  영웅 고용 = 100~300/명
-  치료약  = 50~100 (연금술소)
-  연회    = 100 (5턴에 1회)
-```
-
-| Day | 골드 수입원 | 대략 수입 | 지출 | 잔고 추정 |
-|---|---|---|---|---|
-| 1 | 시작 잔고 | - | - | **500** |
-| 3 | 사냥 ×3 | +54 | 영웅 고용 -200 | 354 |
-| 5 | 사냥+방어 | +60 | - | 414 |
-| 8 | 원정 s1 성공 | +80 | 연구 시작 -200 | 294 |
-| 12 | 원정 s2 + 사냥 | +150 | 영웅 고용 -200 | 244 |
-| 15 | 시장 가동 (+20/턴) | +200 (누적) | 연구 -250 | 194 |
-| 20 | 원정 s3 + 시장 | +260 | 연회 -100 | 354 |
-| 25 | 보스전 준비 | +300 | 치료약/장비 -100 | 554 |
-
-**의도**: 골드는 항상 "하나만 선택" — 고용 vs 연구 vs 연회 vs 치료/장비
-
-### 2-4. balance.csv 반영 제안
-
-```csv
-# 자원 시작값 (나무 상향)
-starting_food,100
-starting_wood,100
-starting_gold,500
-
-# 식량 채집 (적합도 연동)
-gather_food_base,10
-gather_food_stat_bonus_divisor,5
-gather_food_stat_bonus_per,3
-
-# 벌목 (적합도 연동)
-lumber_wood_base,12
-lumber_wood_stat_bonus_divisor,5
-lumber_wood_stat_bonus_per,3
-
-# Tier 1 건설 비용 (하향)
-# → facilities.csv 수정 필요
-# 주점 100→60, 감시탑 100→60
-```
+- 등록 완료: `starting_food`, `starting_wood`, `starting_gold`, `gather_base_food`, `lumber_base_wood`, `farm_food_per_turn`, `lumber_mill_wood_per_turn`, `feast_cost`, `recruit_cost`, `food_shortage_threshold`, `pioneer_cost_wood`, `pioneer_build_cost`
+- **미반영**: 채집·벌목 적합도 보정 키 4종 — `_migration_findings.md` F-B2 참조
+- **시설 비용 조정**: `facilities.csv` (Phase D에서 처리) — Tier 1 비용 하향 검토는 base_design.md / facilities.csv가 SSOT
 
 ### 2-5. 경제 밸런스 체크리스트
 
@@ -451,76 +350,40 @@ sin_purify_rest_amount,TBD           # 야영 정화량
 | **5** | 이벤트 | 선택지 죄종 수치 변동량(sin_delta) | 초안 있음 |
 | **6** | 경제 | 연구 비용/효과 | 현재 적절 |
 
-### 이탈 효과 미정 4건 제안
+### 이탈 효과 (desertion_effects.csv 참조)
 
-| 죄종 | 이탈 방식 | 효과 제안 | 수치 |
-|---|---|---|---|
-| **시기** | 사보타주 후 이탈 | 랜덤 건물 1개 레벨 다운 | building_downgrade: 1 |
-| **나태** | 조용히 사라짐 | 효과 없음 (가장 순한 이탈) | 없음 |
-| **폭식** | 보급품 갖고 이탈 | 식량 -30 | food: -30 |
-| **교만** | 복종 거부 선언 | 전체 영웅 교만 +2 (위신 타격의 전파) | all_sin_pride: +2 |
+이탈 시 발생하는 부수 효과의 SSOT는 `src/data/desertion_effects.csv` (sin, effect_type, target, value, description).
 
----
+- **현재 등록**: 분노(전체 사기), 탐욕(골드 -80), 색욕(랜덤 1명 사기) — 사기 폐기로 분노/색욕 행은 재설계 대상
+- **none 처리**: 시기/나태/폭식/교만 — 추가 효과 미정. 7죄종 중 4건이 빈 행
 
-## 5. 하드코딩 수치 정리 (CSV 이관 필요)
-
-현재 코드에 직접 박혀있지만 balance.csv로 옮겨야 할 수치들:
-
-| 모듈 | 수치 | 현재 위치 | 제안 CSV 키 |
-|---|---|---|---|
-| BattleEngine | 죄종별 일기토 확률 | lines 201-209 | sin_duel_*.csv 분리 |
-| ~~HeroManager~~ | ~~사기 판정 임계값 25/75~~ | ~~lines 259-263~~ | **레거시 — 사기 폐기로 무효** |
-| HeroManager | 메인스탯 MIN 2, MAX 18 | lines 157-158 | stat_main_min, stat_main_max |
-| EventSystem | 2이벤트 확률 0.3 | line 32 | event_double_chance |
-| ExpeditionManager | 습격 규모 구분 2/4 | line 363 | raid_scale_small, raid_scale_medium |
+> **재설계 후보 (별도 작업)**: 사기→죄종 누적 변환 + none 4건 채우기. 시기→건물 다운, 폭식→식량 차감, 교만→전 영웅 교만 누적, 나태→그대로 무효과(서사상 "조용한 이탈"). 적용은 `desertion_effects.csv` 컬럼 재설계와 함께 — `_migration_findings.md` 신규 finding 등록 검토.
 
 ---
 
-*마지막 업데이트: 2026-04-17 (쌓임 프레임 재정립 — §3 죄종 수치 쌓임 밸런스 뼈대 재작성, 사기 관련 조항 레거시 표시, 세부 수치 TBD)*
+## 5. 하드코딩 수치 정리 — 일반 원칙
+
+- **모든 매직 넘버는 `balance.csv` 키로 분리** (또는 도메인 CSV로). 코드 라인에 절대값을 박지 않는다.
+- 신규 기능 구현 시 코드와 함께 키를 등록하고, 기획서는 키 참조로만 표기.
+- 발견된 미반영 항목은 `docs/_migration_findings.md`에 누적 기록 (코드 라인 번호로 표기하면 변경 시 어긋나므로, 모듈명 + 함수/책임 단위로 기록).
+
+---
+
+*마지막 업데이트: 2026-04-27 (Phase B — CSV SSOT 분리: 시뮬 표를 "근거 스냅샷" 으로 명시, 공식·키 참조 보강, 이탈 효과 desertion_effects.csv 참조, §5 일반 원칙으로 축약, §N 도메인 메모로 압축. 미반영 키는 `_migration_findings.md` F-B1~F-B3에 기록.)*
 *2026-04-20 사기 → 죄종 수치 전환 정리 — exp_node_rest/victory/defeat 모랄 키 → 죄종 수치 키로 이름 변경 명시*
+*2026-04-17 쌓임 프레임 재정립 — §3 죄종 수치 쌓임 밸런스 뼈대 재작성, 사기 관련 조항 레거시 표시, 세부 수치 TBD*
 
 ---
 
-## N. 2026-04-16 추가 balance 키
+## N. balance.csv 도메인 메모
 
-### 원정 노드 보상
+> 키 자체와 기본값은 `balance.csv`(SSOT)에서 직접 확인. 본 절은 키들이 어떤 도메인에 속하는지 설명만.
 
-| 키 | 기본값 | 의미 |
-|----|-------|------|
-| `exp_node_combat_gold_base` | 40 | 일반 전투 노드 승리 골드 기본값 |
-| `exp_node_combat_gold_per_day` | 4 | 일반 전투 노드 승리 시 day당 추가 골드 |
-| `exp_node_boss_gold_base` | 120 | 보스 노드 승리 골드 기본값 |
-| `exp_node_boss_gold_per_day` | 10 | 보스 노드 승리 시 day당 추가 골드 |
-| ~~`exp_node_rest_morale`~~ → `exp_node_rest_sin_restore` | 10→TBD | 야영 노드 사기 증가량 (**레거시 — 쌓임 프레임으로 재설계 필요**: 야영 시 죄종 정화량) |
-| ~~`exp_node_victory_morale`~~ → `exp_node_victory_sin_restore` | 3→TBD | 전투 승리 사기 (**레거시 — 쌓임 프레임으로 재설계 필요**: 전투 승리 시 죄종 정화량) |
-| ~~`exp_node_defeat_morale`~~ → `exp_node_defeat_sin_gain` | -8→TBD | 전투 패배 사기 (**레거시 — 쌓임 프레임으로 재설계 필요**: 전투 패배 시 죄종 증가량) |
+### 원정 노드 보상 도메인
+- 키 군: `exp_node_combat_gold_base/per_day`, `exp_node_boss_gold_base/per_day`
+- **쌓임 프레임 잔재 키** (이름 변경 검토 필요): `exp_node_rest_*`, `exp_node_victory_*`, `exp_node_defeat_*` — 옛 사기 기반에서 죄종 정화/누적량으로 재의미 부여 필요. 코드 사용처 검증 후 재명명 (`*_sin_restore` / `*_sin_gain`).
 
-> 위 3개 키는 쌓임 프레임에서 다음과 같이 변경 예정 (TBD):
-> - `exp_node_rest_sin_restore` — 야영 시 죄종 수치 감소 (정화)량
-> - `exp_node_victory_sin_restore` — 전투 승리 시 죄종 수치 감소 (정화)량
-> - `exp_node_defeat_sin_gain` — 전투 패배 시 죄종 수치 증가량
-
-### 체력(stamina) 시스템
-
-| 키 | 기본값 | 의미 |
-|----|-------|------|
-| `stamina_max` | 100 | 최대 체력 |
-| `stamina_recovery_base` | 4 | 턴당 회복량 기본값 |
-| `stamina_recovery_health_bonus` | 0.5 | 건강 스탯 1당 추가 회복 |
-| `stamina_cost_gather` | 10 | 채집 1회 소모 |
-| `stamina_cost_lumber` | 10 | 벌목 1회 소모 |
-| `stamina_cost_hunt` | 15 | 사냥 1회 소모 |
-| `stamina_cost_build` | 15 | 건설 1회 소모 (미적용) |
-| `stamina_cost_research` | 8 | 연구 1회 소모 (미적용) |
-| `stamina_cost_feast` | 0 | 연회는 소모 없음 |
-| `stamina_cost_expedition` | 25 | 원정 1회 파견 시 소모 |
-| `stamina_tired_threshold` | 50 | 피로 구간 경계 (이하면 효율 ×0.8) |
-| `stamina_overwork_threshold` | 25 | 과로 구간 경계 (이하면 효율 ×0.6 + 발병 판정) |
-| `sickness_chance_base` | 0.15 | 과로 시 매턴 발병 기본 확률 |
-| `sickness_health_reduction` | 0.01 | 건강 1당 발병 확률 감소분 |
-| ~~`sickness_morale_delta`~~ | -8 | 발병 시 사기 변동 (**레거시 — 발병 시 topSin +1로 대체 예정**) |
-| `sickness_min_turns` | 2 | 발병 지속 최소 턴 |
-| `sickness_max_turns` | 3 | 발병 지속 최대 턴 |
-
-*2026-04-16 추가 — 원정 노드 결과 Store 반영 + 체력 시스템 Phase A*
-*2026-04-17 갱신 — 쌓임 프레임 재정립, 사기 관련 키 레거시 표시, §3 뼈대 재작성 (세부 수치 TBD)*
+### 체력(stamina) 시스템 도메인
+- 키 군: `stamina_max`, `stamina_recovery_base`, `stamina_recovery_health_bonus`, `stamina_cost_*` (행동별), `stamina_tired_threshold`, `stamina_overwork_threshold`, `sickness_chance_base`, `sickness_health_reduction`, `sickness_min/max_turns`
+- 죄종별 stamina 비용/회복 배율: `stamina_mult_<sin>_cost/recover` 7쌍
+- **잔재 키**: `sickness_morale_delta` — 사기 폐기로 무효. 발병 시 topSin 누적으로 대체 예정.

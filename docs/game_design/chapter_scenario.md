@@ -1,7 +1,13 @@
 # 챕터 시나리오 시스템 설계
 
 > 상태: 초안
-> 작성일: 2026-03-24
+> 작성일: 2026-03-24 (최종 동기화: 2026-04-27 — Phase G CSV SSOT 분리)
+>
+> **데이터 SSOT**:
+> - 챕터 메타 (지역명/보스명/환경 변조 수치/브리핑/유언) = `src/data/chapters.csv` (특히 `env_morale_sin1/2`, `env_morale_val1/2`, `env_description`, `boss_briefing`, `boss_dying_words` 컬럼)
+> - 챕터 고유 이벤트 = `events.csv` (category=chapter1/2/.. 또는 trigger_chapter)
+> - 본 문서의 챕터별 "환경 변조" 표·"챕터 이벤트" 본문은 **시나리오 작성 가이드라인** 역할. 코드는 chapters.csv / events.csv를 따름.
+> - 본문 표의 "1.5배", "2배" 등 절대 배율은 chapters.csv `env_morale_val*`이 SSOT — 두 곳이 어긋나면 CSV가 진실.
 
 ---
 
@@ -440,4 +446,6 @@
 
 ---
 
-*마지막 업데이트: 2026-04-20 (사기 표현 → 죄종 수치 변동 전환)*
+*마지막 업데이트: 2026-04-27 (Phase G — CSV SSOT 분리: chapters.csv / events.csv를 SSOT로 명시. 본문 환경 변조 표·챕터 이벤트는 시나리오 작성 가이드라인으로 표기.)*
+
+*2026-04-20 사기 표현 → 죄종 수치 변동 전환*
