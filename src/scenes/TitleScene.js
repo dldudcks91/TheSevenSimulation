@@ -22,7 +22,16 @@ class TitleScene extends Phaser.Scene {
         super({ key: 'TitleScene' });
     }
 
+    // 디버깅용: true면 타이틀/인트로 스킵하고 바로 HeroSelectScene으로
+    static DEBUG_SKIP = true;
+
     create() {
+        // [DEBUG] 타이틀/인트로 스킵 — 바로 영웅 선택으로 진입
+        if (TitleScene.DEBUG_SKIP) {
+            this.scene.start('HeroSelectScene');
+            return;
+        }
+
         const { width, height } = this.scale;
         this.cameras.main.setBackgroundColor('#0a0a12');
 

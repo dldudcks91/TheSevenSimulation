@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/.claude/skills/design-review/**)",
+      "Edit(/.claude/skills/client-implement/**)"
+    ]
+  }
+}

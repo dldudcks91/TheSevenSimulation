@@ -107,8 +107,6 @@ class PopupsHero {
         const cx = px + pw / 2;
         let y = py + 12;
         const st = hero.stats;
-        const sub = hero.subStats || {};
-        const derived = s.heroManager.getDerivedStats(hero);
         const sinColorHex = SIN_COLOR_HEX[topSin(hero.sinStats)] || C.textMuted;
         const sinColor = Phaser.Display.Color.HexStringToColor(sinColorHex).color;
 
@@ -298,26 +296,6 @@ class PopupsHero {
             const val = act.b ? Math.round((st[act.a] + st[act.b]) / 2) : st[act.a];
             _drawStatRow(xPos, y, act.label, val, 44);
             if (i % 2 === 1 || i === actionStats.length - 1) y += rowH;
-        }
-        y += sectionGap;
-
-        // 감정 스탯
-        _drawSectionHeader('감정');
-        const subLabels = [
-            { key: 'wrath', label: '분노', src: 'sub' },
-            { key: 'greed', label: '탐욕', src: 'sub' },
-            { key: 'pride', label: '교만', src: 'sub' },
-            { key: 'envy', label: '시기', src: 'sub' },
-            { key: 'gluttony', label: '폭식', src: 'sub' },
-            { key: 'lust', label: '색욕', src: 'sub' },
-            { key: 'sloth', label: '나태', src: 'sub' }
-        ];
-        for (let i = 0; i < subLabels.length; i++) {
-            const sl = subLabels[i];
-            const xPos = i % 2 === 0 ? col1X : col2X;
-            const val = sl.src === 'sub' ? (sub[sl.key] ?? 0) : (derived[sl.key] ?? 0);
-            _drawStatRow(xPos, y, sl.label, val, 44);
-            if (i % 2 === 1 || i === subLabels.length - 1) y += rowH;
         }
         y += sectionGap;
 

@@ -146,29 +146,13 @@ class MapHeroInspector {
         }
         ty += portSize + 10;
 
-        // 이름
+        // 이름 + 상태
         this._p(s.add.text(x + pw / 2, ty, hero.name, {
             fontSize: '18px', fontFamily: FONT_BOLD, color: C.textPrimary,
             shadow: { offsetX: 1, offsetY: 1, color: '#000', blur: 0, fill: true }
         }).setOrigin(0.5, 0).setDepth(INSP_DEPTH + 2));
         ty += 22;
 
-        // 죄종 + 비용
-        if (hero.trait) {
-            s.widgets.traitLabel(x + pw / 2 - 40, ty, hero.trait, {
-                fontSize: '11px', pp: obj => this._p(obj), depth: INSP_DEPTH + 2
-            });
-        } else {
-            this._p(s.add.text(x + pw / 2 - 40, ty, SIN_NAMES_KO[topSin(hero.sinStats)], {
-                fontSize: '11px', fontFamily: FONT, color: sinColorHex
-            }).setDepth(INSP_DEPTH + 2));
-        }
-        this._p(s.add.text(x + pw / 2 + 40, ty, `🌾${hero.foodCost ?? '?'}/턴`, {
-            fontSize: '11px', fontFamily: FONT, color: '#a08040'
-        }).setDepth(INSP_DEPTH + 2));
-        ty += 18;
-
-        // 상태
         const statusMap = {
             expedition: '원정', injured: '부상', construction: '건설',
             research: '연구', idle: '대기', hunt: '사냥',
@@ -177,51 +161,38 @@ class MapHeroInspector {
         this._p(s.add.text(x + pw / 2, ty, `상태: ${statusMap[hero.status] || '대기'}`, {
             fontSize: '10px', fontFamily: FONT, color: C.textMuted
         }).setOrigin(0.5, 0).setDepth(INSP_DEPTH + 2));
-        ty += 20;
+        ty += 18;
 
-        // 죄종 수치 바 (7종)
-        const mBarW = pw - 32;
-        const mBarX = x + 16;
-        const sinLblW = 28;
-        const sinBarStartX = mBarX + sinLblW;
-        const sinBarRealW = mBarW - sinLblW - 22;
-        const sinBarH = 6;
-        const sinKeys = ['wrath', 'envy', 'greed', 'sloth', 'gluttony', 'lust', 'pride'];
+        // 스토리 (이름 아래)
+        const storyObj = this._p(s.add.text(x + 12, ty, this._getStory(topSin(hero.sinStats)), {
+            fontSize: '10px', fontFamily: FONT, color: C.textMuted,
+            lineSpacing: 3, wordWrap: { width: pw - 24 }
+        }).setDepth(INSP_DEPTH + 2));
+        ty += storyObj.height + 12;
 
-        this._p(s.add.text(mBarX, ty, '죄종 수치', {
+        // 특성
+        this._p(s.add.text(x + 16, ty, '특성', {
             fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
         }).setDepth(INSP_DEPTH + 2));
-        ty += 14;
-
-        for (const sinKey of sinKeys) {
-            const sinVal = hero.sinStats?.[sinKey] ?? 1;
-            const isRampage = sinVal >= 18;
-            const sinColorHex = isRampage ? '#e03030' : SIN_COLOR_HEX[sinKey];
-
-            this._p(s.add.text(mBarX, ty, SIN_NAMES_KO[sinKey], {
-                fontSize: '9px', fontFamily: FONT, color: sinColorHex
+        if (hero.trait) {
+            s.widgets.traitLabel(x + 52, ty, hero.trait, {
+                fontSize: '11px', pp: obj => this._p(obj), depth: INSP_DEPTH + 2
+            });
+        } else {
+            this._p(s.add.text(x + 52, ty, SIN_NAMES_KO[topSin(hero.sinStats)], {
+                fontSize: '11px', fontFamily: FONT, color: sinColorHex
             }).setDepth(INSP_DEPTH + 2));
-
-            const sBg = this._p(s.add.graphics().setDepth(INSP_DEPTH + 2));
-            sBg.fillStyle(0x0e0e1a, 1);
-            sBg.fillRect(sinBarStartX, ty + 1, sinBarRealW, sinBarH);
-            sBg.lineStyle(1, C.borderPrimary);
-            sBg.strokeRect(sinBarStartX, ty + 1, sinBarRealW, sinBarH);
-
-            const sFill = this._p(s.add.graphics().setDepth(INSP_DEPTH + 2));
-            const sfw = Math.max(0, (sinVal / 20) * (sinBarRealW - 2));
-            sFill.fillStyle(Phaser.Display.Color.HexStringToColor(sinColorHex).color, 1);
-            sFill.fillRect(sinBarStartX + 1, ty + 2, sfw, sinBarH - 2);
-
-            this._p(s.add.text(sinBarStartX + sinBarRealW + 4, ty, `${sinVal}${isRampage ? '!' : ''}`, {
-                fontSize: '9px', fontFamily: isRampage ? FONT_BOLD : FONT, color: sinColorHex
-            }).setDepth(INSP_DEPTH + 2));
-
-            ty += sinBarH + 4;
         }
-        ty += 6;
+        ty += 22;
 
-        // 체력(stamina) 바
+        // 체력 바 좌표
+        const mBarW = pw - 32;
+        const mBarX = x + 16;
+        const lblW = 32;
+        const mBarStartX = mBarX + lblW;
+        const mBarRealW = mBarW - lblW - 28;
+
+        // 체력(stamina)
         const stam = hero.stamina ?? 100;
         const stamMax = 100;
         const tiredTh = 50, overworkTh = 25;
@@ -245,18 +216,24 @@ class MapHeroInspector {
         const sfw = Math.max(0, (stam / stamMax) * (mBarRealW - 2));
         sFill.fillStyle(Phaser.Display.Color.HexStringToColor(stamColorHex).color, 1);
         sFill.fillRect(mBarStartX + 1, ty + 3, sfw, 8);
-        ty += 16;
 
-        this._p(s.add.text(x + pw / 2, ty, `${stam} (${stamLabel})`, {
-            fontSize: '11px', fontFamily: FONT_BOLD, color: stamColorHex
-        }).setOrigin(0.5, 0).setDepth(INSP_DEPTH + 2));
-        ty += 24;
-
-        // 스토리
-        this._p(s.add.text(x + 12, ty, this._getStory(topSin(hero.sinStats)), {
-            fontSize: '10px', fontFamily: FONT, color: C.textMuted,
-            lineSpacing: 3, wordWrap: { width: pw - 24 }
+        this._p(s.add.text(mBarStartX + mBarRealW + 4, ty, `${stam}`, {
+            fontSize: '10px', fontFamily: FONT_BOLD, color: stamColorHex
         }).setDepth(INSP_DEPTH + 2));
+        ty += 18;
+
+        this._p(s.add.text(x + pw / 2, ty, `(${stamLabel})`, {
+            fontSize: '10px', fontFamily: FONT, color: stamColorHex
+        }).setOrigin(0.5, 0).setDepth(INSP_DEPTH + 2));
+        ty += 18;
+
+        // 턴당 소모
+        this._p(s.add.text(mBarX, ty, '턴당 소모', {
+            fontSize: '11px', fontFamily: FONT_BOLD, color: C.textPrimary
+        }).setDepth(INSP_DEPTH + 2));
+        this._p(s.add.text(x + pw - 16, ty, `🌾 ${hero.foodCost ?? '?'}`, {
+            fontSize: '11px', fontFamily: FONT, color: '#a08040'
+        }).setOrigin(1, 0).setDepth(INSP_DEPTH + 2));
 
         // 하단 버튼
         const btnY = y + panelH - 36;
@@ -298,12 +275,12 @@ class MapHeroInspector {
             ty += 28;
         };
 
-        const _bar = (col, label, val) => {
+        const _bar = (col, label, val, desc) => {
             const bx = x + 12 + col * COL_W;
             const valColor = val >= 15 ? '#40d870' : val >= 10 ? '#40a0f8' : val >= 7 ? '#f8b830' : '#f04040';
             const valHex = Phaser.Display.Color.HexStringToColor(valColor).color;
 
-            this._p(s.add.text(bx, ty, label, {
+            const labelText = this._p(s.add.text(bx, ty, label, {
                 fontSize: '10px', fontFamily: FONT, color: C.textSecondary
             }).setDepth(INSP_DEPTH + 2));
 
@@ -322,17 +299,31 @@ class MapHeroInspector {
             this._p(s.add.text(barX + BAR_W + 4, ty, `${val}`, {
                 fontSize: '10px', fontFamily: FONT_BOLD, color: valColor
             }).setDepth(INSP_DEPTH + 2));
+
+            if (desc) {
+                const zoneW = LABEL_W + BAR_W + 24;
+                const zoneH = 18;
+                const zone = this._p(s.add.zone(bx, ty - 2, zoneW, zoneH)
+                    .setOrigin(0, 0).setInteractive({ useHandCursor: true })
+                    .setDepth(INSP_DEPTH + 4));
+                this._attachTooltip(zone, label, desc, () => labelText.setColor('#ffffff'),
+                    () => labelText.setColor(C.textSecondary));
+            }
         };
 
         // ── 기본 (7종, 3열) ──
         _header('기본');
         const basicStats = [
-            { key: 'strength', label: '힘' }, { key: 'agility', label: '민첩' }, { key: 'intellect', label: '지능' },
-            { key: 'vitality', label: '체력' }, { key: 'perception', label: '감각' }, { key: 'leadership', label: '통솔' },
-            { key: 'charisma', label: '매력' }
+            { key: 'strength', label: '힘', desc: '근력. 근접 타격력과 무거운 작업의 효율을 좌우한다.' },
+            { key: 'agility', label: '민첩', desc: '빠른 손놀림과 회피. 정밀 작업과 회피율에 기여.' },
+            { key: 'intellect', label: '지능', desc: '학습·추론·연구 능력. 마법/연구 효율의 핵심.' },
+            { key: 'vitality', label: '체력', desc: '신체 내구도. HP와 지구력의 기반.' },
+            { key: 'perception', label: '감각', desc: '관찰력·직관. 약점 포착, 채집·연금술 등에 영향.' },
+            { key: 'leadership', label: '통솔', desc: '부대를 이끌고 명령을 전달하는 능력. 건설·전투 지휘에 영향.' },
+            { key: 'charisma', label: '매력', desc: '타인을 끌어당기는 힘. 외교·교역·고용에 영향.' }
         ];
         basicStats.forEach((stat, i) => {
-            _bar(i % 3, stat.label, st[stat.key]);
+            _bar(i % 3, stat.label, st[stat.key], stat.desc);
             if (i % 3 === 2 || i === basicStats.length - 1) ty += ROW_H;
         });
         ty += 6;
@@ -340,41 +331,75 @@ class MapHeroInspector {
         // ── 행동 (9종, 3열) ──
         _header('행동');
         const actionStats = [
-            { label: '사냥', a: 'strength', b: 'agility' },
-            { label: '채집', a: 'agility', b: 'perception' },
-            { label: '건설', a: 'strength', b: 'leadership' },
-            { label: '대장간', a: 'strength', b: 'perception' },
-            { label: '연금술', a: 'agility', b: 'perception' },
-            { label: '연구', a: 'intellect', b: null },
-            { label: '외교', a: 'intellect', b: 'charisma' },
-            { label: '교역', a: 'intellect', b: 'charisma' },
-            { label: '고용', a: 'leadership', b: 'charisma' }
+            { label: '사냥', a: 'strength', b: 'agility', desc: '짐승을 추적·포획해 식량·가죽을 얻는다.' },
+            { label: '채집', a: 'agility', b: 'perception', desc: '식물·약초·자원을 수집한다.' },
+            { label: '건설', a: 'strength', b: 'leadership', desc: '시설을 시공하는 속도와 품질.' },
+            { label: '대장간', a: 'strength', b: 'perception', desc: '무기·방어구 제작 효율.' },
+            { label: '연금술', a: 'agility', b: 'perception', desc: '약물·포션 제조 효율.' },
+            { label: '연구', a: 'intellect', b: null, desc: '새로운 지식·기술의 연구 속도.' },
+            { label: '외교', a: 'intellect', b: 'charisma', desc: '타 세력과의 협상력.' },
+            { label: '교역', a: 'intellect', b: 'charisma', desc: '자원·물품 거래의 이득.' },
+            { label: '고용', a: 'leadership', b: 'charisma', desc: '주점에서 새 영웅을 영입하는 협상력.' }
         ];
         actionStats.forEach((act, i) => {
             const val = act.b ? Math.round((st[act.a] + st[act.b]) / 2) : st[act.a];
-            _bar(i % 3, act.label, val);
+            _bar(i % 3, act.label, val, act.desc);
             if (i % 3 === 2 || i === actionStats.length - 1) ty += ROW_H;
         });
         ty += 6;
 
-        // ── 감정 (10종, 3열) ──
+        // ── 감정 (7죄종, 3열) ──
         _header('감정');
         const subLabels = [
-            { key: 'wrath', label: '분노', src: 'sub' },
-            { key: 'greed', label: '탐욕', src: 'sub' },
-            { key: 'pride', label: '교만', src: 'sub' },
-            { key: 'envy', label: '시기', src: 'sub' },
-            { key: 'gluttony', label: '폭식', src: 'sub' },
-            { key: 'lust', label: '색욕', src: 'sub' },
-            { key: 'sloth', label: '나태', src: 'sub' }
+            { key: 'wrath', label: '분노 (힘 / 전투)', short: '분노', desc: '울컥하는 성정. 임계 시 폭주 위험, 전투에서 일시적 폭발력.' },
+            { key: 'greed', label: '탐욕 (지능 / 자원)', short: '탐욕', desc: '재물 집착. 자원 욕심, 분배 갈등 유발.' },
+            { key: 'pride', label: '교만 (통솔 / 명령)', short: '교만', desc: '자존심. 임계 시 명령 거부 위험.' },
+            { key: 'envy', label: '시기 (감각 / 사기)', short: '시기', desc: '동료 비교. 사기 저하·내부 갈등 유발.' },
+            { key: 'gluttony', label: '폭식 (체력 / 식량)', short: '폭식', desc: '식욕. 턴당 식량 추가 소모.' },
+            { key: 'lust', label: '색욕 (매력 / 정념)', short: '색욕', desc: '정에 약함. 사기 변동 폭이 커진다.' },
+            { key: 'sloth', label: '나태 (민첩 / 효율)', short: '나태', desc: '의욕 저하. 행동 효율과 회복 속도 감소.' }
         ];
         subLabels.forEach((sl, i) => {
-            const val = sl.src === 'sub' ? (sub[sl.key] ?? 0) : (derived[sl.key] ?? 0);
-            _bar(i % 3, sl.label, val);
+            const val = sub[sl.key] ?? 0;
+            _bar(i % 3, sl.short, val, `${sl.label}\n${sl.desc}`);
             if (i % 3 === 2 || i === subLabels.length - 1) ty += ROW_H;
         });
 
         return ty;
+    }
+
+    _attachTooltip(zone, title, desc, onIn, onOut) {
+        const s = this.scene;
+        let tip = null;
+        zone.on('pointerover', (pointer) => {
+            if (onIn) onIn();
+            const tipW = 240;
+            const lines = desc.split('\n');
+            const lineCount = lines.length + 1;
+            const tipH = 14 * lineCount + 18;
+            const tx = Math.min(pointer.x + 12, 1280 - tipW - 8);
+            const ty = Math.max(8, pointer.y - tipH - 8);
+
+            tip = s.add.container(0, 0).setDepth(9999);
+            const bg = s.add.graphics();
+            bg.fillStyle(0x1a1a2e, 0.96);
+            bg.fillRoundedRect(tx, ty, tipW, tipH, 4);
+            bg.lineStyle(1, 0xc0a0e0);
+            bg.strokeRoundedRect(tx, ty, tipW, tipH, 4);
+            tip.add(bg);
+            tip.add(s.add.text(tx + 8, ty + 6, title, {
+                fontSize: '11px', fontFamily: FONT_BOLD, color: '#ffffff'
+            }));
+            tip.add(s.add.text(tx + 8, ty + 22, desc, {
+                fontSize: '10px', fontFamily: FONT, color: '#e0e0f0',
+                lineSpacing: 2, wordWrap: { width: tipW - 16 }
+            }));
+            this._p(tip);
+        });
+        zone.on('pointerout', () => {
+            if (onOut) onOut();
+            if (tip) { tip.destroy(); tip = null; }
+        });
     }
 
     // ═══════════════════════════════════
