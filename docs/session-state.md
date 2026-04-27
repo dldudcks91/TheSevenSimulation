@@ -5,7 +5,65 @@
 
 ---
 
-## 현재 진행 중인 작업 — i18n 시스템 도입 Phase A (2026-04-24)
+## 현재 진행 중인 작업 — 메인 죄종 + 사기 시스템 롤백 (2026-04-27)
+
+### 🟢 결정 사항 (2026-04-27)
+
+#### 영웅 정체성 모델 전환 — 7수치 누적 → 메인 죄종 고정 + 사기
+
+**폐기 (Deprecated)**:
+- 죄종 7수치 누적 (`hero.sinStats`) 시스템 전체
+- `topSin()` 동적 정체성, `sinPriority` 숨은 우선순위
+- 4구간 시스템 (깨끗/발현/고양/폭주/임계)
+- 정화 수단 카탈로그 7종
+- 수식어 시스템 (`hero_epithets.csv`)
+- 시작특성 편향/저항/중립 분류
+
+**도입/롤백**:
+- **메인 죄종 1개 영웅별 고정** (이름과 1:1, `hero_names.csv:main_sin`)
+- **사기(Morale) 1~100 단일 게이지** (RimWorld Mood 차용)
+- **사기 modifier 합산식** (memory + situational + permanent — RimWorld Thought 차용)
+- **폭주 트리거 = 사기 임계 + 확률** (RimWorld Mental Break)
+- **구원 트리거 = 사기 고양 + 확률** (RimWorld Inspiration)
+- **Catharsis 안전장치** (폭주 직후 +30 사기 1턴, 무한 루프 방지)
+- **폭주 양상 = 메인 죄종 × 시작특성** (147가지 변주)
+
+**보존 (의미 재정의)**:
+- 시작특성 21종 (영웅 이름별 1:1 고정, 장점 전용)
+- 7×7 죄종 매트릭스 (적용 시점만 메인 죄종 직접 비교로 단순화)
+- bonds 시스템 (메인 죄종 기반 매트릭스 적용)
+- 국시(Edict) 시스템
+- 후천 특성 Lv5/Lv10 시스템
+- 구원 특성 7종 (분노→평정 등)
+- 7기본 스탯 / Stamina / HP / 행동별 스탯 매핑
+
+#### 기획 문서 갱신 완료 (2026-04-27)
+- ✅ `docs/game_design/hero_design.md` — 전면 재작성
+- ✅ `docs/game_design/sin_system.md` — 전면 재작성
+- ✅ `docs/GAME_DESIGN.md` — §1, §3, §4, §6, §10, 매트릭스 섹션 갱신
+- ✅ `.claude/skills/design-hero/SKILL.md` — 전면 재작성
+- ✅ `.claude/skills/design-system/SKILL.md` — 전면 재작성
+- ✅ `.claude/skills/design-narrative/SKILL.md` — 핵심 라인 갱신
+- ✅ `docs/game_design/balance_design.md` — §3 사기 밸런스 섹션 전면 재작성, §4/§N 갱신
+- ✅ `docs/game_design/battle_design.md` — 죄종 반응 시스템 + 죄종 파워 보너스 → 사기 영역별 보정 환원
+- ✅ `docs/game_design/event_design.md` — 핵심 라인 갱신 (본문 sin_delta 재태깅은 후속)
+- ✅ `docs/game_design/expedition_design.md` — 원정 결과 사기 modifier 환원
+- ✅ `docs/game_design/base_design.md` — 숙소 효과 사기 환원
+- ✅ `docs/game_design/ui_design.md` — 영웅 카드 사기 1바 + 메인 죄종 아이콘
+- ✅ `docs/_migration_findings.md` — F-Z1~F-Z10 finding 추가 (코드/CSV 마이그레이션 계획)
+
+#### 후속 작업 (코드/CSV 마이그레이션 — 별도 세션)
+F-Z1~F-Z10 참조. 우선순위 순:
+1. **F-Z1**: hero_names.csv `main_sin` 컬럼 추가 + 21명 매핑
+2. **F-Z2**: balance.csv `morale_*` 키 군 정의
+3. **F-Z3**: HeroManager.js / SinSystem.js / SinUtils.js — sinStats 7수치 → morale + modifiers + mainSin 교체
+4. **F-Z4**: hero_epithets.csv 삭제 + 코드 의존 제거
+5. **F-Z10**: UI — 영웅 카드 사기 1바 + 메인 죄종 아이콘 + modifier 분해 인스펙터
+6. **F-Z5~F-Z9**: traits.csv / sin_relations.csv / event_effects.csv / expedition 키 정합 (병렬 가능)
+
+---
+
+## 이전 작업 이력 — i18n 시스템 도입 Phase A (2026-04-24)
 
 ### 🟢 확정된 내용 (2026-04-24)
 

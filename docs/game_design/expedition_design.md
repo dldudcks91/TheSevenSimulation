@@ -145,13 +145,13 @@ STS(Slay the Spire) 스타일 분기 노드맵.
 
 | 노드 | 효과 | balance.csv 키 |
 |------|------|---------------|
-| combat 승리 | 골드 `[balance.csv:exp_node_combat_gold_base] + day × [balance.csv:exp_node_combat_gold_per_day]`, 파티 분노/교만 누적 | `exp_node_victory_sin_restore` (TBD — 사기 잔재) |
-| combat 패배 | 파티 분노/교만 누적, 쓰러진 영웅 `status='injured'` | `exp_node_defeat_sin_gain` (TBD — 사기 잔재) |
+| combat 승리 | 골드 `[balance.csv:exp_node_combat_gold_base] + day × [balance.csv:exp_node_combat_gold_per_day]`, 파티 사기 +5 (memory 3턴) | `exp_node_victory_morale_offset` / `_ttl` |
+| combat 패배 | 파티 사기 -5 (memory 5턴), 쓰러진 영웅 `status='injured'` (사기 -10 memory 10턴) | `exp_node_defeat_morale_offset` / `_ttl` |
 | boss 승리 | 골드 `[balance.csv:exp_node_boss_gold_base] + day × [balance.csv:exp_node_boss_gold_per_day]`, 챕터 +1, 맵 리셋 | — |
-| rest | 파티 나태/폭식 누적, 분노/교만 정화 | `exp_node_rest_sin_restore` (TBD — 사기 잔재) |
+| rest | 파티 사기 +3 (memory 2턴) — RimWorld 휴식 효과 | `exp_node_rest_morale_offset` / `_ttl` |
 | 영웅 HP | 전투별 피해 누적, 귀환 후 매 턴 자연 회복 | `[balance.csv:hero_hp_regen_per_turn]` |
 
-> `exp_node_*_sin_restore` / `exp_node_*_sin_gain` 키는 옛 사기 시스템 잔재로 명명만 새로워짐. 실 누적·정화량은 balance_design.md §N "원정 노드 보상 도메인" 참조.
+> `exp_node_*_morale_offset` / `_ttl` 키는 사기 시스템 (2026-04-27 롤백) 기준. 실 modifier offset/TTL은 balance_design.md §N "원정 노드 보상 도메인" 참조.
 
 ### 조우 이벤트 (encounter) — 2026-04-16 구현
 

@@ -235,7 +235,139 @@
 
 ---
 
+## Phase 메인-사기 롤백 (2026-04-27) — 7수치 누적 → 메인 죄종 고정 + 사기 1~100
+
+> **결정**: 영웅 = 1이름 + 1메인 죄종(고정) + 1시작특성 + **사기(Morale) 1~100 단일 게이지** + Stamina + HP.
+> **사상**: RimWorld Mood/Thought 차용. 사기 = modifier 합산식. 폭주/구원 = 사기 임계 + 확률.
+> 본 Phase에서는 **기획서만** 갱신. 코드/CSV 마이그레이션은 후속.
+
+### F-Z1. hero_names.csv `main_sin` 컬럼 미존재 (CRITICAL)
+
+**현황**:
+- `docs/game_design/hero_design.md` (2026-04-27 갱신): "메인 죄종은 영웅 이름별 1:1 고정 (`hero_names.csv:main_sin`)"
+- `src/data/hero_names.csv`: `main_sin` 컬럼 없음
+
+**처리 방안 (즉시 후속)**:
+- `hero_names.csv`에 `main_sin` 컬럼 추가 — 21명 전원에 7죄종 균등 분포 (3명씩)
+- 영웅 ↔ 메인 죄종 매핑 결정 (hero_design.md §2-4 표 참고, "(TBD)" 표시된 영웅들 확정)
+- 코드(HeroManager.js) 영웅 생성 시 `main_sin` 필드 주입
+
+### F-Z2. balance.csv 사기(`morale_*`) 키 군 미존재 (CRITICAL)
+
+**현황**:
+- 사기 시스템 임계/곡선 키 필요: `morale_max`, `morale_initial`, `morale_break_threshold`, `morale_low_threshold`, `morale_high_threshold`, `morale_inspiration_threshold`, `morale_break_chance_curve_*`, `morale_inspiration_chance_curve_*`, `morale_catharsis_offset`, `morale_catharsis_ttl`
+- modifier 카탈로그 키 군 필요: `morale_mod_*` (전투 승리/패배/판결/연회/Catharsis 등 offset/TTL)
+- `src/data/balance.csv`: 위 키 모두 없음 — 옛 `sin_*` 키만 존재
+
+**처리 방안 (즉시 후속)**:
+- balance.csv에 `morale_*` 키 군 추가, 수치 초안 정의
+- 옛 `sin_clean_max` / `sin_manifest_threshold` / `sin_elevated_threshold` / `sin_rampage_threshold` / `sin_critical_threshold` 키 폐기
+- 옛 `sin_min` / `sin_max` 폐기 (sinStats 자체가 폐기)
+- 옛 `stamina_mult_<sin>_*` 7쌍 — 메인 죄종별 stamina 배율로 의미 재정의 (그대로 활용 가능)
+
+### F-Z3. sinStats 7수치 코드 잔재 (CRITICAL)
+
+**현황**:
+- `src/game_logic/HeroManager.js`: `_rollSinStats()`, `_generateHero()`에서 sinStats 7수치 생성
+- `src/game_logic/SinUtils.js`: `topSin()`, `sinPriority` 등
+- `src/game_logic/SinSystem.js`: 4구간 시스템 기반 폭주/이탈 판정
+- `src/store/Store.js`/`SaveManager.js`: hero.sinStats / sinPriority 세이브 키
+- `src/scenes/map/MapHeroInspector.js`, `MapBottomPanel.js`, 등: 죄종 7수치 UI 표시
+
+**처리 방안 (즉시 후속, 별도 PR)**:
+- `hero.sinStats` 객체 → `hero.morale` 단일 숫자 + `hero.modifiers[]` 배열 + `hero.mainSin` 정적 필드로 교체
+- `topSin()` 함수 폐기 → `hero.mainSin` 직접 참조
+- `sinPriority` 폐기 (메인 고정으로 동률 없음)
+- 4구간 판정(`getSinTier`) 폐기 → 사기 영역 판정으로 교체
+- 정화 수단 `purify_*` 호출부 폐기 → 사기 modifier 추가/제거 호출로 교체
+- 세이브 마이그레이션: 기존 세이브의 `sinStats`/`sinPriority`는 로드 시 무시, `morale=50` 초기화
+
+### F-Z4. hero_epithets.csv 폐기 (HIGH)
+
+**현황**:
+- `docs/game_design/hero_design.md` (2026-04-27): 수식어 시스템 폐기 명시
+- `src/data/hero_epithets.csv`: 21조합 × 3 후보 = 63개 수식어 데이터 존재
+- 코드(HeroManager.js / MapHeroInspector.js)에서 `topSin()` 기반으로 epithet 결정
+
+**처리 방안**:
+- `hero_epithets.csv` 삭제
+- `CsvLoader.js`에서 hero_epithets 로드 제거
+- `HeroManager.js` epithet 결정 로직 제거 — 영웅 이름 단독 표시
+- UI에서 epithet 표시 부분 제거
+
+### F-Z5. traits.csv `target_sin` / `sin_mult` 컬럼 의미 재정의 (MEDIUM)
+
+**현황**:
+- `src/data/traits.csv` 컬럼: `target_sin` (이 특성이 영향 주는 죄종), `sin_mult` (해당 죄종 누적 배율)
+- 옛 의미: "이 특성이 어느 죄종을 더 빨리 쌓는가/억제하는가"
+- 새 의미 (메인 고정): "해당 죄종 메인 영웅에게 사기 modifier offset/TTL 적용 시 배율"
+
+**처리 방안**:
+- 컬럼 의미 재정의 (이름은 보존). 시작특성 21종 효과를 다축화하면서 추가 컬럼 검토:
+  - `morale_permanent_offset` (낙천적 +12 등)
+  - `morale_swing_mult` (둔감한 -30%, 예민한 +30%)
+  - `morale_break_threshold_offset` (철의 의지 -5 등)
+- 시작특성 편향/저항/중립 분류 폐기 (메인 고정으로 무의미)
+- 구원 특성 7종(분노→평정 등)은 보존, 효과를 사기 시스템 기준으로 재정의
+
+### F-Z6. sin_relations.csv 적용 시점 단순화 (MEDIUM, F-A1과 연동)
+
+**현황**:
+- F-A1에서 컬럼 재설계 명시되어 있음 (동류/강화/중립/대립 + multiplier)
+- 본 롤백으로 적용 시점이 단순화: **두 영웅의 메인 죄종**(고정)으로 직접 비교 — `topSin` 호출 불필요
+
+**처리 방안**:
+- F-A1 처리 시 적용 함수만 단순화 (`getRelation(heroA.mainSin, heroB.mainSin)`)
+- bonds 계산 시 `sinPriority` 동률 해체 로직 폐기
+
+### F-Z7. event_design.md 본문 sin_delta 일괄 재태깅 (LOW)
+
+**현황**:
+- 이벤트 30개 본문이 `sin_delta` (죄종별 ±N) 표현 사용
+- 핵심 트리거/구조는 사기 시스템으로 갱신되었지만, 개별 이벤트 효과 표현은 재태깅 필요
+
+**처리 방안**:
+- 이벤트별로 `sin_delta` → `morale_modifier` (source/category/offset/ttl) 일괄 변환
+- 가능하면 자동 변환 스크립트 + 수동 검수
+- `event_effects.csv` 컬럼 재설계 (`sin_delta`/`amount` → `morale_offset`/`morale_ttl`/`morale_category`)
+
+### F-Z8. desertion_effects.csv / sin_rampage_chain.csv 사기 기준 재정의 (MEDIUM)
+
+**현황**:
+- F-A2에서 sin_rampage_chain.csv `morale_delta` 잔재 명시 (옛 사기 기준)
+- 본 롤백으로 사기 시스템 환원 — **재유효**. 그러나 옛 기획에서 폐기됐던 의미와 다름
+
+**처리 방안**:
+- `sin_rampage_chain.csv`의 `morale_delta` 컬럼을 사기 modifier offset으로 재의미 부여
+- `desertion_effects.csv`도 사기 modifier 기반으로 재정의 (분노/색욕 행 보존, 시기/나태/폭식/교만 4건 신규 작성)
+
+### F-Z9. exp_node_*_morale_offset 키 명명 정합 (LOW, F-B와 연동)
+
+**현황**:
+- balance_design.md §N에 `exp_node_*_morale_offset` / `_ttl` 명명 정의됨
+- 코드/CSV에는 옛 `exp_node_*_sin_restore` / `_sin_gain` 명명 또는 미존재
+
+**처리 방안**:
+- balance.csv 키 추가 (`exp_node_victory_morale_offset/_ttl` 등 6쌍)
+- expedition_design.md의 표가 SSOT 역할
+- 코드(ExpeditionNodeManager.js)가 새 키 참조
+
+### F-Z10. UI — 죄종 7바 → 사기 1바 + 메인 죄종 아이콘 (HIGH)
+
+**현황**:
+- `src/scenes/map/MapHeroInspector.js`, `MapBottomPanel.js`: 죄종 7수치 미니바 표시 코드
+- 새 UI 요구: HP 1바 + 사기 1바 + 메인 죄종 아이콘 (영구), modifier 분해 표시 (인스펙터 상세)
+
+**처리 방안 (별도 PR)**:
+- 영웅 카드 레이아웃 재설계
+- 인스펙터 상세 뷰에서 사기 modifier 카탈로그 분해 표시 (RimWorld식 Thought 리스트)
+- 메인 죄종 아이콘은 7대 죄악 아이콘 세트 활용
+
+---
+
 ## 다음 Phase로 이전 시 처리
 
 각 finding은 Phase H 종료 후 별도 PR로 일괄 처리 검토.
 PR 단위는 도메인별 (관계 매트릭스 / 폭주 / 고양 효과 / 임계 이벤트 / bonds 사건)로 분리하는 것이 회귀 추적 용이.
+
+**메인-사기 롤백(F-Z1~F-Z10)**은 별도 우선 PR로 처리 권장 — 시스템 근본 변경이라 다른 finding 처리에 선행되어야 함.
